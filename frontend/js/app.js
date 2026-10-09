@@ -696,7 +696,8 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
     v.muted=false;
     if(v.volume===0) v.volume=1.0;
   }
-  var prox="/api/player/video?url="+encodeURIComponent(url)+"&referer="+encodeURIComponent(referrer||"");
+  var b = (typeof apiBase === "function") ? apiBase() : "";
+  var prox=b+"/api/player/video?url="+encodeURIComponent(url)+"&referer="+encodeURIComponent(referrer||"");
   try{
     var m=/^(.*\/)index-(f\d+-v\d+-a\d+)\.m3u8/.exec(url);
     if(m){

@@ -1,5 +1,13 @@
-async function jget(u){var r=await fetch(u);return r.json();}
-async function jpost(u,b){var r=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});return r.json();}
+function apiBase(){
+  var s = localStorage.getItem("tatap_server");
+  if(s) return s.replace(/\/+$/,"");
+  if(location.protocol === "file:" || !location.origin || location.origin === "null"){
+    return "http://127.0.0.1:8767";
+  }
+  return "";
+}
+async function jget(u){var r=await fetch(apiBase()+u);return r.json();}
+async function jpost(u,b){var r=await fetch(apiBase()+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});return r.json();}
 window.Tatap={
 search:function(q){return jget("/api/search?q="+encodeURIComponent(q));},
 catalog:function(p){return jget("/api/catalog?page="+(p||1));},

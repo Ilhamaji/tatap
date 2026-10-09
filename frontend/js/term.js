@@ -532,6 +532,23 @@ var Tui = (function () {
       case "apikey":case "model":case "apiurl":
       case "ollama":case "groq":case "gemini":case "openai":
         await cmdTranslateSetting(cmd,args);break;
+      case "server":
+        if(!args){
+          var curSrv = localStorage.getItem("tatap_server") || (location.origin && location.origin !== "null" ? location.origin : "http://127.0.0.1:8767");
+          log("server backend saat ini: " + curSrv, "ok");
+          log("usage: :server <http://ip-komputer:8767> atau :server reset", "dim");
+        }else if(args === "reset" || args === "local"){
+          localStorage.removeItem("tatap_server");
+          log("server backend direset ke default (local)", "ok");
+          location.reload();
+        }else{
+          var sUrl = args.trim().replace(/\/+$/, "");
+          if(!/^https?:\/\//i.test(sUrl)) sUrl = "http://" + sUrl;
+          localStorage.setItem("tatap_server", sUrl);
+          log("server backend disetel ke: " + sUrl, "ok");
+          setTimeout(function(){ location.reload(); }, 600);
+        }
+        break;
       case "status":
         var extra="";
         if(S.filter&&Object.keys(S.filter).length) extra+=" filter="+JSON.stringify(S.filter);
