@@ -612,12 +612,20 @@ def _validate_sub_url(sub_url: str, referer: str):
             if b and len(b) >= 10:
                 return sub_url
             return None
-        from curl_cffi import requests as creq
-        kw = dict(headers=headers, impersonate="chrome124", timeout=8)
-        r = creq.get(sub_url, **kw)
-        if r.status_code == 200 and r.content and len(r.content) >= 10:
-            return sub_url
-        return None
+        try:
+            from curl_cffi import requests as creq
+            kw = dict(headers=headers, impersonate="chrome124", timeout=8)
+            r = creq.get(sub_url, **kw)
+            if r.status_code == 200 and r.content and len(r.content) >= 10:
+                return sub_url
+            return None
+        except Exception:
+            import httpx
+            with httpx.Client(timeout=8, follow_redirects=True, headers=headers) as c:
+                r = c.get(sub_url)
+                if r.status_code == 200 and r.content and len(r.content) >= 10:
+                    return sub_url
+                return None
     except Exception:
         return None
 

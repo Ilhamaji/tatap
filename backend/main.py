@@ -33,11 +33,15 @@ async def ping():
 @app.get("/api/health")
 async def health():
     try:
-        import curl_cffi.requests as creq
+        from curl_cffi import requests as creq
         r = creq.get(HI_BASE + "/", impersonate="chrome124", timeout=10)
         reachable = r.status_code < 500
     except Exception:
-        reachable = False
+        try:
+            r = httpx.get(HI_BASE + "/", timeout=10, follow_redirects=True, headers={"User-Agent": HI_UA})
+            reachable = r.status_code < 500
+        except Exception:
+            reachable = False
     return ok({"hianime": HI_BASE, "reachable": reachable})
 
 @app.get("/api/search")
