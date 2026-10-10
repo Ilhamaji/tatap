@@ -212,6 +212,15 @@ var Tui = (function () {
 
   async function doSearch(q){
     var t0=Date.now();
+    var qlow=(q||"").trim().toLowerCase();
+    if(qlow==="hentai"||qlow.indexOf("hentai")>=0){
+      log("kata kunci 'hentai' diblokir","err");
+      S.items=[];S.sel=-1;S.total=1;
+      $("results-title").textContent="Kata kunci 'hentai' diblokir";
+      $("results-meta").textContent="0 judul";
+      renderResults();renderPager();
+      return;
+    }
     try{
       var r=await window.Tatap.search(q);
       if(!r||!r.success){log("search error: "+(r&&r.error||"??"),"err");return;}
@@ -271,6 +280,10 @@ var Tui = (function () {
     }
   }
   function applyGenreFilter(slug){
+    var s=(slug||"").toLowerCase();
+    if(s==="hentai"||s.indexOf("hentai")>=0){
+      log("genre 'hentai' tidak didukung / diblokir","err");return;
+    }
     S.filter={genre:slug};S.page=1;
     log("genre: "+slug,"ok");
     setViewSilent("katalog");
@@ -304,6 +317,9 @@ var Tui = (function () {
     }
     var slug=slugifyGenre(a.join(" "));
     if(!slug){log("usage: genre <slug|title> | genre | genre --list | genre reset","err");return;}
+    if(slug.toLowerCase()==="hentai"||slug.toLowerCase().indexOf("hentai")>=0){
+      log("genre 'hentai' tidak didukung / diblokir","err");return;
+    }
     applyGenreFilter(slug);
   }
 

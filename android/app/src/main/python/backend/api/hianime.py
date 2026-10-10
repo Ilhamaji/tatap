@@ -166,6 +166,8 @@ def browse(params: dict = None, page: int = 1):
             clean[k] = v
         elif k in ("keyword", "sy", "sm", "ey", "em", "genre"):
             clean[k] = v
+    if clean.get("genre") == "hentai" or "hentai" in str(clean.get("genre", "")):
+        return {"items": [], "page": clean["page"], "total_pages": 1, "params": clean}
     url = BROWSE_API + "?" + urlencode(clean)
     page_html = _fetch(url)
     items = _parse_browse_cards(page_html)
@@ -189,6 +191,8 @@ def _parse_browse_cards(html: str):
         if slug.startswith("watch/"):
             slug = slug[len("watch/"):]
         title = _clean(m.group(2))
+        if "hentai" in slug.lower() or "hentai" in title.lower():
+            continue
         img = re.search(r"<img[^>]*src=\"([^\"]+)\"", b)
         poster = img.group(1) if img else ""
         sub = re.search(r"tick-sub.*?(\d+)<", b, re.S)
@@ -313,23 +317,31 @@ def _clean(s: str) -> str:
     return htmlmod.unescape(s or "").strip()
 
 def hianime_search(query: str, limit: int = 15):
-    q = re.sub(r"\s+", "+", query.strip())
+    q_str = (query or "").strip()
+    if not q_str or q_str.lower() == "hentai" or "hentai" in q_str.lower().split():
+        return []
+    q = re.sub(r"\s+", "+", q_str)
     page = _fetch(SEARCH_API.format(q))
     if "<title>Just a moment" in page:
         raise RuntimeError("Blocked by cloudflare.")
     page = page.split('id="main-sidebar"')[0]
     out = _parse_browse_cards(page)
     if out:
+        out = [x for x in out if "hentai" not in (x.get("id") or "").lower() and "hentai" not in (x.get("title") or "").lower()]
         return out[:limit]
     # Fallback jika layout flw-item tidak cocok
     out = []
     for m in re.finditer(r'<h3 class="film-name">\s*<a href="[^"]*/([^"/]*)"\s*title="([^"]*)"', page):
         slug, title = m.group(1), _clean(m.group(2))
         if slug and title and len(out) < limit:
+            if "hentai" in slug.lower() or "hentai" in title.lower():
+                continue
             out.append({"id": slug, "title": title, "poster": ""})
     return out
 
 def hianime_episodes(slug: str):
+    if "hentai" in (slug or "").lower():
+        raise RuntimeError("Anime ini diblokir (genre hentai)")
     numeric = slug.rsplit("-", 1)[-1]
     page = _fetch(EPISODES_API.format(numeric)).replace("\\", "")
     eps = []

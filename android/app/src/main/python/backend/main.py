@@ -49,6 +49,8 @@ async def search(q: str = Query(""), limit: int = 15):
     q = q.strip()
     if not q:
         return fail("missing q")
+    if q.lower() == "hentai" or "hentai" in q.lower().split():
+        return ok({"results": [], "cached": False})
     try:
         hit = await get_search_cache(q.lower())
         if hit and any(bool(x.get("poster")) for x in hit):
@@ -437,6 +439,8 @@ async def browse_ep(
 ):
     """Filter bebas — semua parameter sesuai form filter."""
     try:
+        if (genre or "").strip().lower() == "hentai" or "hentai" in (genre or "").lower():
+            return ok({"items": [], "page": 1, "total_pages": 1, "params": {"genre": "hentai"}, "cached": False})
         import json as _json
         params = {k: v for k, v in
                   {"type": type, "status": status, "rating": rating, "score": score,
@@ -458,6 +462,8 @@ async def browse_ep(
 @app.get("/api/anime/{slug}/episodes")
 async def episodes(slug: str):
     try:
+        if "hentai" in (slug or "").lower():
+            return fail("Konten genre Hentai diblokir")
         loop = asyncio.get_running_loop()
         eps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
         return ok({"slug": slug, "episodes": eps, "total": len(eps)})
@@ -467,6 +473,8 @@ async def episodes(slug: str):
 @app.get("/api/stream/resolve")
 async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("sub"), q: str = Query("best"), source: str = Query("")):
     try:
+        if "hentai" in (slug or "").lower():
+            return fail("Konten genre Hentai diblokir")
         mode = "dub" if mode.lower() == "dub" else "sub"
         pref_source = (await get_setting("preferred_source", "hianime")).lower()
         active_source = (source or pref_source or "hianime").lower()

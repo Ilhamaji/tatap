@@ -150,28 +150,94 @@ def _decrypt_putarin_config(embed_url: str) -> dict:
     return config
 
 
+def _extract_season_num(t: str) -> int:
+    t = (t or "").lower()
+    m = re.search(r"\b(?:season\s*(\d+)|(\d+)(?:nd|rd|th|st)\s*season|part\s*(\d+)|s(\d+))\b", t)
+    if m:
+        for g in m.groups():
+            if g:
+                try:
+                    return int(g)
+                except ValueError:
+                    pass
+    return 1
+
+
+def _clean_title_tokens(t: str) -> set:
+    t = re.sub(r"\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+)\b", "", t or "", flags=re.I)
+    t = re.sub(r"[^a-zA-Z0-9\s]", " ", t)
+    return set(t.lower().split())
+
+
+def _is_title_match(target_title: str, candidate_title: str) -> bool:
+    if not target_title or not candidate_title:
+        return False
+    # 1. Exact normalized match (tanpa spasi & simbol)
+    norm_a = re.sub(r"[^a-zA-Z0-9]", "", target_title.lower())
+    norm_b = re.sub(r"[^a-zA-Z0-9]", "", candidate_title.lower())
+    if norm_a == norm_b:
+        return True
+
+    # 2. Validasi nomor season / part (mencegah Season 2 match ke Season 1)
+    season_a = _extract_season_num(target_title)
+    season_b = _extract_season_num(candidate_title)
+    if (season_a > 1 or season_b > 1) and season_a != season_b:
+        return False
+
+    # 3. Validasi token overlap
+    tokens_a = _clean_title_tokens(target_title)
+    tokens_b = _clean_title_tokens(candidate_title)
+    if not tokens_a or not tokens_b:
+        return False
+
+    stopwords = {"the", "a", "an", "of", "in", "to", "and", "no", "wa", "ga", "ni", "de", "sub", "indo"}
+    sig_common = tokens_a.intersection(tokens_b) - stopwords
+    sig_a = tokens_a - stopwords
+    sig_b = tokens_b - stopwords
+
+    if not sig_a or not sig_b:
+        return (len(tokens_a.intersection(tokens_b)) / max(len(tokens_a), len(tokens_b))) >= 0.75
+
+    overlap = len(sig_common) / max(len(sig_a), len(sig_b))
+    return overlap >= 0.55
+
+
 def resolve_stream(title_or_slug: str, ep: int = 1) -> dict:
     """Selesaikan URL stream m3u8 Otakudesu untuk anime & episode tertentu.
     Return dict terstandar dengan master m3u8, variants, referer, server name, dsb.
     """
+    if "hentai" in (title_or_slug or "").lower():
+        raise RuntimeError("Konten Hentai tidak tersedia di Otakudesu")
+
     # 1. Cari anime jika bukan direct URL
     episodes = []
     if "otakudesu" in title_or_slug and "/anime/" in title_or_slug:
         episodes = get_episodes(title_or_slug)
     else:
         # Bersihkan slug atau judul (cth: "attack-on-titan-season-3-866" -> "attack on titan season 3")
-        clean_title = re.sub(r'-\d+$', '', title_or_slug).replace("-", " ")
+        clean_title = re.sub(r'-\d+$', '', title_or_slug).replace("-", " ").strip()
         search_res = search(clean_title)
         if not search_res:
-            # Coba kata kunci pertama
-            words = clean_title.split()
-            if words:
-                search_res = search(words[0])
+            # Coba cari tanpa embel-embel nomor season/part jika pencarian awal kosong
+            simplified = re.sub(r'\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+)\b', '', clean_title, flags=re.I).strip()
+            if simplified and simplified != clean_title:
+                search_res = search(simplified)
+
         if not search_res:
             raise RuntimeError(f"Anime '{title_or_slug}' tidak ditemukan di Otakudesu")
 
-        # Ambil episode dari hasil pencarian teratas
-        episodes = get_episodes(search_res[0]["url"])
+        # Validasi kecocokan judul: wajib lolos verifikasi, jangan pernah fallback buta ke res[0]
+        matched_item = None
+        for cand in search_res:
+            if _is_title_match(clean_title, cand.get("title", "")):
+                matched_item = cand
+                break
+
+        if not matched_item:
+            raise RuntimeError(f"Anime '{title_or_slug}' tidak memiliki judul yang cocok di Otakudesu")
+
+        # Ambil episode dari hasil pencarian yang terverifikasi cocok
+        episodes = get_episodes(matched_item["url"])
 
     if not episodes:
         raise RuntimeError("Tidak ada daftar episode di Otakudesu")
