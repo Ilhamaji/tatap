@@ -108,15 +108,20 @@ function openPlayer(ep, resumeTime){
 function renderVariants(){
   var box=$("pm-variants");if(box)box.innerHTML="";
   var sel=$("pm-quality-select");if(sel)sel.innerHTML="";
-  var vs=(cur.res&&cur.res.variants)||[];
+  var vs=(cur.res&&cur.res.hlsLevels&&cur.res.hlsLevels.length)?cur.res.hlsLevels:((cur.res&&cur.res.variants)||[]);
   var activeQ=(cur.res&&cur.res.picked&&cur.res.picked.q)||(vs[0]&&vs[0].q)||"";
+  if(window._hls && cur.res && cur.res.hlsLevels && cur.res.hlsLevels.length){
+    if(window._hls.autoLevelEnabled || window._hls.currentLevel === -1){
+      activeQ = "Auto";
+    }
+  }
 
   for(var i=0;i<vs.length;i++){
     (function(v){
       if(box){
         var b=document.createElement("button");
         b.textContent=v.q;
-        if(v.q===activeQ)b.className="active";
+        if(v.q.toLowerCase()===activeQ.toLowerCase())b.className="active";
         b.addEventListener("click",function(){switchQ(v.q);});
         box.appendChild(b);
       }
@@ -124,7 +129,7 @@ function renderVariants(){
         var opt=document.createElement("option");
         opt.value=v.q;
         opt.textContent=v.q.toUpperCase();
-        if(v.q===activeQ)opt.selected=true;
+        if(v.q.toLowerCase()===activeQ.toLowerCase())opt.selected=true;
         sel.appendChild(opt);
       }
     })(vs[i]);
@@ -137,6 +142,7 @@ function renderVariants(){
     }
   }
 }
+
 
 // ==== Multi-subtitle dropdown ====
 
@@ -889,6 +895,43 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
         }
       }catch(e){}
     });
+    h.on(Hls.Events.MANIFEST_PARSED,function(ev,data){
+      if(data&&data.levels&&data.levels.length>1){
+        var hlsVars=[];
+        for(var li=0;li<data.levels.length;li++){
+          var lvl=data.levels[li];
+          var lHeight = lvl.height || 0;
+          var lLabel = lHeight ? (lHeight + "p") : ("Level " + (li+1));
+          hlsVars.push({q: lLabel, levelIdx: li, height: lHeight, url: lvl.url || (lvl.details && lvl.details.url) || ""});
+        }
+        // Urutkan dari tertinggi ke terendah
+        hlsVars.sort(function(a,b){return b.height - a.height;});
+        // Tambahkan opsi Auto di awal
+        hlsVars.unshift({q: "Auto", levelIdx: -1, height: 99999, url: ""});
+        cur.res = cur.res || {};
+        cur.res.hlsLevels = hlsVars;
+        renderVariants();
+      }
+    });
+    h.on(Hls.Events.LEVEL_SWITCHED,function(ev,data){
+      if(cur.res && cur.res.hlsLevels){
+        var curIdx = h.currentLevel;
+        var autoMode = (h.autoLevelEnabled || curIdx === -1);
+        var activeLabel = "AUTO";
+        if(!autoMode){
+          for(var hi=0;hi<cur.res.hlsLevels.length;hi++){
+            if(cur.res.hlsLevels[hi].levelIdx === curIdx){
+              activeLabel = cur.res.hlsLevels[hi].q.toUpperCase();
+              break;
+            }
+          }
+        }
+        var sel=$("pm-quality-select");
+        if(sel && !sel.classList.contains("user-interacting")){
+          sel.value = autoMode ? "Auto" : activeLabel.toLowerCase();
+        }
+      }
+    });
     h.loadSource(prox);
     h.attachMedia(v);
     h.on(Hls.Events.ERROR,function(ev,d){
@@ -929,18 +972,40 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
   armAutohide();
 }
 function switchQ(q){
+  var qLow = String(q||"").toLowerCase();
+  // 1. Jika HLS.js aktif dan memiliki live levels, ganti level secara instan tanpa reload!
+  if(window._hls && cur.res && cur.res.hlsLevels && cur.res.hlsLevels.length){
+    for(var hi=0;hi<cur.res.hlsLevels.length;hi++){
+      var hl = cur.res.hlsLevels[hi];
+      if(hl.q.toLowerCase() === qLow){
+        if(hl.levelIdx === -1){
+          window._hls.currentLevel = -1; // Auto adaptive mode
+          toast("Resolusi: AUTO (Adaptif)");
+        } else {
+          window._hls.currentLevel = hl.levelIdx;
+          toast("Resolusi: " + hl.q.toUpperCase());
+        }
+        if(cur.res.picked) cur.res.picked.q = hl.q;
+        renderVariants();
+        return;
+      }
+    }
+  }
+
+  // 2. Fallback: reload varian URL jika bukan live multi-level HLS.js
   if(!cur.res||!cur.res.variants)return;
   var curTime = ($("vid") && $("vid").currentTime) || 0;
   for(var i=0;i<cur.res.variants.length;i++){
-    if(cur.res.variants[i].q===q){
+    if(cur.res.variants[i].q.toLowerCase()===qLow){
       cur.res.picked=cur.res.variants[i];
       renderVariants();
       playUrl(cur.res.variants[i].url,cur.res.referer,cur.activeSub||cur.res.sub,cur.res.referer,curTime);
-      toast("Resolusi: "+q.toUpperCase());
+      toast("Resolusi: "+cur.res.variants[i].q.toUpperCase());
       return;
     }
   }
 }
+
 function updatePrevNext(){
   var idx=-1;
   for(var i=0;i<cur.eps.length;i++)if(cur.eps[i].ep===cur.ep)idx=i;

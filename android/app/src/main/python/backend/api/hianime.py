@@ -703,26 +703,52 @@ def _validate_master_playlist(master_url: str, referer: str, variants: list):
     txt = body if isinstance(body, str) else body.decode("utf-8", errors="ignore")
     if "#EXTM3U" not in txt:
         raise RuntimeError("master playlist: not m3u8")
-    # Hitung jumlah stream-inf / segment lines yang valid.
+    # Hitung jumlah stream-inf / segment lines yang valid, dan ekstrak variants jika ada STREAM-INF
     base = master_url.rsplit("/", 1)[0] + "/"
     valid_count = 0
+    parsed_variants = []
     lines = txt.splitlines()
     for i, ln in enumerate(lines):
         s = ln.strip()
         if not s or s.startswith("#"):
+            if s.startswith("#EXT-X-STREAM-INF"):
+                rm = re.search(r"RESOLUTION=\d+x(\d+)", s)
+                name_m = re.search(r'NAME="([^"]+)"', s)
+                q = (rm.group(1) + "p") if rm else ("auto" if not name_m else name_m.group(1))
+                v_url = ""
+                for j in range(i + 1, len(lines)):
+                    candidate = lines[j].strip()
+                    if candidate and not candidate.startswith("#"):
+                        v_url = candidate
+                        break
+                if v_url:
+                    if not v_url.startswith("http"):
+                        v_url = base + v_url
+                    parsed_variants.append({"q": q, "url": v_url})
             continue
         # Absolute atau relative URL ke segment/variant playlist.
         if s.startswith("http") or "/" in s or s.endswith(".m3u8") or s.endswith(".ts"):
             valid_count += 1
-    if valid_count == 0:
+    if valid_count == 0 and not parsed_variants:
         raise RuntimeError("master playlist: no segments")
+    # Urutkan parsed variants dari resolusi tertinggi ke terendah
+    if parsed_variants:
+        parsed_variants.sort(key=lambda v: int(re.sub(r"\D", "", v["q"]) or 0), reverse=True)
+
     # Caller punya variants (misal multi-bitrate dari megaplay) → filter URL valid.
     if variants:
         out = [v for v in variants if v.get("url", "").startswith("http")]
-        if out:
+        if out and len(out) > 1:
             return out
+        if out and out[0].get("q") != "auto" and not parsed_variants:
+            return out
+
+    if parsed_variants:
+        return parsed_variants
+
     # Single-variant fallback: pakai master playlist langsung.
     return [{"q": "auto", "url": master_url}]
+
 
 
 def _validate_sub_url(sub_url: str, referer: str):
