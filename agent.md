@@ -106,13 +106,20 @@ Gunakan format **Conventional Commits**:
 - `docs(...)`: Pembaruan dokumentasi (README, agent.md).
 - `build(...)` / `chore(...)`: Perubahan build system, CI workflow, atau packaging.
 
-### Standar Aset Release Publik (Protokol "Tarik APK Mentah")
-Halaman rilis publik GitHub **hanya boleh menyajikan 3 berkas resmi yang bersih dan terverifikasi**:
-1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed APK)
-2. 🪟 **`tatap-windows-x64-portable.zip`** (Windows Portable)
-3. 🐧 **`Tatap-x86_64.AppImage`** (Linux AppImage)
+### Standar Aset Release Publik (Protokol Ketat "Hanya 3 Aset Resmi")
+> [!CAUTION]
+> **ATURAN MUTLAK / PATENT RULES UNTUK SETIAP AGENT:**
+> Halaman rilis publik GitHub **HANYA BOLEH MENAMPILKAN TEPAT 3 ASET RESMI**. DILARANG KERAS mengunggah atau membiarkan berkas APK mentah (`app-release.apk`, `app-debug.apk`, dsb.) berada di release publik GitHub:
+> 1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed APK via Keystore `release.jks`, Multi-Scheme v2/v3 verified)
+> 2. 🪟 **`tatap-windows-x64-portable.zip`** (Official Windows Portable)
+> 3. 🐧 **`Tatap-x86_64.AppImage`** (Official Linux AppImage)
+>
+> Jika CI workflow atau proses otomatis sempat mengunggah `app-release.apk` atau `app-debug.apk`, agent **WAJIB SEGERA** menghapusnya dengan:
+> `gh release delete-asset v<VERSION> app-release.apk -y`
+> `gh release delete-asset v<VERSION> app-debug.apk -y`
+> Jangan pernah menyelesaikan respon ke pengguna sebelum memverifikasi bahwa daftar aset rilis di GitHub HANYA berisi 3 berkas resmi di atas!
 
-**Langkah Penyelarasan Rilis:**
+**Langkah Penyelarasan Rilis Resmi:**
 1. Update git tag:
    ```bash
    git tag -a v<VERSION> -m "Release v<VERSION>"
@@ -126,14 +133,11 @@ Halaman rilis publik GitHub **hanya boleh menyajikan 3 berkas resmi yang bersih 
      dist/Tatap-x86_64.AppImage \
      --clobber
    ```
-3. **Tarik & Hapus APK Mentah Bawaan CI:**
-   Karena CI mengunggah nama mentah secara otomatis, segera hapus dari rilis publik agar pengguna tidak bingung:
-   ```bash
-   gh release delete-asset v<VERSION> app-release.apk -y
-   gh release delete-asset v<VERSION> app-debug.apk -y
-   ```
+3. **Verifikasi & Pembersihan Aset Tak Resmi:**
+   Periksa aset rilis dengan `gh release view v<VERSION>`. Pastikan tidak ada file selain 3 file resmi di atas.
 4. **Perbarui Release Notes:**
    Tulis catatan rilis berbahasa Indonesia yang terstruktur rapi, mencantumkan perbaikan bug, penambahan fitur, dan panduan download untuk ketiga platform.
+
 
 ---
 
@@ -185,6 +189,14 @@ Saat menangani issue dari pengguna/komunitas di GitHub:
 
 ## 8. Prinsip Rekayasa Agen AI (Agent Guardrails)
 
+- **Kepatuhan Mutlak Terhadap Dokumen Ini (`AGENT.md`):** Setiap agen AI yang beroperasi pada repositori ini WAJIB membaca dan menaati seluruh instruksi di `agent.md` tanpa pengecualian.
+- **Aturan Rilis Publik GitHub (Zero Raw APK):** Dilarang keras mengunggah atau membiarkan `app-release.apk` atau `app-debug.apk` berada di rilis GitHub. Release HANYA boleh berisi:
+  1. `tatap-release-v<VERSION>.apk` (Signed resmi via keystore `release.jks`)
+  2. `tatap-windows-x64-portable.zip`
+  3. `Tatap-x86_64.AppImage`
+- **Zero-Tolerance Konten Dewasa / Hentai:** Blacklist total konten bergenre Hentai pada semua layer (backend scraping, browse, search, stream resolver, TUI console). Jangan izinkan fallback stream maupun metadata untuk judul bergenre hentai.
+- **Pencocokan Stream & Anti-Regresi:** Selalu validasi judul (`_is_title_match`) dan season (`_extract_season_num`) saat fallback ke Otakudesu. Dilarang fallback buta ke `res[0]`.
 - **Dokumentasi & Integritas Kode:** Jangan pernah menghapus komentar atau docstring yang ada kecuali diminta secara eksplisit atau sudah tidak relevan karena perubahan kode.
-- **Verifikasi Sebelum Klaim Sukses:** Selalu jalankan uji sintaksis (`node --check`, linting, build test) sebelum mendeklarasikan tugas selesai.
+- **Verifikasi Sebelum Klaim Sukses:** Selalu jalankan uji sintaksis (`node --check`, linting, build test) dan verifikasi release (`gh release view`) sebelum mendeklarasikan tugas selesai.
 - **Transparansi Kerja:** Laporkan langkah kerja secara ringkas, jelas, dan sertakan tautan ke file atau artefak terkait.
+
