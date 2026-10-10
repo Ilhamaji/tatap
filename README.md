@@ -46,7 +46,7 @@ Pilih platform yang paling cocok untuk perangkatmu:
 
 Aplikasi Android Tatap dibangun dengan UI native penuh dan pemutar **AndroidX Media3 ExoPlayer**, lengkap dengan mesin gesture sentuh modern:
 
-1. Unduh berkas **`tatap-release-v2.2.1.apk`** dari halaman [GitHub Releases](https://github.com/bagusazizulamri/tatap/releases).
+1. Unduh berkas **`tatap-release-v2.2.2.apk`** dari halaman [GitHub Releases](https://github.com/bagusazizulamri/tatap/releases).
 2. Pasang di smartphone (kompatibel dengan Android 7.0 hingga Android 16 terbaru, ukuran hemat ~35 MB).
 3. Buka aplikasi dan langsung nikmati:
    - *Double-tap* sisi kiri/kanan untuk mundur/maju 10 detik.

@@ -95,6 +95,9 @@ public class PlayerActivity extends Activity {
 
     private String rawStreamUrl = "";
     private String streamReferer = "";
+    private Button btnQuality;
+    private final List<JSONObject> streamVariants = new ArrayList<>();
+    private String activeQuality = "best";
     private List<JSONObject> subtitleTracks = new ArrayList<>();
     private String enSourceSubUrl = "";
     private String idNativeSubUrl = "";
@@ -172,6 +175,10 @@ public class PlayerActivity extends Activity {
         }
 
         btnPlayerBack.setOnClickListener(v -> finish());
+        btnQuality = findViewById(R.id.btn_quality);
+        if (btnQuality != null) {
+            btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
+        }
         btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
         btnSubStyle = findViewById(R.id.btn_sub_style);
         if (btnSubStyle != null) {
@@ -411,8 +418,11 @@ public class PlayerActivity extends Activity {
 
         new Thread(() -> {
             try {
+                SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+                activeQuality = sp.getString("pref_quality", "best");
+
                 String u = "http://127.0.0.1:8767/api/stream/resolve?slug=" + URLEncoder.encode(slug, "UTF-8")
-                        + "&ep=" + ep + "&mode=sub&q=best";
+                        + "&ep=" + ep + "&mode=sub&q=" + URLEncoder.encode(activeQuality, "UTF-8");
                 HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
                 conn.setConnectTimeout(15000);
                 conn.setReadTimeout(20000);
@@ -435,6 +445,28 @@ public class PlayerActivity extends Activity {
                         }
                     }
                     String referer = data.optString("referer", "");
+
+                    // Simpan stream variants untuk selector resolusi
+                    JSONArray varsArr = data.optJSONArray("variants");
+                    streamVariants.clear();
+                    if (varsArr != null) {
+                        for (int i = 0; i < varsArr.length(); i++) {
+                            streamVariants.add(varsArr.getJSONObject(i));
+                        }
+                    }
+                    String pickedQ = "HD";
+                    if (data.has("picked")) {
+                        pickedQ = data.getJSONObject("picked").optString("q", "HD");
+                    } else if (!streamVariants.isEmpty()) {
+                        pickedQ = streamVariants.get(0).optString("q", "HD");
+                    }
+                    final String labelQ = pickedQ.toUpperCase();
+                    runOnUiThread(() -> {
+                        if (btnQuality != null) {
+                            btnQuality.setText(labelQ);
+                            btnQuality.setVisibility(streamVariants.isEmpty() ? View.GONE : View.VISIBLE);
+                        }
+                    });
 
                     // Simpan subtitle tracks yang tersedia
                     JSONArray subArr = data.optJSONArray("subtitles");
@@ -792,6 +824,65 @@ public class PlayerActivity extends Activity {
             if (posMs <= c.endMs) return c;
         }
         return null;
+    }
+
+    private void showQualitySelectorDialog() {
+        if (streamVariants.isEmpty()) {
+            Toast.makeText(this, "Hanya satu kualitas resolusi tersedia untuk video ini", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        builder.setTitle("Pilih Resolusi Video");
+
+        List<String> options = new ArrayList<>();
+        int selectedIdx = 0;
+        for (int i = 0; i < streamVariants.size(); i++) {
+            JSONObject v = streamVariants.get(i);
+            String q = v.optString("q", "auto");
+            boolean isCurrent = (rawStreamUrl.equals(v.optString("url", "")) || q.equalsIgnoreCase(activeQuality));
+            if (isCurrent) selectedIdx = i;
+            options.add(q.toUpperCase() + (isCurrent ? " ✓" : ""));
+        }
+
+        builder.setSingleChoiceItems(options.toArray(new String[0]), selectedIdx, (dialog, which) -> {
+            if (which >= 0 && which < streamVariants.size()) {
+                JSONObject picked = streamVariants.get(which);
+                String newQ = picked.optString("q", "auto");
+                String newUrl = picked.optString("url", "");
+                dialog.dismiss();
+                if (!newUrl.isEmpty()) {
+                    switchQuality(newQ, newUrl);
+                }
+            }
+        });
+
+        builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private void switchQuality(String newQ, String newUrl) {
+        if (newUrl.equals(rawStreamUrl)) return;
+        activeQuality = newQ;
+        getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE)
+                .edit().putString("pref_quality", newQ).apply();
+
+        long resumePos = player != null ? player.getCurrentPosition() : 0;
+        boolean wasPlaying = player != null && player.isPlaying();
+
+        rawStreamUrl = newUrl;
+        if (btnQuality != null) {
+            btnQuality.setText(newQ.toUpperCase());
+        }
+
+        Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
+        applyCurrentStream();
+
+        if (player != null && resumePos > 0) {
+            player.seekTo(resumePos);
+            if (wasPlaying) {
+                player.play();
+            }
+        }
     }
 
     private void showSubtitleSelectorDialog() {

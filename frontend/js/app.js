@@ -106,17 +106,35 @@ function openPlayer(ep, resumeTime){
   });
 }
 function renderVariants(){
-  var box=$("pm-variants");box.innerHTML="";
+  var box=$("pm-variants");if(box)box.innerHTML="";
+  var sel=$("pm-quality-select");if(sel)sel.innerHTML="";
   var vs=(cur.res&&cur.res.variants)||[];
+  var activeQ=(cur.res&&cur.res.picked&&cur.res.picked.q)||(vs[0]&&vs[0].q)||"";
+
   for(var i=0;i<vs.length;i++){
     (function(v){
-      var b=document.createElement("button");
-      b.textContent=v.q;
-      if(cur.res.picked&&cur.res.picked.q===v.q)b.className="active";
-      else if(!cur.res.picked&&i===0)b.className="active";
-      b.addEventListener("click",function(){switchQ(v.q);});
-      box.appendChild(b);
+      if(box){
+        var b=document.createElement("button");
+        b.textContent=v.q;
+        if(v.q===activeQ)b.className="active";
+        b.addEventListener("click",function(){switchQ(v.q);});
+        box.appendChild(b);
+      }
+      if(sel){
+        var opt=document.createElement("option");
+        opt.value=v.q;
+        opt.textContent=v.q.toUpperCase();
+        if(v.q===activeQ)opt.selected=true;
+        sel.appendChild(opt);
+      }
     })(vs[i]);
+  }
+  if(sel){
+    if(vs.length<=1){
+      sel.classList.add("hidden");
+    } else {
+      sel.classList.remove("hidden");
+    }
   }
 }
 
@@ -911,15 +929,17 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
   armAutohide();
 }
 function switchQ(q){
-  if(!cur.res)return;
-  for(var i=0;i<cur.res.variants.length;i++)
+  if(!cur.res||!cur.res.variants)return;
+  var curTime = ($("vid") && $("vid").currentTime) || 0;
+  for(var i=0;i<cur.res.variants.length;i++){
     if(cur.res.variants[i].q===q){
       cur.res.picked=cur.res.variants[i];
       renderVariants();
-      playUrl(cur.res.variants[i].url,cur.res.referer,cur.res.sub,cur.res.referer);
-      toast("Quality: "+q);
+      playUrl(cur.res.variants[i].url,cur.res.referer,cur.activeSub||cur.res.sub,cur.res.referer,curTime);
+      toast("Resolusi: "+q.toUpperCase());
       return;
     }
+  }
 }
 function updatePrevNext(){
   var idx=-1;
@@ -1216,6 +1236,12 @@ function init(){
   $("pm-prev").addEventListener("click",function(){stepEp(-1);});
   $("pm-next").addEventListener("click",function(){stepEp(1);});
   $("pm-mpv").addEventListener("click",playMPV);
+  var qSel=$("pm-quality-select");
+  if(qSel){
+    qSel.addEventListener("change",function(){
+      switchQ(this.value);
+    });
+  }
   startAmbient();
   renderContinue();
   window.Tui.boot();
