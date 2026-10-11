@@ -1562,4 +1562,12 @@ public class MainActivity extends Activity {
             }
         }
     }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            ImageLoader.trimMemory();
+        }
+    }
 }

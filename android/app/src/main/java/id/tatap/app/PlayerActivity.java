@@ -38,6 +38,7 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
@@ -339,7 +340,19 @@ public class PlayerActivity extends Activity {
     }
 
     private void initExoPlayer() {
-        player = new ExoPlayer.Builder(this).build();
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        12_000, // minBufferMs (12s alih-alih default 50s, hemat RAM 50%)
+                        25_000, // maxBufferMs (25s alih-alih 50s)
+                        1_500,  // bufferForPlaybackMs
+                        3_000   // bufferForPlaybackAfterRebufferMs
+                )
+                .setPrioritizeTimeOverSizeThresholds(true)
+                .build();
+
+        player = new ExoPlayer.Builder(this)
+                .setLoadControl(loadControl)
+                .build();
         playerView.setPlayer(player);
 
         // Hide default ExoPlayer subtitle view since we use seamless custom overlay
@@ -1427,6 +1440,14 @@ public class PlayerActivity extends Activity {
         if (player != null) {
             player.release();
             player = null;
+        }
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            ImageLoader.trimMemory();
         }
     }
 }
