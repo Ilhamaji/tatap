@@ -62,10 +62,10 @@ public class AnimeAdapter extends RecyclerView.Adapter<AnimeAdapter.AnimeViewHol
             holder.tvBadgeType.setVisibility(View.GONE);
         }
 
-        // Format Score Badge (★ 8.5)
+        // Format Score Badge (8.5)
         if (score > 0) {
             holder.tvBadgeScore.setVisibility(View.VISIBLE);
-            holder.tvBadgeScore.setText(String.format(Locale.US, "★ %.1f", score));
+            holder.tvBadgeScore.setText(String.format(Locale.US, "%.1f", score));
         } else {
             holder.tvBadgeScore.setVisibility(View.GONE);
         }
@@ -75,7 +75,7 @@ public class AnimeAdapter extends RecyclerView.Adapter<AnimeAdapter.AnimeViewHol
 
         // Format Subtitle / Status / History Badge
         if (episode > 0) {
-            holder.tvBadgeEp.setText("▶ EP " + episode);
+            holder.tvBadgeEp.setText("EP " + episode);
         } else if (!sub.isEmpty()) {
             holder.tvBadgeEp.setText("SUB " + sub.toUpperCase());
         } else if (!eps.isEmpty() && !eps.equals("0")) {

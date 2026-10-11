@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.view.View;
 import android.widget.ImageButton;
@@ -23,7 +24,7 @@ public class TvFocusHelper {
         if (uiModeManager != null && uiModeManager.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) {
             return true;
         }
-        // Fallback cek: tidak memiliki layar sentuh
+        // Fallback: perangkat tanpa layar sentuh adalah Android TV box / stick
         PackageManager pm = context.getPackageManager();
         return !pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
     }
@@ -49,7 +50,7 @@ public class TvFocusHelper {
                 v.setTranslationZ(hasFocus ? elevationPx / 2f : 0f);
             }
 
-            // Sorot border secara dinamis untuk CardView dan MaterialButton
+            // Sorot border secara dinamis untuk CardView, MaterialButton, ImageButton, dan Custom Shaped Views
             if (v instanceof MaterialCardView) {
                 MaterialCardView card = (MaterialCardView) v;
                 card.setStrokeColor(hasFocus ? COLOR_FOCUSED_STROKE : COLOR_NORMAL_STROKE);
@@ -61,6 +62,13 @@ public class TvFocusHelper {
             } else if (v instanceof ImageButton) {
                 ImageButton ib = (ImageButton) v;
                 ib.setBackgroundColor(hasFocus ? Color.parseColor("#3338BDF8") : Color.TRANSPARENT);
+            } else if (v.getBackground() instanceof GradientDrawable) {
+                GradientDrawable gd = (GradientDrawable) v.getBackground().mutate();
+                if (hasFocus) {
+                    gd.setStroke((int) (2.2f * density), COLOR_FOCUSED_STROKE);
+                } else {
+                    gd.setStroke((int) (1f * density), Color.parseColor("#2B3448"));
+                }
             }
         });
     }

@@ -6,6 +6,9 @@
     android:layout_margin="3dp"
     android:background="@drawable/bg_genre_chip"
     android:gravity="center"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     android:paddingHorizontal="10dp"
     android:paddingVertical="9dp">
 

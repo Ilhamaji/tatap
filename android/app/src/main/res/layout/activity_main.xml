@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:focusableInTouchMode="true"
     android:paddingStart="@dimen/tv_overscan_horizontal"
     android:paddingEnd="@dimen/tv_overscan_horizontal"
     android:paddingTop="@dimen/tv_overscan_vertical"
@@ -45,12 +46,11 @@
             android:paddingHorizontal="10dp"
             android:layout_marginEnd="6dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="🔍"
-                android:textSize="12sp"
-                android:textColor="#64748B"
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@android:drawable/ic_menu_search"
+                app:tint="#64748B"
                 android:layout_marginEnd="6dp" />
 
             <EditText
@@ -117,7 +117,7 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
                     android:paddingHorizontal="9dp"
-                    android:text="✨ AI"
+                    android:text="AI"
                     android:textColor="#38BDF8"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -134,7 +134,7 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
                     android:paddingHorizontal="9dp"
-                    android:text="🏷 Genre"
+                    android:text="Genre"
                     android:textColor="#94A3B8"
                     android:textSize="11sp" />
 
@@ -150,7 +150,7 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
                     android:paddingHorizontal="9dp"
-                    android:text="🕒 Riwayat"
+                    android:text="Riwayat"
                     android:textColor="#94A3B8"
                     android:textSize="11sp" />
 
@@ -181,25 +181,26 @@
                     android:foreground="?attr/selectableItemBackground"
                     android:gravity="center"
                     android:paddingHorizontal="8dp"
-                    android:text="● Online"
+                    android:text="Online"
                     android:textColor="#10B981"
                     android:textSize="10sp"
                     android:textStyle="bold" />
             </LinearLayout>
         </HorizontalScrollView>
 
-        <!-- Toggle Button for Folded Menu (☰ when closed, ✕ when open) -->
+        <!-- Toggle Button for Folded Menu -->
         <TextView
             android:id="@+id/btn_toggle_menu"
-            android:layout_width="36dp"
+            android:layout_width="wrap_content"
             android:layout_height="36dp"
             android:background="@drawable/bg_menu_toggle"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center"
-            android:text="☰"
+            android:paddingHorizontal="10dp"
+            android:text="Menu"
             android:textColor="#CBD5E1"
-            android:textSize="18sp"
+            android:textSize="12sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -293,7 +294,7 @@
             android:foreground="?attr/selectableItemBackground"
             android:gravity="center"
             android:paddingHorizontal="10dp"
-            android:text="🗑 Hapus Semua"
+            android:text="Hapus Semua"
             android:textColor="#EF4444"
             android:textSize="10.5sp"
             android:textStyle="bold"
@@ -320,6 +321,9 @@
             android:background="@drawable/bg_tab_active"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusUp="@+id/btn_toggle_menu"
+            android:nextFocusDown="@+id/rv_anime_grid"
+            android:nextFocusRight="@+id/btn_tab_airing"
             android:gravity="center"
             android:paddingHorizontal="4dp"
             android:text="Musim Ini"
@@ -337,6 +341,10 @@
             android:background="@drawable/bg_tab_inactive"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusUp="@+id/btn_toggle_menu"
+            android:nextFocusDown="@+id/rv_anime_grid"
+            android:nextFocusLeft="@+id/btn_tab_musim"
+            android:nextFocusRight="@+id/btn_tab_katalog"
             android:gravity="center"
             android:paddingHorizontal="4dp"
             android:text="Masih Tayang"
@@ -354,6 +362,9 @@
             android:background="@drawable/bg_tab_inactive"
             android:clickable="true"
             android:focusable="true"
+            android:nextFocusUp="@+id/btn_toggle_menu"
+            android:nextFocusDown="@+id/rv_anime_grid"
+            android:nextFocusLeft="@+id/btn_tab_airing"
             android:gravity="center"
             android:paddingHorizontal="4dp"
             android:text="Katalog"
@@ -482,9 +493,11 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
+            android:nextFocusUp="@+id/rv_anime_grid"
+            android:nextFocusRight="@+id/btn_next_page"
             android:gravity="center"
             android:paddingHorizontal="12dp"
-            android:text="◀ Sebelumnya"
+            android:text="Sebelumnya"
             android:textColor="#E2E8F0"
             android:textSize="11sp" />
 
@@ -508,9 +521,11 @@
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackground"
+            android:nextFocusUp="@+id/rv_anime_grid"
+            android:nextFocusLeft="@+id/btn_prev_page"
             android:gravity="center"
             android:paddingHorizontal="12dp"
-            android:text="Berikutnya ▶"
+            android:text="Berikutnya"
             android:textColor="#E2E8F0"
             android:textSize="11sp" />
     </LinearLayout>

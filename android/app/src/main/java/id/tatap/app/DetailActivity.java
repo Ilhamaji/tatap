@@ -102,7 +102,7 @@ public class DetailActivity extends Activity {
 
         btnSortOrder.setOnClickListener(v -> {
             isAscending = !isAscending;
-            btnSortOrder.setText(isAscending ? "1 ➔ N" : "N ➔ 1");
+            btnSortOrder.setText(isAscending ? "1 - N" : "N - 1");
             updateEpisodeDisplay();
         });
 
@@ -119,6 +119,9 @@ public class DetailActivity extends Activity {
         });
 
         updateQuickPlayButton();
+        if (TvFocusHelper.isTv(this)) {
+            btnQuickPlay.post(() -> btnQuickPlay.requestFocus());
+        }
         loadEpisodes();
     }
 
@@ -134,10 +137,10 @@ public class DetailActivity extends Activity {
     private void updateQuickPlayButton() {
         int lastEp = prefs.getInt("last_ep_" + slug, -1);
         if (lastEp > 0) {
-            btnQuickPlay.setText("▶ Lanjutkan Ep " + lastEp);
+            btnQuickPlay.setText("Lanjutkan Ep " + lastEp);
             btnQuickPlay.setBackgroundColor(0xFF1E2433);
         } else {
-            btnQuickPlay.setText("▶ Putar Ep 1");
+            btnQuickPlay.setText("Putar Ep 1");
             btnQuickPlay.setBackgroundColor(0xFF161922);
         }
     }
@@ -264,14 +267,14 @@ public class DetailActivity extends Activity {
                 holder.card.setCardBackgroundColor(0xFF1C2230);
                 holder.tvTitle.setTextColor(0xFF38BDF8);
                 holder.tvBadge.setVisibility(View.VISIBLE);
-                holder.tvBadge.setText("▶ TERAKHIR");
+                holder.tvBadge.setText("TERAKHIR");
                 holder.tvBadge.setTextColor(0xFF38BDF8);
             } else if (isWatched) {
                 // Watched episode
                 holder.card.setCardBackgroundColor(0xFF0E1017);
                 holder.tvTitle.setTextColor(0xFF64748B);
                 holder.tvBadge.setVisibility(View.VISIBLE);
-                holder.tvBadge.setText("✓ DITONTON");
+                holder.tvBadge.setText("DITONTON");
                 holder.tvBadge.setTextColor(0xFF10B981);
             } else {
                 // Unwatched episode

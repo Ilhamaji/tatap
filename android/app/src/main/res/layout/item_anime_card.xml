@@ -52,7 +52,7 @@
                 android:textSize="@dimen/tv_badge_text_size"
                 android:textStyle="bold" />
 
-            <!-- Top Right: Score Badge (★ 8.5) -->
+            <!-- Top Right: Score Badge -->
             <TextView
                 android:id="@+id/tv_badge_score"
                 android:layout_width="wrap_content"
@@ -62,7 +62,7 @@
                 android:background="@drawable/bg_badge_score"
                 android:paddingHorizontal="5dp"
                 android:paddingVertical="2dp"
-                android:text="★ 8.5"
+                android:text="8.5"
                 android:textColor="#FBBF24"
                 android:textSize="@dimen/tv_badge_text_size"
                 android:textStyle="bold"

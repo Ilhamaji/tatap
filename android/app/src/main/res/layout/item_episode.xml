@@ -5,6 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="3dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
     app:cardCornerRadius="8dp"
     app:cardElevation="0dp"
     app:cardBackgroundColor="#11141C"
@@ -17,14 +20,13 @@
         android:layout_height="48dp"
         android:orientation="vertical"
         android:gravity="center"
-        android:paddingHorizontal="4dp"
-        android:background="?attr/selectableItemBackground">
+        android:paddingHorizontal="4dp">
 
         <TextView
             android:id="@+id/tv_ep_status_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="● SELESAI"
+            android:text="SELESAI"
             android:textColor="#10B981"
             android:textSize="8.5sp"
             android:textStyle="bold"

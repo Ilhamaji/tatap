@@ -152,6 +152,10 @@ public class MainActivity extends Activity {
 
         setupTabsAndListeners();
 
+        if (TvFocusHelper.isTv(this)) {
+            btnTabMusim.post(() -> btnTabMusim.requestFocus());
+        }
+
         // 1. Jalankan backend Python lokal
         startEmbeddedBackend();
 
@@ -337,7 +341,7 @@ public class MainActivity extends Activity {
             layoutFoldedMenu.setVisibility(isFoldedMenuOpen ? View.VISIBLE : View.GONE);
         }
         if (btnToggleMenu != null) {
-            btnToggleMenu.setText(isFoldedMenuOpen ? "✕" : "☰");
+            btnToggleMenu.setText(isFoldedMenuOpen ? "Tutup" : "Menu");
             btnToggleMenu.setTextColor(isFoldedMenuOpen ? 0xFF38BDF8 : 0xFFCBD5E1);
         }
         if (etSearch != null) {
@@ -346,9 +350,30 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            int keyCode = event.getKeyCode();
+            if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_SETTINGS) {
+                toggleFoldedMenu();
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_SEARCH) {
+                if (etSearch != null) {
+                    etSearch.requestFocus();
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
     public void onBackPressed() {
         if (isFoldedMenuOpen) {
             setFoldedMenuOpen(false);
+            return;
+        }
+        if (!"musim".equals(currentView)) {
+            resetFiltersToTab("musim");
             return;
         }
         super.onBackPressed();
@@ -369,19 +394,19 @@ public class MainActivity extends Activity {
 
         if ("genre".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
-            tvActiveFilterLabel.setText("🏷 GENRE: " + currentGenre.toUpperCase().replace("-", " "));
+            tvActiveFilterLabel.setText("GENRE: " + currentGenre.toUpperCase().replace("-", " "));
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
         } else if ("season_filter".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
-            tvActiveFilterLabel.setText("❄ MUSIM: " + currentSeasonName.toUpperCase() + " " + currentSeasonYear);
+            tvActiveFilterLabel.setText("MUSIM: " + currentSeasonName.toUpperCase() + " " + currentSeasonYear);
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
         } else if ("cari".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
-            tvActiveFilterLabel.setText("🔍 CARI: \"" + currentSearchQuery + "\"");
+            tvActiveFilterLabel.setText("CARI: \"" + currentSearchQuery + "\"");
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
         } else if ("riwayat".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
-            tvActiveFilterLabel.setText("🕒 RIWAYAT TONTONAN");
+            tvActiveFilterLabel.setText("RIWAYAT TONTONAN");
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.VISIBLE);
         } else {
             layoutActiveFilter.setVisibility(View.GONE);
@@ -612,6 +637,10 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
 
+        TvFocusHelper.attachFocusScale(btnClose, 1.1f, 4f);
+        TvFocusHelper.attachFocusScale(btnDismiss, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnReset, 1.05f, 4f);
+
         dialog.show();
 
         // Fetch genres from backend
@@ -766,10 +795,21 @@ public class MainActivity extends Activity {
             });
         }
 
-        dialog.findViewById(R.id.cmd_item_clear).setOnClickListener(v -> {
-            dialog.dismiss();
-            resetFiltersToTab("musim");
-        });
+        int[] cmdItemIds = new int[]{
+            R.id.btn_close_help_dialog,
+            R.id.cmd_item_musim, R.id.cmd_item_season, R.id.cmd_item_genre,
+            R.id.cmd_item_airing, R.id.cmd_item_katalog, R.id.cmd_item_source,
+            R.id.cmd_item_ping, R.id.cmd_item_ai, R.id.cmd_item_apikey,
+            R.id.cmd_item_gemini, R.id.cmd_item_groq, R.id.cmd_item_ollama,
+            R.id.cmd_item_model, R.id.cmd_item_logs, R.id.cmd_item_riwayat,
+            R.id.cmd_item_update, R.id.cmd_item_clear
+        };
+        for (int id : cmdItemIds) {
+            View item = dialog.findViewById(id);
+            if (item != null) {
+                TvFocusHelper.attachFocusScale(item, 1.05f, 4f);
+            }
+        }
 
         dialog.show();
     }
@@ -807,7 +847,7 @@ public class MainActivity extends Activity {
                         if (hasUpdate) {
                             showCommandOutput("> tatap$ Pembaruan rilis v" + latestVer + " tersedia!", false);
                             new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle("🚀 Pembaruan Tersedia (v" + latestVer + ")")
+                                    .setTitle("Pembaruan Tersedia (v" + latestVer + ")")
                                     .setMessage("Versi saat ini: v" + currentVer + "\nVersi terbaru: v" + latestVer + "\n\nCatatan Rilis:\n" + (notes.isEmpty() ? "-" : notes))
                                     .setPositiveButton("Unduh APK", (d, which) -> {
                                         try {
@@ -1008,6 +1048,10 @@ public class MainActivity extends Activity {
             }).start();
         };
 
+        TvFocusHelper.attachFocusScale(btnClose, 1.1f, 4f);
+        TvFocusHelper.attachFocusScale(btnDismiss, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnRefresh, 1.05f, 4f);
+
         btnRefresh.setOnClickListener(v -> loadLogs.run());
         dialog.show();
         loadLogs.run();
@@ -1154,6 +1198,15 @@ public class MainActivity extends Activity {
                 });
             } catch (Exception ignored) {}
         }).start();
+
+        TvFocusHelper.attachFocusScale(btnClose, 1.1f, 4f);
+        TvFocusHelper.attachFocusScale(btnSave, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnReset, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnLogs, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnPresetGemini, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnPresetGroq, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnPresetOllama, 1.05f, 4f);
+        TvFocusHelper.attachFocusScale(btnPresetOpenAI, 1.05f, 4f);
 
         dialog.show();
     }
@@ -1559,6 +1612,7 @@ public class MainActivity extends Activity {
             ViewHolder(@NonNull View itemView) {
                 super(itemView);
                 tvName = itemView.findViewById(R.id.tv_genre_name);
+                TvFocusHelper.attachFocusScale(itemView, 1.08f, 4f);
             }
         }
     }
