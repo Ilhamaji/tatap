@@ -99,26 +99,30 @@ Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debu
 
 ## 5. Protokol Git & GitHub Release
 
-### Kaidah Mutlak Semantic Versioning (SemVer 2.0.0)
+### Kaidah Mutlak Semantic Versioning (SemVer 2.0.0) Pada Setiap Patch & Rilis
 > [!IMPORTANT]
-> **STANDAR ATURAN VERSIONING TATAP:**
-> Setiap kenaikan versi aplikasi **WAJIB MENGIKUTI KAIDAH SEMANTIC VERSIONING RESMI (SemVer 2.0.0)** dengan format `v<MAJOR>.<MINOR>.<PATCH>`:
+> **STANDAR ATURAN VERSIONING TATAP (PATENT POLICY):**
+> Setiap patch perbaikan (*bug fixes*), hotfix, rilis fitur (*features*), dan rilis publik aplikasi **WAJIB 100% MENGIKUTI KAIDAH SEMANTIC VERSIONING RESMI (SemVer 2.0.0)** dengan format `v<MAJOR>.<MINOR>.<PATCH>`:
 > 
 > 1. **MAJOR (`X.0.0`):**
 >    - Dinaikkan ketika terjadi perombakan arsitektur besar yang tidak kompatibel ke belakang (*breaking changes*), restrukturisasi skema database SQLite tanpa migrasi otomatis, atau perubahan mendasar pada kontrak runtime eksternal.
 > 2. **MINOR (`x.Y.0`):**
->    - Dinaikkan ketika menambahkan fungsionalitas atau antarmuka baru yang backward-compatible (misalnya: penambahan Drawer Navigation Panel, In-Player Resolution Selector, On-Demand Update Checker, provider scraping baru, atau perombakan tata letak UI utama).
+>    - Dinaikkan ketika menambahkan fungsionalitas atau antarmuka baru yang backward-compatible (misalnya: penambahan Drawer Navigation Panel, In-Player Resolution Selector, On-Demand Update Checker, dukungan Android TV 10-Foot UI, provider scraping baru, atau perombakan tata letak UI utama).
 >    - Nilai PATCH wajib direset kembali ke `0`.
 > 3. **PATCH (`x.y.Z`):**
 >    - Dinaikkan untuk perbaikan bug (*bug fixes*), perbaikan kompatibilitas platform/perangkat spesifik (seperti perbaikan fullscreen iOS Safari / Android Chrome, display cutout/notch edge-to-edge, immersive mode), optimasi performa, dan pembaruan dependensi/security hardening tanpa penambahan modul arsitektur baru.
 > 
-> **Prosedur Sinkronisasi Versi Atomik bagi Agent:**
-> Saat melakukan update versi (apakah Major, Minor, atau Patch), agent **WAJIB MENGGUNAKAN** utilitas resmi:
-> ```bash
-> python3 tools/bump_version.py patch   # atau minor / major
-> python3 tools/bump_version.py --check # verifikasi audit
-> ```
-> Tool ini secara atomik menyinkronkan seluruh berkas: `VERSION`, `backend/version.py`, `android/app/src/main/python/backend/version.py`, `android/app/build.gradle` (deterministik `versionCode` dan `versionName`), `launcher/winres/winres.json`, `tatap.manifest`, dan `frontend/index.html`.
+> **Aturan Mutlak Patch & Rilis bagi Agent:**
+> - **Dilarang Keras** merilis patch/bugfix tanpa menaikkan digit PATCH (`X.Y.Z` -> `X.Y.Z+1`).
+> - **Dilarang Keras** merilis fitur baru tanpa menaikkan digit MINOR dan mereset PATCH ke `0` (`X.Y.0`).
+> - **Dilarang Keras** menggunakan penomoran versi bebas, non-standar, atau format arbitrer (seperti `v2.3`, `v2.3-patch1`).
+> - **Prosedur Sinkronisasi Versi Atomik:** Saat melakukan update versi (apakah Major, Minor, atau Patch), agent **WAJIB MENGGUNAKAN** utilitas resmi:
+>   ```bash
+>   python3 tools/bump_version.py patch   # atau minor / major
+>   python3 tools/bump_version.py --check # verifikasi audit
+>   pytest tests/test_semver.py           # verifikasi automated tests
+>   ```
+>   Tool ini secara atomik menyinkronkan seluruh berkas: `VERSION`, `backend/version.py`, `android/app/src/main/python/backend/version.py`, `android/app/build.gradle` (deterministik `versionCode` dan `versionName`), `launcher/winres/winres.json`, `tatap.manifest`, dan `frontend/index.html`.
 >
 > - [x] Verifikasi konsistensi: `python3 tools/bump_version.py --check` && `pytest tests/test_semver.py`
 > - [x] Build ulang dan verifikasi ke-4 berkas rilis resmi (`dist/`)
@@ -148,14 +152,15 @@ Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debu
    ```bash
    gh release upload v<VERSION> \
      dist/android/tatap-release-v<VERSION>.apk \
+     dist/android/tatap-tv-release-v<VERSION>.apk \
      dist/tatap-windows-x64-portable.zip \
      dist/Tatap-x86_64.AppImage \
      --clobber
    ```
 3. **Verifikasi & Pembersihan Aset Tak Resmi:**
-   Periksa aset rilis dengan `gh release view v<VERSION>`. Pastikan tidak ada file selain 3 file resmi di atas.
+   Periksa aset rilis dengan `gh release view v<VERSION>`. Pastikan tidak ada file selain 4 file resmi di atas.
 4. **Perbarui Release Notes:**
-   Tulis catatan rilis berbahasa Indonesia yang terstruktur rapi, mencantumkan perbaikan bug, penambahan fitur, dan panduan download untuk ketiga platform.
+   Tulis catatan rilis berbahasa Indonesia yang terstruktur rapi, mencantumkan perbaikan bug, penambahan fitur, dan panduan download untuk seluruh platform.
 
 
 ---
@@ -209,10 +214,12 @@ Saat menangani issue dari pengguna/komunitas di GitHub:
 ## 8. Prinsip Rekayasa Agen AI (Agent Guardrails)
 
 - **Kepatuhan Mutlak Terhadap Dokumen Ini (`AGENT.md`):** Setiap agen AI yang beroperasi pada repositori ini WAJIB membaca dan menaati seluruh instruksi di `agent.md` tanpa pengecualian.
-- **Aturan Rilis Publik GitHub (Zero Raw APK):** Dilarang keras mengunggah atau membiarkan `app-release.apk` atau `app-debug.apk` berada di rilis GitHub. Release HANYA boleh berisi:
-  1. `tatap-release-v<VERSION>.apk` (Signed resmi via keystore `release.jks`)
-  2. `tatap-windows-x64-portable.zip`
-  3. `Tatap-x86_64.AppImage`
+- **Kepatuhan Mutlak SemVer 2.0.0 Pada Setiap Patch & Rilis:** Setiap bugfix, patch, fitur baru, dan rilis publik WAJIB 100% mengikuti kaidah Semantic Versioning 2.0.0 (`v<MAJOR>.<MINOR>.<PATCH>`). Gunakan selalu `python3 tools/bump_version.py <patch|minor|major>` untuk sinkronisasi atomik, verifikasi audit via `python3 tools/bump_version.py --check`, dan pastikan test suite `pytest tests/test_semver.py` lulus sebelum commit & tag. Dilarang menggunakan tag arbitrer atau melompati kaidah SemVer.
+- **Aturan Rilis Publik GitHub (Zero Raw APK / Strict 4 Official Assets):** Dilarang keras mengunggah atau membiarkan `app-release.apk` atau `app-debug.apk` berada di rilis GitHub. Release HANYA boleh berisi:
+  1. `tatap-release-v<VERSION>.apk` (Signed resmi mobile via keystore `release.jks`)
+  2. `tatap-tv-release-v<VERSION>.apk` (Signed resmi Android TV / Google TV via keystore `release.jks`)
+  3. `tatap-windows-x64-portable.zip` (Official Windows Portable)
+  4. `Tatap-x86_64.AppImage` (Official Linux AppImage)
 - **Zero-Tolerance Konten Dewasa / Hentai:** Blacklist total konten bergenre Hentai pada semua layer (backend scraping, browse, search, stream resolver, TUI console). Jangan izinkan fallback stream maupun metadata untuk judul bergenre hentai.
 - **Pencocokan Stream & Anti-Regresi:** Selalu validasi judul (`_is_title_match`) dan season (`_extract_season_num`) saat fallback ke Otakudesu. Dilarang fallback buta ke `res[0]`.
 - **Dokumentasi & Integritas Kode:** Jangan pernah menghapus komentar atau docstring yang ada kecuali diminta secara eksplisit atau sudah tidak relevan karena perubahan kode.

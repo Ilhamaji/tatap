@@ -6,19 +6,20 @@
 
 ---
 
-## 1. ATURAN MUTLAK RILIS GITHUB (ZERO RAW APK / STRICT 3 OFFICIAL ASSETS)
-- **Halaman rilis GitHub HANYA BOLEH MENYEDIAKAN 3 BERKAS RESMI BERIKUT:**
-  1. `tatap-release-v<VERSION>.apk` (Official Signed APK yang ditandatangani keystore produksi `android/keystore/release.jks` dengan skema v2 & v3 verified).
-  2. `tatap-windows-x64-portable.zip` (Official Windows x64 Portable build).
-  3. `Tatap-x86_64.AppImage` (Official Linux x86_64 AppImage build).
+## 1. ATURAN MUTLAK RILIS GITHUB (ZERO RAW APK / STRICT 4 OFFICIAL ASSETS)
+- **Halaman rilis GitHub HANYA BOLEH MENYEDIAKAN 4 BERKAS RESMI BERIKUT:**
+  1. `tatap-release-v<VERSION>.apk` (Official Signed Mobile APK yang ditandatangani keystore produksi `android/keystore/release.jks` dengan skema v2 & v3 verified).
+  2. `tatap-tv-release-v<VERSION>.apk` (Official Signed Android TV / Google TV APK 10-Foot UI via keystore produksi `android/keystore/release.jks`).
+  3. `tatap-windows-x64-portable.zip` (Official Windows x64 Portable build).
+  4. `Tatap-x86_64.AppImage` (Official Linux x86_64 AppImage build).
 - **DILARANG KERAS** mengunggah atau membiarkan berkas APK mentah hasil build (`app-release.apk`, `app-debug.apk`, dsb.) berada di rilis publik GitHub.
 - **TIDAK PERNAH** meng-commit file binary APK ke dalam repositori git.
-- **Pembersihan Wajib:** Jika proses CI atau rilis sempat mengunggah berkas selain 3 aset resmi di atas, agent **WAJIB SEGERA** menghapusnya dengan:
+- **Pembersihan Wajib:** Jika proses CI atau rilis sempat mengunggah berkas selain 4 aset resmi di atas, agent **WAJIB SEGERA** menghapusnya dengan:
   ```bash
   gh release delete-asset v<VERSION> app-release.apk -y
   gh release delete-asset v<VERSION> app-debug.apk -y
   ```
-- **Verifikasi Wajib:** Selalu jalankan `gh release view v<VERSION>` untuk memastikan HANYA 3 file resmi yang tersisa sebelum menyelesaikan tugas.
+- **Verifikasi Wajib:** Selalu jalankan `gh release view v<VERSION>` untuk memastikan HANYA 4 file resmi yang tersisa sebelum menyelesaikan tugas.
 
 ---
 
@@ -42,15 +43,16 @@
 
 ---
 
-## 5. KAIDAH MUTLAK SEMANTIC VERSIONING (SemVer 2.0.0)
-- Setiap pembaruan versi Tatap **WAJIB MENGIKUTI KAIDAH SemVer** (`v<MAJOR>.<MINOR>.<PATCH>`):
+## 5. KAIDAH MUTLAK SEMANTIC VERSIONING (SemVer 2.0.0) PADA SETIAP PATCH DAN RILIS
+- **Setiap pembaruan, patch, bugfix, dan rilis Tatap WAJIB 100% MENGIKUTI KAIDAH SemVer** (`v<MAJOR>.<MINOR>.<PATCH>`):
   - **MAJOR (X.0.0):** Breaking changes arsitektur, restrukturisasi skema database SQLite tanpa kompatibilitas otomatis, atau perombakan kontrak runtime fundamental.
-  - **MINOR (x.Y.0):** Penambahan fitur baru yang backward-compatible (misal: Drawer Navigation Panel, In-Player Quality Selector, Update Checker On-Demand, Provider baru, UI revamp). Reset PATCH ke 0.
-  - **PATCH (x.y.Z):** Bug fixes, perbaikan kompatibilitas perangkat/mobile (seperti fullscreen iOS Safari / Android Chrome, notch cutout, immersive mode), dependensi & security patch.
+  - **MINOR (x.Y.0):** Penambahan fitur baru yang backward-compatible (misal: Drawer Navigation Panel, In-Player Quality Selector, Update Checker On-Demand, Provider baru, UI revamp, Android TV 10-foot UI). Reset PATCH ke 0.
+  - **PATCH (x.y.Z):** Bug fixes, perbaikan kompatibilitas perangkat/mobile (seperti fullscreen iOS Safari / Android Chrome, notch cutout, immersive mode), dependensi & security patch. Dilarang merilis perbaikan tanpa increment PATCH.
 - **Prosedur Sinkronisasi Versi Atomik:**
-  Gunakan `python3 tools/bump_version.py <patch|minor|major>` untuk menyinkronkan seluruh berkas secara atomik (VERSION, backend/version.py, Chaquopy, build.gradle, launcher winres.json, dan frontend).
-  Audit konsistensi: `python3 tools/bump_version.py --check`.
-  Pastikan 4 berkas resmi siap di rilis GitHub: `tatap-release-v<VER>.apk`, `tatap-tv-release-v<VER>.apk`, `tatap-windows-x64-portable.zip`, dan `Tatap-x86_64.AppImage`.
+  - Wajib gunakan: `python3 tools/bump_version.py <patch|minor|major>`
+  - Wajib audit sebelum rilis: `python3 tools/bump_version.py --check`
+  - Wajib uji automated test: `pytest tests/test_semver.py`
+  - Pastikan 4 berkas resmi siap di rilis GitHub: `tatap-release-v<VER>.apk`, `tatap-tv-release-v<VER>.apk`, `tatap-windows-x64-portable.zip`, dan `Tatap-x86_64.AppImage`.
 
 ---
 
