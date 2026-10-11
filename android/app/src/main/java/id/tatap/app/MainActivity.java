@@ -305,6 +305,22 @@ public class MainActivity extends Activity {
                 checkBackendStatus();
             });
         }
+
+        // Pasang respon fokus D-Pad TV pada seluruh elemen interaktif
+        TvFocusHelper.attachFocusScale(btnToggleMenu, 1.15f, 6f);
+        TvFocusHelper.attachFocusScale(btnHeaderAi, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnHeaderGenre, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnHeaderHelp, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnHeaderHistory, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnTabMusim, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnTabAiring, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnTabKatalog, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnPrevPage, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnNextPage, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnEmptyRetry, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnClearFilter, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnClearHistoryAll, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnCloseCommandBanner, 1.1f, 6f);
     }
 
     private void toggleFoldedMenu() {

@@ -91,6 +91,9 @@ public class DetailActivity extends Activity {
         }
 
         btnBack.setOnClickListener(v -> finish());
+        TvFocusHelper.attachFocusScale(btnBack, 1.1f, 6f);
+        TvFocusHelper.attachFocusScale(btnQuickPlay, 1.05f, 6f);
+        TvFocusHelper.attachFocusScale(btnSortOrder, 1.05f, 6f);
 
         int epSpan = getResources().getInteger(R.integer.episode_grid_columns);
         rvEpisodes.setLayoutManager(new GridLayoutManager(this, epSpan));
@@ -295,6 +298,7 @@ public class DetailActivity extends Activity {
                 card = itemView.findViewById(R.id.card_episode);
                 tvTitle = itemView.findViewById(R.id.tv_ep_title);
                 tvBadge = itemView.findViewById(R.id.tv_ep_status_badge);
+                TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
             }
         }
     }

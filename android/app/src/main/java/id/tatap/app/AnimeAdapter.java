@@ -133,6 +133,12 @@ public class AnimeAdapter extends RecyclerView.Adapter<AnimeAdapter.AnimeViewHol
             tvBadgeEp = itemView.findViewById(R.id.tv_badge_ep);
             tvBadgeScore = itemView.findViewById(R.id.tv_badge_score);
             tvBadgeType = itemView.findViewById(R.id.tv_badge_type);
+
+            if (itemView instanceof com.google.android.material.card.MaterialCardView) {
+                TvFocusHelper.attachCardFocus((com.google.android.material.card.MaterialCardView) itemView);
+            } else {
+                TvFocusHelper.attachFocusScale(itemView, 1.06f, 8f);
+            }
         }
     }
 }
