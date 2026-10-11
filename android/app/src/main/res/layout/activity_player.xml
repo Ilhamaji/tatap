@@ -141,7 +141,10 @@
         android:layout_gravity="top"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:padding="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        android:paddingStart="@dimen/tv_overscan_horizontal"
+        android:paddingEnd="@dimen/tv_overscan_horizontal"
         android:background="#99000000">
 
         <ImageButton

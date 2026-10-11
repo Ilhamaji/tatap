@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.GestureDetector;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
@@ -228,6 +229,13 @@ public class PlayerActivity extends Activity {
         }
 
         applySubtitleStyle();
+
+        // Pasang respon fokus D-Pad TV pada tombol kontrol player
+        TvFocusHelper.attachFocusScale(btnPlayerBack, 1.15f, 6f);
+        TvFocusHelper.attachFocusScale(btnAspect, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnQuality, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnSubSelector, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnSubStyle, 1.08f, 6f);
 
         try {
             audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -455,6 +463,100 @@ public class PlayerActivity extends Activity {
             gestureDetector.onTouchEvent(event);
             return false;
         });
+    }
+
+    private final Runnable hideTopBarRunnable = this::hideTopBar;
+
+    private void showTopBarBriefly() {
+        if (layoutTopBar != null) {
+            layoutTopBar.setVisibility(View.VISIBLE);
+            handler.removeCallbacks(hideTopBarRunnable);
+            handler.postDelayed(hideTopBarRunnable, 4500);
+        }
+    }
+
+    private void hideTopBar() {
+        if (layoutTopBar != null) {
+            layoutTopBar.setVisibility(View.GONE);
+            hideSystemUi();
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            int keyCode = event.getKeyCode();
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    if (player != null) {
+                        if (player.isPlaying()) {
+                            player.pause();
+                            showTopBarBriefly();
+                        } else {
+                            player.play();
+                            hideTopBar();
+                        }
+                        vibrate(20);
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                    if (player != null && !player.isPlaying()) {
+                        player.play();
+                        hideTopBar();
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                    if (player != null && player.isPlaying()) {
+                        player.pause();
+                        showTopBarBriefly();
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_MEDIA_REWIND:
+                    seekRelative(-10000);
+                    showRipple(tvRippleLeft);
+                    vibrate(15);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                    seekRelative(10000);
+                    showRipple(tvRippleRight);
+                    vibrate(15);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    if (layoutTopBar != null) {
+                        layoutTopBar.setVisibility(View.VISIBLE);
+                        if (btnSubSelector != null) {
+                            btnSubSelector.requestFocus();
+                        }
+                        showTopBarBriefly();
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    if (playerView != null) {
+                        if (playerView.isControllerFullyVisible()) {
+                            playerView.hideController();
+                        } else {
+                            playerView.showController();
+                        }
+                        return true;
+                    }
+                    break;
+                case KeyEvent.KEYCODE_BACK:
+                    if (layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
+                        hideTopBar();
+                        return true;
+                    }
+                    break;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     private void seekRelative(long deltaMs) {
