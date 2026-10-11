@@ -996,7 +996,20 @@ async def proxy_sub(url: str = Query(""),
                 return resp
             return Response(content=text, media_type="text/vtt")
         except Exception as e:
-            # Fallback ke source jika gagal translate
+            try:
+                from api.translate import log_translate
+                log_translate(f"Mode GTX gagal: {e}, mencoba fallback multi-tier...")
+                cues = parse_vtt(text) if "text" in locals() and text else None
+                if cues:
+                    tier = await _translate_with_fallback(cues, src, lang)
+                    tr_text = build_vtt(tier["cues"])
+                    await set_subtitle_cache(key_gtx, tr_text)
+                    resp = Response(content=tr_text, media_type="text/vtt")
+                    resp.headers["X-Translate-Tier"] = tier.get("level", "fallback")
+                    return resp
+            except Exception:
+                pass
+            # Fallback ke source hanya jika semua cara terjemahan gagal
             try:
                 text = await _fetch_sub_text(url, referer)
                 resp = Response(content=text, media_type="text/vtt")
@@ -1028,7 +1041,20 @@ async def proxy_sub(url: str = Query(""),
                 return resp
             return Response(content=text, media_type="text/vtt")
         except Exception as e:
-            # Fallback ke source jika gagal translate AIGTX
+            try:
+                from api.translate import log_translate
+                log_translate(f"Mode AIGTX gagal: {e}, mencoba fallback multi-tier...")
+                cues = parse_vtt(text) if "text" in locals() and text else None
+                if cues:
+                    tier = await _translate_with_fallback(cues, src, lang)
+                    tr_text = build_vtt(tier["cues"])
+                    await set_subtitle_cache(key_aigtx, tr_text)
+                    resp = Response(content=tr_text, media_type="text/vtt")
+                    resp.headers["X-Translate-Tier"] = tier.get("level", "fallback")
+                    return resp
+            except Exception:
+                pass
+            # Fallback ke source hanya jika semua cara terjemahan gagal
             try:
                 text = await _fetch_sub_text(url, referer)
                 resp = Response(content=text, media_type="text/vtt")

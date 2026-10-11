@@ -1200,18 +1200,16 @@ async def call_openai_translate(cues, src, tgt, apikey, model, apiurl, timeout=1
 
 
 async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx"):
-    """Translate via Google GTX Web RPC (Unmetered, Zero-Key, Super Cepat).
-    Menggunakan HTML preservation (<p id="i">...</p>) per batch (40 cues/batch).
+    """Translate via Google Translate Web RPC (Unmetered, Zero-Key, Super Cepat).
+    Menggunakan multi-endpoint failover (dict-chrome-ex, clients5.google.com, gtx)
+    dengan HTML preservation (<p id="i">...</p>) per batch (25 cues/batch).
     Google Translate menjaga 100% struktur tag HTML dan atribut id sehingga urutan dialog
-    dijamin presisi dan tidak pernah bergeser atau buyar ke bahasa Inggris."""
+    dijamin presisi dan tidak pernah bergeser."""
     if not cues:
         return cues
-    import urllib.request as _ur
     import urllib.parse as _up
-    import re as _re
-    import html as _html
     
-    BATCH_SIZE = 40
+    BATCH_SIZE = 25
     batches = [cues[i:i + BATCH_SIZE] for i in range(0, len(cues), BATCH_SIZE)]
     all_translated = []
     t_start = _time.time()
@@ -1225,31 +1223,79 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
             safe_text = _html.escape(line) if line else ""
             html_chunks.append(f'<p id="{i}">{safe_text}</p>')
         joined = "".join(html_chunks)
-        url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src}&tl={tgt}&dt=t&q={_up.quote(joined)}"
-        req = _ur.Request(url, headers={
+
+        endpoints = [
+            ("https://translate.googleapis.com/translate_a/single", {
+                "client": "dict-chrome-ex", "sl": src, "tl": tgt, "dt": "t", "q": joined
+            }),
+            ("https://clients5.google.com/translate_a/t", {
+                "client": "dict-chrome-ex", "sl": src, "tl": tgt, "q": joined
+            }),
+            ("https://translate.googleapis.com/translate_a/single", {
+                "client": "gtx", "sl": src, "tl": tgt, "dt": "t", "q": joined
+            })
+        ]
+
+        headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "*/*"
-        })
-        for attempt in range(2):
-            try:
-                with _ur.urlopen(req, timeout=timeout) as resp:
-                    data = _json.loads(resp.read().decode("utf-8"))
-                    raw_out = "".join([item[0] for item in data[0] if item and item[0]])
-                    matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
-                    res = []
-                    for i in range(len(batch_lines)):
-                        if str(i) in matches:
-                            unescaped = _html.unescape(matches[str(i)]).strip()
-                            res.append(unescaped)
-                        else:
-                            res.append(batch_lines[i])
-                    return res
-            except Exception as e:
-                if attempt == 1:
-                    log_translate(f"GTX batch fallback ke teks asli: {e}")
-                    return batch_lines
-                _time.sleep(0.4)
-        return batch_lines
+        }
+
+        # 1. Coba via httpx dengan auto-fallback SSL verify jika di lingkungan Android Chaquopy
+        for ep_url, ep_params in endpoints:
+            for verify_ssl in (True, False):
+                try:
+                    with _httpx.Client(timeout=timeout, verify=verify_ssl, follow_redirects=True) as client:
+                        resp = client.get(ep_url, params=ep_params, headers=headers)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            raw_out = ""
+                            if isinstance(data, list) and data and isinstance(data[0], list):
+                                raw_out = "".join([item[0] for item in data[0] if item and item[0]])
+                            elif isinstance(data, list) and data and isinstance(data[0], str):
+                                raw_out = "".join(data)
+                            elif isinstance(data, str):
+                                raw_out = data
+
+                            matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
+                            if matches:
+                                res = []
+                                for i in range(len(batch_lines)):
+                                    unescaped = _html.unescape(matches.get(str(i), batch_lines[i])).strip()
+                                    res.append(unescaped)
+                                return res, True
+                except Exception:
+                    pass
+
+        # 2. Coba fallback via urllib.request dengan unverified ssl context
+        try:
+            import urllib.request as _ur
+            import ssl
+            ssl_ctx = ssl._create_unverified_context()
+            for ep_url, ep_params in endpoints[:2]:
+                url_full = ep_url + "?" + _up.urlencode(ep_params)
+                req = _ur.Request(url_full, headers=headers)
+                with _ur.urlopen(req, context=ssl_ctx, timeout=timeout) as resp:
+                    if resp.status == 200:
+                        data = _json.loads(resp.read().decode("utf-8"))
+                        raw_out = ""
+                        if isinstance(data, list) and data and isinstance(data[0], list):
+                            raw_out = "".join([item[0] for item in data[0] if item and item[0]])
+                        elif isinstance(data, list) and data and isinstance(data[0], str):
+                            raw_out = "".join(data)
+                        elif isinstance(data, str):
+                            raw_out = data
+                        matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
+                        if matches:
+                            res = [
+                                _html.unescape(matches.get(str(i), batch_lines[i])).strip()
+                                for i in range(len(batch_lines))
+                            ]
+                            return res, True
+        except Exception:
+            pass
+
+        return batch_lines, False
 
     loop = _asyncio.get_running_loop()
     batch_lines_list = [[cue["text"].replace("\n", " ").strip() for cue in b] for b in batches]
@@ -1257,11 +1303,23 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
         tasks = [loop.run_in_executor(executor, lambda b=bl: _fetch_batch_sync(b)) for bl in batch_lines_list]
         batch_results = await _asyncio.gather(*tasks)
 
-    for parts in batch_results:
+    success_count = 0
+    for item in batch_results:
+        if isinstance(item, tuple) and len(item) == 2:
+            parts, ok_flag = item
+        else:
+            parts, ok_flag = item, True
         all_translated.extend(parts)
+        if ok_flag:
+            success_count += 1
 
     dur = _time.time() - t_start
-    log_translate(f"Sukses translate Google GTX (HTML): {len(cues)} cues dalam {dur:.2f}s | mode={mode}")
+    log_translate(f"Selesai translate Google GTX: {len(cues)} cues | {success_count}/{len(batches)} batch sukses ({dur:.2f}s) | mode={mode}")
+
+    # Jika seluruh batch gagal, lempar exception agar fallback ke tier berikutnya
+    if len(batches) > 0 and success_count == 0:
+        raise RuntimeError(f"Semua endpoint Google Translate gagal atau terblokir (0/{len(batches)} batch berhasil).")
+
     out = []
     for i, c in enumerate(cues):
         tr_text = all_translated[i] if i < len(all_translated) else c["text"]
