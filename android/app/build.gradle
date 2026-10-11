@@ -33,22 +33,36 @@ android {
         }
     }
 
+    flavorDimensions "device"
+    productFlavors {
+        mobile {
+            dimension "device"
+        }
+        tv {
+            dimension "device"
+            applicationIdSuffix ".tv"
+            versionNameSuffix "-tv"
+            ndk {
+                abiFilters "armeabi-v7a", "arm64-v8a"
+            }
+        }
+    }
+
     signingConfigs {
         release {
-            def keystorePath = System.getenv("KEYSTORE_FILE") ?: (project.hasProperty('RELEASE_STORE_FILE') ? project.property('RELEASE_STORE_FILE') : "")
-            if (keystorePath) {
-                def ksFile = file(keystorePath)
-                if (!ksFile.exists()) {
-                    ksFile = rootProject.file(keystorePath)
-                }
-                if (ksFile.exists()) {
-                    storeFile ksFile
-                    storePassword System.getenv("KEYSTORE_PASSWORD") ?: (project.hasProperty('RELEASE_STORE_PASSWORD') ? project.property('RELEASE_STORE_PASSWORD') : "")
-                    keyAlias System.getenv("KEY_ALIAS") ?: (project.hasProperty('RELEASE_KEY_ALIAS') ? project.property('RELEASE_KEY_ALIAS') : "")
-                    keyPassword System.getenv("KEY_PASSWORD") ?: (project.hasProperty('RELEASE_KEY_PASSWORD') ? project.property('RELEASE_KEY_PASSWORD') : "")
-                    v1SigningEnabled true
-                    v2SigningEnabled true
-                }
+            def defaultKs = rootProject.file("keystore/release.jks")
+            def envPath = System.getenv("KEYSTORE_FILE") ?: (project.hasProperty('RELEASE_STORE_FILE') ? project.property('RELEASE_STORE_FILE') : "")
+            def ksFile = envPath ? file(envPath) : (defaultKs.exists() ? defaultKs : null)
+            if (ksFile && !ksFile.exists()) {
+                ksFile = rootProject.file(envPath)
+            }
+            if (ksFile && ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: (project.hasProperty('RELEASE_STORE_PASSWORD') ? project.property('RELEASE_STORE_PASSWORD') : "tatapsecret2026")
+                keyAlias System.getenv("KEY_ALIAS") ?: (project.hasProperty('RELEASE_KEY_ALIAS') ? project.property('RELEASE_KEY_ALIAS') : "tatap_release")
+                keyPassword System.getenv("KEY_PASSWORD") ?: (project.hasProperty('RELEASE_KEY_PASSWORD') ? project.property('RELEASE_KEY_PASSWORD') : "tatapsecret2026")
+                v1SigningEnabled true
+                v2SigningEnabled true
             }
         }
     }
@@ -64,6 +78,18 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (variant.buildType.name == "release") {
+                if (variant.flavorName == "mobile") {
+                    outputFileName = "tatap-release-v${defaultConfig.versionName}.apk"
+                } else if (variant.flavorName == "tv") {
+                    outputFileName = "tatap-tv-release-v${defaultConfig.versionName}.apk"
+                }
+            }
         }
     }
 
