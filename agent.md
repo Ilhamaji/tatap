@@ -112,12 +112,16 @@ Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debu
 > 3. **PATCH (`x.y.Z`):**
 >    - Dinaikkan untuk perbaikan bug (*bug fixes*), perbaikan kompatibilitas platform/perangkat spesifik (seperti perbaikan fullscreen iOS Safari / Android Chrome, display cutout/notch edge-to-edge, immersive mode), optimasi performa, dan pembaruan dependensi/security hardening tanpa penambahan modul arsitektur baru.
 > 
-> **Checklist Sinkronisasi Versi Wajib bagi Agent:**
-> Saat melakukan update versi (apakah Major, Minor, atau Patch), agent **WAJIB SECARA ATOMIK MENYELARASKAN** seluruh berkas berikut:
-> - [x] `backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-> - [x] `android/app/src/main/python/backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-> - [x] `android/app/build.gradle` -> `versionName "<VERSION>"` dan increment `versionCode`
-> - [x] Build ulang dan verifikasi ke-3 berkas rilis resmi (`dist/`)
+> **Prosedur Sinkronisasi Versi Atomik bagi Agent:**
+> Saat melakukan update versi (apakah Major, Minor, atau Patch), agent **WAJIB MENGGUNAKAN** utilitas resmi:
+> ```bash
+> python3 tools/bump_version.py patch   # atau minor / major
+> python3 tools/bump_version.py --check # verifikasi audit
+> ```
+> Tool ini secara atomik menyinkronkan seluruh berkas: `VERSION`, `backend/version.py`, `android/app/src/main/python/backend/version.py`, `android/app/build.gradle` (deterministik `versionCode` dan `versionName`), `launcher/winres/winres.json`, `tatap.manifest`, dan `frontend/index.html`.
+>
+> - [x] Verifikasi konsistensi: `python3 tools/bump_version.py --check` && `pytest tests/test_semver.py`
+> - [x] Build ulang dan verifikasi ke-4 berkas rilis resmi (`dist/`)
 > - [x] Buat git commit dan tag `v<VERSION>` serta rilis publik GitHub
 >
 ### Standar Aset Release Publik (Protokol Ketat "Hanya 4 Aset Resmi")

@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-CURRENT_VERSION = "2.3.0"
+from version import __version__ as CURRENT_VERSION
 app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
 
 def ok(data):
@@ -31,18 +31,23 @@ def fail(msg):
 async def ping():
     return ok({"status": "running"})
 
+@app.get("/api/version")
+async def get_version():
+    return ok({"version": CURRENT_VERSION})
+
 @app.get("/api/update/check")
 async def check_update():
     """Pemeriksaan pembaruan versi Tatap secara on-demand via GitHub Releases API.
-    Memfilter HANYA 3 berkas resmi sesuai aturan paten agent.md:
-    1. tatap-release-v<VER>.apk (Official Signed APK)
-    2. tatap-windows-x64-portable.zip (Windows Portable)
-    3. Tatap-x86_64.AppImage (Linux AppImage)
+    Memfilter 4 berkas resmi sesuai aturan paten agent.md:
+    1. tatap-release-v<VER>.apk (Official Signed Mobile APK)
+    2. tatap-tv-release-v<VER>.apk (Official Signed Android/Google TV APK)
+    3. tatap-windows-x64-portable.zip (Windows Portable)
+    4. Tatap-x86_64.AppImage (Linux AppImage)
     """
     try:
         url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
         headers = {
-            "User-Agent": "Tatap-App/2.3.0 (https://github.com/bagusazizulamri/tatap)",
+            "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/bagusazizulamri/tatap)",
             "Accept": "application/vnd.github.v3+json"
         }
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
@@ -67,9 +72,10 @@ async def check_update():
         except Exception:
             has_update = latest_clean != curr_clean and bool(latest_clean)
 
-        # Filter strictly the 3 official assets according to agent.md
+        # Filter strictly the 4 official assets according to agent.md
         assets_out = {
             "android": "",
+            "android_tv": "",
             "windows": "",
             "linux": ""
         }
@@ -77,7 +83,9 @@ async def check_update():
         for a in raw_assets:
             fname = (a.get("name") or "").lower()
             dl_url = a.get("browser_download_url") or ""
-            if "tatap-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
+            if "tatap-tv-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
+                assets_out["android_tv"] = dl_url
+            elif "tatap-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
                 assets_out["android"] = dl_url
             elif "windows" in fname and fname.endswith(".zip"):
                 assets_out["windows"] = dl_url

@@ -47,13 +47,10 @@
   - **MAJOR (X.0.0):** Breaking changes arsitektur, restrukturisasi skema database SQLite tanpa kompatibilitas otomatis, atau perombakan kontrak runtime fundamental.
   - **MINOR (x.Y.0):** Penambahan fitur baru yang backward-compatible (misal: Drawer Navigation Panel, In-Player Quality Selector, Update Checker On-Demand, Provider baru, UI revamp). Reset PATCH ke 0.
   - **PATCH (x.y.Z):** Bug fixes, perbaikan kompatibilitas perangkat/mobile (seperti fullscreen iOS Safari / Android Chrome, notch cutout, immersive mode), dependensi & security patch.
-- **Checklist Sinkronisasi Versi Wajib:**
-  Saat bump version, agent **WAJIB MENYELARASKAN** semua file ini:
-  - `backend/main.py`: `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-  - `android/app/src/main/python/backend/main.py`: `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-  - `android/app/build.gradle`: `versionName "<VERSION>"` dan increment `versionCode`
-  - Rebuild dan verifikasi 3 aset resmi di `dist/`
-  - Tag git `v<VERSION>` dan rilis GitHub
+- **Prosedur Sinkronisasi Versi Atomik:**
+  Gunakan `python3 tools/bump_version.py <patch|minor|major>` untuk menyinkronkan seluruh berkas secara atomik (VERSION, backend/version.py, Chaquopy, build.gradle, launcher winres.json, dan frontend).
+  Audit konsistensi: `python3 tools/bump_version.py --check`.
+  Pastikan 4 berkas resmi siap di rilis GitHub: `tatap-release-v<VER>.apk`, `tatap-tv-release-v<VER>.apk`, `tatap-windows-x64-portable.zip`, dan `Tatap-x86_64.AppImage`.
 
 ---
 

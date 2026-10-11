@@ -9,10 +9,8 @@ server.pid
 dist/
 .build_cache/
 
-# Internal/local-only — tidak di-share:
-# - tools/: script build internal
+# Internal/local-only:
 # - plan.md: working doc pribadi
-tools/
 plan.md
 .gradle/
 build/

@@ -20,31 +20,40 @@ Semua penomoran versi Tatap wajib mengikuti spesifikasi resmi **Semantic Version
    - **Kapan:** Perbaikan bug (*bug fixes*), perbaikan kompatibilitas platform/perangkat tertentu (seperti fullscreen iOS Safari / Android Chrome, display cutout notch, immersive mode), penyesuaian styling minor, optimasi performa, atau pembaruan dependensi keamanan.
    - **Contoh:** v2.2.2 -> v2.2.3.
 
-### 📋 Checklist Wajib Saat Bump Versi (Atomic Synchronization):
-Saat agent menaikkan versi, agent **WAJIB SECARA ATOMIK MENYELARASKAN** seluruh berkas berikut tanpa ada yang tertinggal:
-- [ ] `backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-- [ ] `android/app/src/main/python/backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
-- [ ] `android/app/build.gradle` -> `versionName "<VERSION>"` dan increment `versionCode`
-- [ ] Rebuild dan verifikasi ketiga berkas rilis resmi di folder `dist/`
-- [ ] Buat git tag `v<VERSION>` dan terbitkan rilis publik GitHub
+### 📋 Prosedur Standar Saat Bump Versi (Automated Atomic Synchronization):
+Gunakan utilitas resmi untuk menaikkan versi dan mengaudit seluruh berkas secara atomik:
+```bash
+# Audit konsistensi:
+python3 tools/bump_version.py --check
+
+# Bump versi:
+python3 tools/bump_version.py patch   # atau minor / major
+```
+Tool ini secara atomik menyinkronkan:
+- [x] `VERSION` (Root SSOT)
+- [x] `backend/version.py` & `android/app/src/main/python/backend/version.py`
+- [x] `android/app/build.gradle` (deterministik `versionCode` dan `versionName`)
+- [x] `launcher/winres/winres.json` & `tatap.manifest`
+- [x] `frontend/index.html` badge versi
 
 ---
 
-## 2. Aturan Mutlak Rilis GitHub (Strict 3 Official Assets / Zero Raw APK)
+## 2. Aturan Mutlak Rilis GitHub (Strict 4 Official Assets / Zero Raw APK)
 > [!CAUTION]
-> Halaman rilis publik GitHub **HANYA BOLEH MENYEDIAKAN TEPAT 3 BERKAS RESMI BERIKUT**:
-> 1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed APK via Keystore produksi `android/keystore/release.jks`, v2/v3 signature verified)
-> 2. 🪟 **`tatap-windows-x64-portable.zip`** (Official Windows x64 Portable)
-> 3. 🐧 **`Tatap-x86_64.AppImage`** (Official Linux x86_64 AppImage)
+> Halaman rilis publik GitHub **HANYA BOLEH MENYEDIAKAN TEPAT 4 BERKAS RESMI BERIKUT**:
+> 1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed Mobile APK via Keystore produksi `android/keystore/release.jks`, v2/v3 signature verified)
+> 2. 📺 **`tatap-tv-release-v<VERSION>.apk`** (Official Signed Android TV / Google TV APK 10-Foot UI)
+> 3. 🪟 **`tatap-windows-x64-portable.zip`** (Official Windows x64 Portable)
+> 4. 🐧 **`Tatap-x86_64.AppImage`** (Official Linux x86_64 AppImage)
 
 - **DILARANG KERAS** mengunggah atau membiarkan berkas APK mentah hasil build CI (`app-release.apk`, `app-debug.apk`, dsb.) berada di rilis publik GitHub.
 - **TIDAK PERNAH** meng-commit file binary APK ke dalam repositori git.
-- **Pembersihan Wajib:** Jika proses CI atau rilis sempat mengunggah berkas selain 3 aset resmi di atas, agent **WAJIB SEGERA** menghapusnya dengan:
+- **Pembersihan Wajib:** Jika proses CI atau rilis sempat mengunggah berkas selain 4 aset resmi di atas, agent **WAJIB SEGERA** menghapusnya dengan:
   ```bash
   gh release delete-asset v<VERSION> app-release.apk -y
   gh release delete-asset v<VERSION> app-debug.apk -y
   ```
-- **Verifikasi Wajib:** Selalu jalankan `gh release view v<VERSION>` untuk memastikan HANYA 3 file resmi yang tersisa sebelum menyelesaikan tugas.
+- **Verifikasi Wajib:** Selalu jalankan `gh release view v<VERSION>` untuk memastikan HANYA 4 file resmi yang tersisa sebelum menyelesaikan tugas.
 
 ---
 

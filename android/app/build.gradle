@@ -3,6 +3,17 @@ plugins {
     id 'com.chaquo.python'
 }
 
+def versionFile = rootProject.file('../VERSION')
+def currentVersionName = versionFile.exists() ? versionFile.text.trim() : "2.3.0"
+
+def parseVersionCode(String vName) {
+    def parts = vName.tokenize('.').collect { it.isInteger() ? it.toInteger() : 0 }
+    int major = parts.size() > 0 ? parts[0] : 0
+    int minor = parts.size() > 1 ? parts[1] : 0
+    int patch = parts.size() > 2 ? parts[2] : 0
+    return major * 10000 + minor * 100 + patch
+}
+
 android {
     namespace 'id.tatap.app'
     compileSdk 34
@@ -11,8 +22,8 @@ android {
         applicationId "id.tatap.app"
         minSdk 24
         targetSdk 34
-        versionCode 230
-        versionName "2.3.0"
+        versionCode parseVersionCode(currentVersionName)
+        versionName currentVersionName
 
         ndk {
             abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
