@@ -45,9 +45,9 @@ async def check_update():
     4. Tatap-x86_64.AppImage (Linux AppImage)
     """
     try:
-        url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
+        url = "https://api.github.com/repos/asfaraguest/tatap/releases/latest"
         headers = {
-            "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/bagusazizulamri/tatap)",
+            "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/asfaraguest/tatap)",
             "Accept": "application/vnd.github.v3+json"
         }
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
@@ -100,7 +100,7 @@ async def check_update():
             "release_name": rel_data.get("name") or tag_name,
             "body": rel_data.get("body") or "",
             "published_at": rel_data.get("published_at") or "",
-            "release_url": rel_data.get("html_url") or "https://github.com/bagusazizulamri/tatap/releases/latest",
+            "release_url": rel_data.get("html_url") or "https://github.com/asfaraguest/tatap/releases/latest",
             "assets": assets_out
         })
     except Exception as e:

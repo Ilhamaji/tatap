@@ -838,9 +838,17 @@ public class MainActivity extends Activity {
                     String currentVer = data.optString("current_version", "2.2.2");
                     String latestVer = data.optString("latest_version", currentVer);
                     String notes = data.optString("notes", "");
-                    String releaseUrl = data.optString("release_url", "https://github.com/b-ict/tatap/releases");
+                    String releaseUrl = data.optString("release_url", "https://github.com/asfaraguest/tatap/releases");
                     JSONObject assets = data.optJSONObject("assets");
-                    String apkDownloadUrl = assets != null ? assets.optString("android", "") : "";
+                    String apkDownloadUrl = "";
+                    if (assets != null) {
+                        if (TvFocusHelper.isTv(MainActivity.this)) {
+                            apkDownloadUrl = assets.optString("android_tv", "");
+                        }
+                        if (apkDownloadUrl.isEmpty()) {
+                            apkDownloadUrl = assets.optString("android", "");
+                        }
+                    }
                     final String targetDownloadUrl = (!apkDownloadUrl.isEmpty()) ? apkDownloadUrl : releaseUrl;
 
                     runOnUiThread(() -> {
