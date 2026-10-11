@@ -147,14 +147,23 @@ public class PlayerActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            WindowManager.LayoutParams lp = getWindow().getAttributes();
-            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-            getWindow().setAttributes(lp);
-        }
-        hideSystemUi();
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                WindowManager.LayoutParams lp = getWindow().getAttributes();
+                if (lp != null) {
+                    lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+                    getWindow().setAttributes(lp);
+                }
+            }
+        } catch (Throwable ignored) {}
 
         setContentView(R.layout.activity_player);
+
+        // Pastikan hideSystemUi hanya dieksekusi setelah decorView terpasang di window
+        try {
+            getWindow().getDecorView().post(this::hideSystemUi);
+        } catch (Throwable ignored) {}
 
         slug = getIntent().getStringExtra("slug");
         ep = getIntent().getIntExtra("ep", 1);
@@ -184,25 +193,31 @@ public class PlayerActivity extends Activity {
             tvPlayerTitle.setText("Episode " + ep);
         }
 
-        btnPlayerBack.setOnClickListener(v -> finish());
+        if (btnPlayerBack != null) {
+            btnPlayerBack.setOnClickListener(v -> finish());
+        }
 
         // Aspect Ratio & Fullscreen Mode Setup
-        btnAspect = findViewById(R.id.btn_aspect);
-        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
-        currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
-        updateAspectButtonLabel();
-        if (playerView != null) {
-            playerView.setResizeMode(currentResizeMode);
-        }
-        if (btnAspect != null) {
-            btnAspect.setOnClickListener(v -> cycleAspectRatio());
-        }
+        try {
+            btnAspect = findViewById(R.id.btn_aspect);
+            SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+            currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
+            updateAspectButtonLabel();
+            if (playerView != null) {
+                playerView.setResizeMode(currentResizeMode);
+            }
+            if (btnAspect != null) {
+                btnAspect.setOnClickListener(v -> cycleAspectRatio());
+            }
+        } catch (Throwable ignored) {}
 
         btnQuality = findViewById(R.id.btn_quality);
         if (btnQuality != null) {
             btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
         }
-        btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
+        if (btnSubSelector != null) {
+            btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
+        }
         btnSubStyle = findViewById(R.id.btn_sub_style);
         if (btnSubStyle != null) {
             btnSubStyle.setOnClickListener(v -> showSubtitleStyleDialog());
@@ -210,7 +225,9 @@ public class PlayerActivity extends Activity {
 
         applySubtitleStyle();
 
-        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        try {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        } catch (Throwable ignored) {}
 
         checkAiConfig();
         initExoPlayer();
@@ -219,64 +236,72 @@ public class PlayerActivity extends Activity {
     }
 
     private void updateAspectButtonLabel() {
-        if (btnAspect == null) return;
-        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-            btnAspect.setText("⛶ Zoom");
-        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-            btnAspect.setText("⛶ Fill");
-        } else {
-            btnAspect.setText("⛶ Fit");
-        }
+        try {
+            if (btnAspect == null) return;
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                btnAspect.setText("⛶ Zoom");
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                btnAspect.setText("⛶ Fill");
+            } else {
+                btnAspect.setText("⛶ Fit");
+            }
+        } catch (Throwable ignored) {}
     }
 
     private void cycleAspectRatio() {
-        if (playerView == null) return;
-        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
-            Toast.makeText(this, "Mode Layar: ZOOM (Penuh)", Toast.LENGTH_SHORT).show();
-        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
-            Toast.makeText(this, "Mode Layar: FILL (Stretch)", Toast.LENGTH_SHORT).show();
-        } else {
-            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
-            Toast.makeText(this, "Mode Layar: FIT (Skala Asli)", Toast.LENGTH_SHORT).show();
-        }
-        updateAspectButtonLabel();
-        playerView.setResizeMode(currentResizeMode);
-        getSharedPreferences("tatap_player_prefs", MODE_PRIVATE)
-                .edit().putInt("aspect_mode", currentResizeMode).apply();
+        try {
+            if (playerView == null) return;
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
+                Toast.makeText(this, "Mode Layar: ZOOM (Penuh)", Toast.LENGTH_SHORT).show();
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
+                Toast.makeText(this, "Mode Layar: FILL (Stretch)", Toast.LENGTH_SHORT).show();
+            } else {
+                currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
+                Toast.makeText(this, "Mode Layar: FIT (Skala Asli)", Toast.LENGTH_SHORT).show();
+            }
+            updateAspectButtonLabel();
+            playerView.setResizeMode(currentResizeMode);
+            getSharedPreferences("tatap_player_prefs", MODE_PRIVATE)
+                    .edit().putInt("aspect_mode", currentResizeMode).apply();
+        } catch (Throwable ignored) {}
     }
 
     private void hideSystemUi() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            Window window = getWindow();
-            if (window != null) {
-                android.view.WindowInsetsController controller = window.getInsetsController();
-                if (controller != null) {
-                    controller.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
-                    controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Window window = getWindow();
+                if (window != null) {
+                    android.view.WindowInsetsController controller = window.getInsetsController();
+                    if (controller != null) {
+                        controller.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                        controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                    }
+                }
+            } else {
+                View decorView = getWindow().getDecorView();
+                if (decorView != null) {
+                    decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                    );
                 }
             }
-        } else {
-            View decorView = getWindow().getDecorView();
-            if (decorView != null) {
-                decorView.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                    | View.SYSTEM_UI_FLAG_FULLSCREEN
-                );
-            }
-        }
+        } catch (Throwable ignored) {}
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
-            hideSystemUi();
+            try {
+                hideSystemUi();
+            } catch (Throwable ignored) {}
         }
     }
 
@@ -650,27 +675,40 @@ public class PlayerActivity extends Activity {
             if (tvBufferingText != null) tvBufferingText.setText("MEMUAT STREAM...");
         }
 
-        String proxiedVideo = "http://127.0.0.1:8767/api/player/video?url=" + Uri.encode(rawStreamUrl)
-                + "&referer=" + Uri.encode(streamReferer);
+        try {
+            String proxiedVideo = "http://127.0.0.1:8767/api/player/video?url=" + Uri.encode(rawStreamUrl)
+                    + "&referer=" + Uri.encode(streamReferer);
 
-        Map<String, String> headers = new HashMap<>();
-        if (!streamReferer.isEmpty()) {
-            headers.put("Referer", streamReferer);
+            Map<String, String> headers = new HashMap<>();
+            if (!streamReferer.isEmpty()) {
+                headers.put("Referer", streamReferer);
+            }
+
+            DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
+                    .setDefaultRequestProperties(headers)
+                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0");
+
+            MediaItem.Builder mib = new MediaItem.Builder().setUri(Uri.parse(proxiedVideo));
+            if (rawStreamUrl.contains(".m3u8")) {
+                mib.setMimeType(MimeTypes.APPLICATION_M3U8);
+                HlsMediaSource videoSource = new HlsMediaSource.Factory(httpDataSourceFactory)
+                        .createMediaSource(mib.build());
+                player.setMediaSource(videoSource);
+            } else {
+                androidx.media3.exoplayer.source.ProgressiveMediaSource videoSource =
+                        new androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(httpDataSourceFactory)
+                                .createMediaSource(mib.build());
+                player.setMediaSource(videoSource);
+            }
+
+            player.prepare();
+            player.play();
+
+            applySubtitleSelection();
+        } catch (Throwable t) {
+            if (layoutBuffering != null) layoutBuffering.setVisibility(View.GONE);
+            Toast.makeText(this, "Gagal memutar video: " + t.getMessage(), Toast.LENGTH_LONG).show();
         }
-
-        DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
-                .setDefaultRequestProperties(headers)
-                .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0");
-
-        HlsMediaSource videoSource = new HlsMediaSource.Factory(httpDataSourceFactory)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(proxiedVideo)));
-
-        // Pure video playback - completely decoupled from subtitles to avoid player reloads/black screen
-        player.setMediaSource(videoSource);
-        player.prepare();
-        player.play();
-
-        applySubtitleSelection();
     }
 
     private void applySubtitleSelection() {

@@ -56,7 +56,10 @@ function renderEpGrid(){
       var b=document.createElement("button");
       b.className="ep"+(cur.watched&&cur.watched[ep]?" watched":"");
       b.textContent=ep;
-      b.addEventListener("click",function(){openPlayer(ep);});
+      b.addEventListener("click",function(e){
+        if(e) e.stopPropagation();
+        openPlayer(ep);
+      });
       box.appendChild(b);
     })(cur.eps[i].ep);
   }
@@ -69,6 +72,7 @@ function syncSeg(){
 
 function openPlayer(ep, resumeTime){
   cur.ep=ep;
+  cur.playerOpenedAt=Date.now();
   closeTitle();
   $("player-modal").classList.remove("hidden");
   $("pm-title").textContent=cur.title;
@@ -79,10 +83,15 @@ function openPlayer(ep, resumeTime){
   var t0=Date.now();
   var src=cur.source||"";
   window.Tatap.resolve(cur.slug,ep,cur.mode,cur.quality,src).then(function(r){
-    if(!r.success){$("pm-status").textContent="ERROR: "+r.error;return;}
+    if(!r || !r.success){
+      $("pm-spinner").classList.add("hidden");
+      $("pm-status").textContent="ERROR: "+(r && r.error ? r.error : "gagal resolve stream");
+      toast("Gagal resolve stream: "+(r && r.error ? r.error : "unknown"));
+      return;
+    }
     cur.res=r.data;
     cur.source=r.data.source||"hianime";
-    var picked=r.data.picked||r.data.variants[0];
+    var picked=r.data.picked||(r.data.variants&&r.data.variants[0])||{q:"HD",url:r.data.master||""};
     var srvText=r.data.server||"";
     $("pm-meta").innerHTML="ep "+ep+" · "+cur.mode.toUpperCase()+" · "+picked.q+" · <button id='pm-source-btn' class='server-badge' title='Klik untuk switch sumber' style='background:none;border:1px solid rgba(255,255,255,0.25);color:var(--cyan,#00dbeb);cursor:pointer;border-radius:4px;padding:1px 6px;font:inherit;'>"+esc(srvText)+" ⇄</button>"+(r.data.cached?" · cached":" · "+(Date.now()-t0)+"ms");
     var srvBtn=$("pm-source-btn");
@@ -103,6 +112,10 @@ function openPlayer(ep, resumeTime){
     }
     playUrl(picked.url,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
     window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode}).then(function(){renderContinue();});
+  }).catch(function(err){
+    $("pm-spinner").classList.add("hidden");
+    $("pm-status").textContent="KONEKSI GAGAL: "+(err&&err.message||err);
+    toast("Koneksi gagal saat resolve: "+(err&&err.message||err));
   });
 }
 function renderVariants(){
@@ -1484,7 +1497,10 @@ function init(){
   $("tm-close").addEventListener("click",closeTitle);
   $("title-modal").addEventListener("click",function(e){if(e.target===this)closeTitle();});
   $("pm-close").addEventListener("click",closePlayer);
-  $("player-modal").addEventListener("click",function(e){if(e.target===this)closePlayer();});
+  $("player-modal").addEventListener("click",function(e){
+    if(Date.now() - (cur.playerOpenedAt || 0) < 500) return;
+    if(e.target===this) closePlayer();
+  });
   $("pm-prev").addEventListener("click",function(){stepEp(-1);});
   $("pm-next").addEventListener("click",function(){stepEp(1);});
   $("pm-mpv").addEventListener("click",playMPV);

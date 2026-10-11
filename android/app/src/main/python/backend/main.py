@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-CURRENT_VERSION = "2.2.3"
+CURRENT_VERSION = "2.2.4"
 app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
 
 def ok(data):
@@ -42,7 +42,7 @@ async def check_update():
     try:
         url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
         headers = {
-            "User-Agent": "Tatap-App/2.2.3 (https://github.com/bagusazizulamri/tatap)",
+            "User-Agent": "Tatap-App/2.2.4 (https://github.com/bagusazizulamri/tatap)",
             "Accept": "application/vnd.github.v3+json"
         }
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
@@ -681,6 +681,12 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
     is_m3u8 = ".m3u8" in url
     media_type = "application/vnd.apple.mpegurl" if is_m3u8 else "video/mp2t"
 
+    if not referer:
+        if any(h in url for h in ("dramahot.top", "drama1.cfd", "zokoanime")):
+            referer = "https://zokoanime.video/"
+        elif any(h in url for h in ("megacloud", "rapid-cloud")):
+            referer = "https://megacloud.blog/"
+
     # Jika host terdeteksi diblokir DPI ISP, gunakan TLS desync murni (aman dari Sangfor)
     from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
     host = _host_from(url)
@@ -759,11 +765,9 @@ async def _pipe_desync_video(url: str, referer: str):
         try:
             txt = body.decode("utf-8", errors="strict")
         except Exception:
-            yield body
-            return
+            raise HTTPException(status_code=502, detail="upstream desync m3u8 binary decode error")
         if "#EXTM3U" not in txt:
-            yield body
-            return
+            raise HTTPException(status_code=502, detail="upstream desync response missing #EXTM3U")
         yield _rewrite_m3u8_content(txt, url, referer).encode("utf-8")
         return
 
@@ -808,11 +812,9 @@ async def _pipe_video(url: str, referer: str):
                 try:
                     txt = body.decode("utf-8", errors="strict")
                 except Exception:
-                    yield body
-                    return
+                    raise HTTPException(status_code=502, detail="upstream m3u8 binary decode error")
                 if "#EXTM3U" not in txt:
-                    yield body
-                    return
+                    raise HTTPException(status_code=502, detail="upstream response missing #EXTM3U")
                 yield _rewrite_m3u8_content(txt, url, referer).encode("utf-8")
                 return
             # segmen: teruskan per bongkah, buang prefix bila perlu
