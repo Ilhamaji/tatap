@@ -77,6 +77,9 @@ public class PlayerActivity extends Activity {
     private String slug;
     private int ep;
     private String title;
+    private List<Integer> episodeList = new ArrayList<>();
+    private View btnExoNext;
+    private View btnExoPrev;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
 
@@ -171,6 +174,10 @@ public class PlayerActivity extends Activity {
         slug = getIntent().getStringExtra("slug");
         ep = getIntent().getIntExtra("ep", 1);
         title = getIntent().getStringExtra("title");
+        ArrayList<Integer> passedList = getIntent().getIntegerArrayListExtra("episode_list");
+        if (passedList != null) {
+            episodeList.addAll(passedList);
+        }
 
         playerView = findViewById(R.id.player_view);
         hudOsd = findViewById(R.id.hud_osd);
@@ -199,6 +206,8 @@ public class PlayerActivity extends Activity {
         if (btnPlayerBack != null) {
             btnPlayerBack.setOnClickListener(v -> finish());
         }
+
+        setupExoEpisodeButtons();
 
         // Aspect Ratio & Fullscreen Mode Setup
         try {
@@ -376,6 +385,9 @@ public class PlayerActivity extends Activity {
                 } else if (playbackState == Player.STATE_ENDED) {
                     if (layoutBuffering != null) {
                         layoutBuffering.setVisibility(View.GONE);
+                    }
+                    if (hasNextEpisode()) {
+                        playNextEpisode();
                     }
                 }
             }
@@ -603,6 +615,22 @@ public class PlayerActivity extends Activity {
                     if (player != null && player.isPlaying()) {
                         player.pause();
                         showTopBarBriefly();
+                        return true;
+                    }
+                    break;
+
+                case KeyEvent.KEYCODE_MEDIA_NEXT:
+                case KeyEvent.KEYCODE_PAGE_DOWN:
+                    if (hasNextEpisode()) {
+                        playNextEpisode();
+                        return true;
+                    }
+                    break;
+
+                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                case KeyEvent.KEYCODE_PAGE_UP:
+                    if (hasPrevEpisode()) {
+                        playPrevEpisode();
                         return true;
                     }
                     break;
@@ -874,7 +902,10 @@ public class PlayerActivity extends Activity {
                     streamReferer = referer;
 
                     if (!rawStreamUrl.isEmpty()) {
-                        runOnUiThread(this::applyCurrentStream);
+                        runOnUiThread(() -> {
+                            applyCurrentStream();
+                            preResolveNeighbors();
+                        });
                     }
                 } else {
                     runOnUiThread(() -> {
@@ -1560,6 +1591,179 @@ public class PlayerActivity extends Activity {
             player.release();
             player = null;
         }
+    }
+
+    private void setupExoEpisodeButtons() {
+        if (playerView == null) return;
+        playerView.post(() -> {
+            btnExoNext = playerView.findViewById(androidx.media3.ui.R.id.exo_next);
+            btnExoPrev = playerView.findViewById(androidx.media3.ui.R.id.exo_prev);
+
+            if (btnExoNext != null) {
+                btnExoNext.setOnClickListener(v -> {
+                    if (hasNextEpisode()) {
+                        playNextEpisode();
+                    }
+                });
+                TvFocusHelper.attachFocusScale(btnExoNext, 1.15f, 6f);
+            }
+
+            if (btnExoPrev != null) {
+                btnExoPrev.setOnClickListener(v -> {
+                    if (hasPrevEpisode()) {
+                        playPrevEpisode();
+                    }
+                });
+                TvFocusHelper.attachFocusScale(btnExoPrev, 1.15f, 6f);
+            }
+
+            updateExoButtonStates();
+        });
+    }
+
+    private void updateExoButtonStates() {
+        runOnUiThread(() -> {
+            boolean hasNext = hasNextEpisode();
+            boolean hasPrev = hasPrevEpisode();
+
+            if (btnExoNext != null) {
+                btnExoNext.setEnabled(hasNext);
+                btnExoNext.setFocusable(hasNext);
+                btnExoNext.setAlpha(hasNext ? 1.0f : 0.35f);
+            }
+            if (btnExoPrev != null) {
+                btnExoPrev.setEnabled(hasPrev);
+                btnExoPrev.setFocusable(hasPrev);
+                btnExoPrev.setAlpha(hasPrev ? 1.0f : 0.35f);
+            }
+        });
+    }
+
+    private boolean hasNextEpisode() {
+        if (episodeList != null && !episodeList.isEmpty()) {
+            int idx = episodeList.indexOf(ep);
+            return idx >= 0 && idx < episodeList.size() - 1;
+        }
+        return false;
+    }
+
+    private boolean hasPrevEpisode() {
+        if (episodeList != null && !episodeList.isEmpty()) {
+            int idx = episodeList.indexOf(ep);
+            return idx > 0;
+        }
+        return false;
+    }
+
+    private int getNextEpisodeNumber() {
+        if (hasNextEpisode()) {
+            int idx = episodeList.indexOf(ep);
+            return episodeList.get(idx + 1);
+        }
+        return ep + 1;
+    }
+
+    private int getPrevEpisodeNumber() {
+        if (hasPrevEpisode()) {
+            int idx = episodeList.indexOf(ep);
+            return episodeList.get(idx - 1);
+        }
+        return Math.max(1, ep - 1);
+    }
+
+    private void playNextEpisode() {
+        int nextEp = getNextEpisodeNumber();
+        switchEpisode(nextEp);
+    }
+
+    private void playPrevEpisode() {
+        int prevEp = getPrevEpisodeNumber();
+        switchEpisode(prevEp);
+    }
+
+    private void switchEpisode(int targetEp) {
+        if (ep == targetEp) return;
+        ep = targetEp;
+
+        if (player != null) {
+            player.stop();
+        }
+
+        if (title != null && !title.isEmpty()) {
+            tvPlayerTitle.setText(title + " - Ep " + ep);
+        } else {
+            tvPlayerTitle.setText("Episode " + ep);
+        }
+
+        updateExoButtonStates();
+
+        // Rekam episode baru ke riwayat
+        new Thread(() -> {
+            try {
+                JSONObject b = new JSONObject();
+                b.put("slug", slug);
+                b.put("title", title);
+                b.put("episode", ep);
+                b.put("mode", "sub");
+                b.put("progress", 0);
+
+                HttpURLConnection conn = (HttpURLConnection) new URL("http://127.0.0.1:8767/api/history").openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(3000);
+                java.io.OutputStream os = conn.getOutputStream();
+                os.write(b.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                os.close();
+                conn.getResponseCode();
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        }).start();
+
+        resolveAndPlayStream();
+    }
+
+    /**
+     * Pre-resolve URL episode sebelum (N-1) dan sesudah (N+1) secara background.
+     * ZERO VIDEO PRE-BUFFERING:
+     * Hanya meminta metadata JSON stream/subtitle ke server backend lokal (yang akan
+     * di-scrape & disimpan ke SQLite episode_cache). Tidak mengunduh segmen video .ts
+     * atau buffer video ExoPlayer untuk menjaga konsumsi RAM dan kuota tetap minimal.
+     */
+    private void preResolveNeighbors() {
+        final String currentSlug = slug;
+        final String currentQ = activeQuality;
+
+        List<Integer> targets = new ArrayList<>();
+        if (hasNextEpisode()) {
+            targets.add(getNextEpisodeNumber());
+        }
+        if (hasPrevEpisode()) {
+            targets.add(getPrevEpisodeNumber());
+        }
+
+        if (targets.isEmpty()) return;
+
+        new Thread(() -> {
+            for (int targetEp : targets) {
+                try {
+                    String u = "http://127.0.0.1:8767/api/stream/resolve?slug="
+                            + URLEncoder.encode(currentSlug, "UTF-8")
+                            + "&ep=" + targetEp
+                            + "&mode=sub&q=" + URLEncoder.encode(currentQ, "UTF-8");
+                    HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                    conn.setConnectTimeout(15000);
+                    conn.setReadTimeout(20000);
+                    int respCode = conn.getResponseCode();
+                    if (respCode == 200) {
+                        BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                        while (r.readLine() != null) {}
+                        r.close();
+                    }
+                    conn.disconnect();
+                } catch (Exception ignored) {}
+            }
+        }).start();
     }
 
     @Override

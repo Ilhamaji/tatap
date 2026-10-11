@@ -181,6 +181,7 @@ public class DetailActivity extends Activity {
         intent.putExtra("title", title);
         intent.putExtra("poster", poster);
         intent.putExtra("type", type);
+        intent.putIntegerArrayListExtra("episode_list", new ArrayList<>(originalEpisodes));
         startActivity(intent);
     }
 
