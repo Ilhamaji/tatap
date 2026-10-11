@@ -3,11 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="5dp"
+    android:layout_margin="@dimen/tv_card_margin"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="@dimen/tv_card_corner_radius"
     app:cardElevation="0dp"
     app:cardBackgroundColor="#11141C"
     app:strokeColor="#1C202C"
@@ -21,7 +21,7 @@
         <!-- Poster Container with Soft Badges -->
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="210dp"
+            android:layout_height="@dimen/tv_card_poster_height"
             android:background="#151822">
 
             <ImageView
@@ -33,7 +33,7 @@
             <!-- Bottom Gradient Scrim -->
             <View
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
+                android:layout_height="48dp"
                 android:layout_gravity="bottom"
                 android:background="@drawable/bg_poster_scrim" />
 
@@ -43,13 +43,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|start"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_type"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="3dp"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="2dp"
                 android:text="TV"
                 android:textColor="#E2E8F0"
-                android:textSize="9.5sp"
+                android:textSize="@dimen/tv_badge_text_size"
                 android:textStyle="bold" />
 
             <!-- Top Right: Score Badge (★ 8.5) -->
@@ -58,13 +58,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|end"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_score"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="3dp"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="2dp"
                 android:text="★ 8.5"
                 android:textColor="#FBBF24"
-                android:textSize="9.5sp"
+                android:textSize="@dimen/tv_badge_text_size"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -74,13 +74,13 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom|start"
-                android:layout_margin="8dp"
+                android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_sub"
-                android:paddingHorizontal="6dp"
-                android:paddingVertical="3dp"
+                android:paddingHorizontal="5dp"
+                android:paddingVertical="2dp"
                 android:text="SUB ID"
                 android:textColor="#F1F5F9"
-                android:textSize="9.5sp"
+                android:textSize="@dimen/tv_badge_text_size"
                 android:textStyle="bold" />
         </FrameLayout>
 
@@ -89,33 +89,33 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingHorizontal="10dp"
-            android:paddingTop="9dp"
-            android:paddingBottom="11dp"
+            android:paddingHorizontal="@dimen/tv_card_padding_horizontal"
+            android:paddingTop="@dimen/tv_card_padding_top"
+            android:paddingBottom="@dimen/tv_card_padding_bottom"
             android:background="#11141C">
 
             <TextView
                 android:id="@+id/tv_title"
                 android:layout_width="match_parent"
-                android:layout_height="38dp"
+                android:layout_height="@dimen/tv_card_title_height"
                 android:maxLines="2"
                 android:ellipsize="end"
                 android:text="Judul Anime"
                 android:textColor="#F8FAFC"
-                android:textSize="12.5sp"
+                android:textSize="@dimen/tv_card_title_text_size"
                 android:textStyle="bold"
-                android:lineSpacingExtra="2dp" />
+                android:lineSpacingExtra="1dp" />
 
             <TextView
                 android:id="@+id/tv_meta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
+                android:layout_marginTop="2dp"
                 android:singleLine="true"
                 android:ellipsize="end"
                 android:text="12 Episode"
                 android:textColor="#8B95A5"
-                android:textSize="11sp" />
+                android:textSize="@dimen/tv_card_meta_text_size" />
         </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

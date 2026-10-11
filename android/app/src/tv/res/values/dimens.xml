@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="tv_overscan_horizontal">32dp</dimen>
-    <dimen name="tv_overscan_vertical">24dp</dimen>
-    <dimen name="tv_card_poster_height">240dp</dimen>
+    <dimen name="tv_overscan_vertical">20dp</dimen>
+    <dimen name="tv_card_poster_height">160dp</dimen>
+    <dimen name="tv_card_margin">5dp</dimen>
+    <dimen name="tv_card_corner_radius">10dp</dimen>
+    <dimen name="tv_card_padding_horizontal">8dp</dimen>
+    <dimen name="tv_card_padding_top">6dp</dimen>
+    <dimen name="tv_card_padding_bottom">8dp</dimen>
+    <dimen name="tv_card_title_height">32dp</dimen>
+    <dimen name="tv_card_title_text_size">11sp</dimen>
+    <dimen name="tv_card_meta_text_size">9.5sp</dimen>
+    <dimen name="tv_badge_text_size">8.5sp</dimen>
 </resources>

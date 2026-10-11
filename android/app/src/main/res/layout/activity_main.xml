@@ -397,11 +397,13 @@
         android:id="@+id/swipe_refresh_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:clipChildren="false">
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:clipChildren="false">
 
             <!-- Native Grid of Anime Cards -->
             <androidx.recyclerview.widget.RecyclerView
@@ -412,6 +414,7 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="8dp"
                 android:clipToPadding="false"
+                android:clipChildren="false"
                 android:scrollbars="vertical" />
 
             <!-- Empty / Error Placeholder View -->

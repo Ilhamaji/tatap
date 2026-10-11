@@ -3,4 +3,13 @@
     <dimen name="tv_overscan_horizontal">0dp</dimen>
     <dimen name="tv_overscan_vertical">0dp</dimen>
     <dimen name="tv_card_poster_height">210dp</dimen>
+    <dimen name="tv_card_margin">5dp</dimen>
+    <dimen name="tv_card_corner_radius">12dp</dimen>
+    <dimen name="tv_card_padding_horizontal">10dp</dimen>
+    <dimen name="tv_card_padding_top">9dp</dimen>
+    <dimen name="tv_card_padding_bottom">11dp</dimen>
+    <dimen name="tv_card_title_height">38dp</dimen>
+    <dimen name="tv_card_title_text_size">12.5sp</dimen>
+    <dimen name="tv_card_meta_text_size">11sp</dimen>
+    <dimen name="tv_badge_text_size">9.5sp</dimen>
 </resources>
