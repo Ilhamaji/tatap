@@ -32,8 +32,10 @@
             android:id="@+id/tv_osd_icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🔊"
-            android:textSize="18sp" />
+            android:text="VOL"
+            android:textColor="#38BDF8"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
         <ProgressBar
             android:id="@+id/pb_osd_bar"
@@ -63,7 +65,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="start"
         android:gravity="center"
-        android:text="⏪\n-10s"
+        android:text="-10s"
         android:textColor="#FFFFFF"
         android:textSize="17sp"
         android:textStyle="bold"
@@ -76,7 +78,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:gravity="center"
-        android:text="⏩\n+10s"
+        android:text="+10s"
         android:textColor="#FFFFFF"
         android:textSize="17sp"
         android:textStyle="bold"
@@ -153,6 +155,8 @@
             android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_revert"
+            android:focusable="true"
+            android:nextFocusRight="@+id/btn_aspect"
             app:tint="#FFFFFF"
             android:contentDescription="Kembali" />
 
@@ -188,53 +192,73 @@
         <Button
             android:id="@+id/btn_aspect"
             android:layout_width="wrap_content"
-            android:layout_height="34dp"
+            android:layout_height="36dp"
             android:layout_marginEnd="8dp"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp"
-            android:text="⛶ Fit"
+            android:paddingHorizontal="12dp"
+            android:text="Fit"
             android:textSize="11.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:nextFocusLeft="@+id/btn_player_back"
+            android:nextFocusRight="@+id/btn_quality"
+            app:strokeColor="#33FFFFFF"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
             android:backgroundTint="#1E2433" />
 
         <!-- Tombol Pilihan Resolusi / Kualitas Video -->
         <Button
             android:id="@+id/btn_quality"
             android:layout_width="wrap_content"
-            android:layout_height="34dp"
+            android:layout_height="36dp"
             android:layout_marginEnd="8dp"
-            android:paddingHorizontal="10dp"
+            android:paddingHorizontal="12dp"
             android:text="HD"
             android:textSize="11.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:nextFocusLeft="@+id/btn_aspect"
+            android:nextFocusRight="@+id/btn_sub_style"
+            app:strokeColor="#33FFFFFF"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
             android:backgroundTint="#1E2433" />
 
         <!-- Tombol Pengaturan Tampilan & Gaya Subtitle -->
         <Button
             android:id="@+id/btn_sub_style"
             android:layout_width="wrap_content"
-            android:layout_height="34dp"
+            android:layout_height="36dp"
             android:layout_marginEnd="8dp"
-            android:paddingHorizontal="10dp"
-            android:text="⚙️ Style"
+            android:paddingHorizontal="12dp"
+            android:text="Gaya Sub"
             android:textSize="11.5sp"
             android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:nextFocusLeft="@+id/btn_quality"
+            android:nextFocusRight="@+id/btn_sub_selector"
+            app:strokeColor="#33FFFFFF"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
             android:backgroundTint="#1E2433" />
 
         <!-- Tombol Pilihan Subtitle Engine / Bahasa -->
         <Button
             android:id="@+id/btn_sub_selector"
             android:layout_width="wrap_content"
-            android:layout_height="34dp"
-            android:paddingHorizontal="12dp"
-            android:text="Sub [CC]"
+            android:layout_height="36dp"
+            android:paddingHorizontal="14dp"
+            android:text="Subtitle"
             android:textSize="11.5sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
+            android:focusable="true"
+            android:nextFocusLeft="@+id/btn_sub_style"
+            app:strokeColor="#33FFFFFF"
+            app:strokeWidth="1dp"
+            app:cornerRadius="8dp"
             android:backgroundTint="#1E2433" />
     </LinearLayout>
 </FrameLayout>

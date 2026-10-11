@@ -252,11 +252,11 @@ public class PlayerActivity extends Activity {
         try {
             if (btnAspect == null) return;
             if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                btnAspect.setText("⛶ Zoom");
+                btnAspect.setText("Zoom");
             } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                btnAspect.setText("⛶ Fill");
+                btnAspect.setText("Fill");
             } else {
-                btnAspect.setText("⛶ Fit");
+                btnAspect.setText("Fit");
             }
         } catch (Throwable ignored) {}
     }
@@ -484,24 +484,99 @@ public class PlayerActivity extends Activity {
         if (layoutTopBar != null) {
             layoutTopBar.setVisibility(View.VISIBLE);
             handler.removeCallbacks(hideTopBarRunnable);
-            handler.postDelayed(hideTopBarRunnable, 4500);
+            handler.postDelayed(hideTopBarRunnable, 5000);
         }
     }
 
     private void hideTopBar() {
         if (layoutTopBar != null) {
             layoutTopBar.setVisibility(View.GONE);
+            if (playerView != null) {
+                playerView.requestFocus();
+            }
             hideSystemUi();
         }
+    }
+
+    private boolean isViewOrChildFocused(View parent) {
+        if (parent == null || parent.getVisibility() != View.VISIBLE) return false;
+        if (parent.isFocused()) return true;
+        if (parent instanceof ViewGroup) {
+            View current = getCurrentFocus();
+            if (current != null) {
+                View p = current;
+                while (p != null) {
+                    if (p == parent) return true;
+                    if (p.getParent() instanceof View) {
+                        p = (View) p.getParent();
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isChildOf(View child, View parent) {
+        if (child == null || parent == null) return false;
+        if (child == parent) return true;
+        View p = child;
+        while (p != null) {
+            if (p == parent) return true;
+            if (p.getParent() instanceof View) {
+                p = (View) p.getParent();
+            } else {
+                break;
+            }
+        }
+        return false;
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
+            boolean isTopBarActive = (layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE);
+            boolean hasFocusOnTopBar = isTopBarActive && isViewOrChildFocused(layoutTopBar);
+
             switch (keyCode) {
+                case KeyEvent.KEYCODE_MENU:
+                case KeyEvent.KEYCODE_SETTINGS:
+                case KeyEvent.KEYCODE_INFO:
+                    if (isTopBarActive) {
+                        hideTopBar();
+                    } else {
+                        showTopBarBriefly();
+                        if (btnSubSelector != null) {
+                            btnSubSelector.requestFocus();
+                        }
+                    }
+                    return true;
+
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:
+                    if (hasFocusOnTopBar) {
+                        View focused = getCurrentFocus();
+                        if (focused != null && isChildOf(focused, layoutTopBar)) {
+                            showTopBarBriefly();
+                            focused.performClick();
+                            return true;
+                        }
+                    }
+                    if (player != null) {
+                        if (player.isPlaying()) {
+                            player.pause();
+                            showTopBarBriefly();
+                        } else {
+                            player.play();
+                            hideTopBar();
+                        }
+                        vibrate(20);
+                        return true;
+                    }
+                    break;
+
                 case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                     if (player != null) {
                         if (player.isPlaying()) {
@@ -515,6 +590,7 @@ public class PlayerActivity extends Activity {
                         return true;
                     }
                     break;
+
                 case KeyEvent.KEYCODE_MEDIA_PLAY:
                     if (player != null && !player.isPlaying()) {
                         player.play();
@@ -522,6 +598,7 @@ public class PlayerActivity extends Activity {
                         return true;
                     }
                     break;
+
                 case KeyEvent.KEYCODE_MEDIA_PAUSE:
                     if (player != null && player.isPlaying()) {
                         player.pause();
@@ -529,29 +606,55 @@ public class PlayerActivity extends Activity {
                         return true;
                     }
                     break;
+
                 case KeyEvent.KEYCODE_DPAD_LEFT:
+                    if (hasFocusOnTopBar) {
+                        showTopBarBriefly();
+                        break; // Jangan seek, biarkan navigasi fokus antar tombol
+                    }
+                    seekRelative(-10000);
+                    showRipple(tvRippleLeft);
+                    vibrate(15);
+                    return true;
+
                 case KeyEvent.KEYCODE_MEDIA_REWIND:
                     seekRelative(-10000);
                     showRipple(tvRippleLeft);
                     vibrate(15);
                     return true;
+
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    if (hasFocusOnTopBar) {
+                        showTopBarBriefly();
+                        break; // Jangan seek, biarkan navigasi fokus antar tombol
+                    }
+                    seekRelative(10000);
+                    showRipple(tvRippleRight);
+                    vibrate(15);
+                    return true;
+
                 case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
                     seekRelative(10000);
                     showRipple(tvRippleRight);
                     vibrate(15);
                     return true;
+
                 case KeyEvent.KEYCODE_DPAD_UP:
-                    if (layoutTopBar != null) {
-                        layoutTopBar.setVisibility(View.VISIBLE);
+                    if (!isTopBarActive || !hasFocusOnTopBar) {
+                        showTopBarBriefly();
                         if (btnSubSelector != null) {
                             btnSubSelector.requestFocus();
                         }
-                        showTopBarBriefly();
                         return true;
                     }
+                    showTopBarBriefly();
                     break;
+
                 case KeyEvent.KEYCODE_DPAD_DOWN:
+                    if (isTopBarActive) {
+                        hideTopBar();
+                        return true;
+                    }
                     if (playerView != null) {
                         if (playerView.isControllerFullyVisible()) {
                             playerView.hideController();
@@ -561,8 +664,9 @@ public class PlayerActivity extends Activity {
                         return true;
                     }
                     break;
+
                 case KeyEvent.KEYCODE_BACK:
-                    if (layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
+                    if (isTopBarActive) {
                         hideTopBar();
                         return true;
                     }
@@ -599,7 +703,7 @@ public class PlayerActivity extends Activity {
         }
 
         int pct = Math.round(currentVolumeFraction * 100);
-        showOsd(targetVol == 0 ? "🔇" : "🔊", pct);
+        showOsd(targetVol == 0 ? "MUTE" : "VOL", pct);
     }
 
     private void adjustBrightness(float percent) {
@@ -609,7 +713,7 @@ public class PlayerActivity extends Activity {
         getWindow().setAttributes(lp);
 
         int pct = (int) (currentBrightness * 100);
-        showOsd("☀️", pct);
+        showOsd("BRT", pct);
     }
 
     private void showOsd(String icon, int pct) {
@@ -1103,7 +1207,7 @@ public class PlayerActivity extends Activity {
             String q = v.optString("q", "auto");
             boolean isCurrent = (rawStreamUrl.equals(v.optString("url", "")) || q.equalsIgnoreCase(activeQuality));
             if (isCurrent) selectedIdx = i;
-            options.add(q.toUpperCase() + (isCurrent ? " ✓" : ""));
+            options.add(q.toUpperCase() + (isCurrent ? " [Aktif]" : ""));
         }
 
         builder.setSingleChoiceItems(options.toArray(new String[0]), selectedIdx, (dialog, which) -> {
@@ -1119,6 +1223,11 @@ public class PlayerActivity extends Activity {
         });
 
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
+        builder.setOnDismissListener(dialog -> {
+            if (btnQuality != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
+                btnQuality.requestFocus();
+            }
+        });
         builder.show();
     }
 
@@ -1156,12 +1265,12 @@ public class PlayerActivity extends Activity {
 
         if (enSourceSubUrl.isEmpty() && subtitleTracks.isEmpty()) {
             String msg = "dub".equalsIgnoreCase(activeStreamMode) ? "Audio: English Dub (Tidak ada file subtitle)" : "Tidak ada file subtitle untuk video ini";
-            options.add("⚠️ " + msg);
+            options.add("Peringatan: " + msg);
             actions.add(() -> {});
         } else {
             // 1. Google GTX Murni (Prioritas Pertama / Super Cepat)
             boolean isGtxSelected = subEnabled && "id".equals(activeSubLang) && "gtx".equals(activeEngine);
-            options.add("🇮🇩 Bahasa Indonesia (Google GTX Murni - Cepat)" + (isGtxSelected ? " ✓" : ""));
+            options.add("[ID] Bahasa Indonesia (Google GTX Murni - Cepat)" + (isGtxSelected ? " [Aktif]" : ""));
             actions.add(() -> {
                 subEnabled = true;
                 activeSubLang = "id";
@@ -1171,7 +1280,7 @@ public class PlayerActivity extends Activity {
 
             // 2. AIGTX (Prioritas Kedua / GTX + Kamus Anime)
             boolean isAigtxSelected = subEnabled && "id".equals(activeSubLang) && "aigtx".equals(activeEngine);
-            options.add("🇮🇩 Bahasa Indonesia (AIGTX - Smart Lexicon)" + (isAigtxSelected ? " ✓" : ""));
+            options.add("[ID] Bahasa Indonesia (AIGTX - Smart Lexicon)" + (isAigtxSelected ? " [Aktif]" : ""));
             actions.add(() -> {
                 subEnabled = true;
                 activeSubLang = "id";
@@ -1181,9 +1290,9 @@ public class PlayerActivity extends Activity {
 
             // 3. AI Fansub (Prioritas Ketiga / LLM Translate)
             boolean isAiSelected = subEnabled && "id".equals(activeSubLang) && "ai".equals(activeEngine);
-            String aiOptionText = "🇮🇩 Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
+            String aiOptionText = "[AI] Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
                     + (hasAiKey ? " [SIAP]" : " [Butuh Key]")
-                    + (isAiSelected ? " ✓" : "");
+                    + (isAiSelected ? " [Aktif]" : "");
             options.add(aiOptionText);
             actions.add(() -> {
                 subEnabled = true;
@@ -1198,7 +1307,7 @@ public class PlayerActivity extends Activity {
             // 4. Native Indonesian (jika tersedia di track asli)
             if (!idNativeSubUrl.isEmpty()) {
                 boolean isIdNativeSelected = subEnabled && "id".equals(activeSubLang) && "raw".equals(activeEngine) && idNativeSubUrl.equals(activeSubUrl);
-                options.add("🇮🇩 Bahasa Indonesia (Asli / Bawaan)" + (isIdNativeSelected ? " ✓" : ""));
+                options.add("[ID] Bahasa Indonesia (Asli / Bawaan)" + (isIdNativeSelected ? " [Aktif]" : ""));
                 actions.add(() -> {
                     subEnabled = true;
                     activeSubLang = "id";
@@ -1210,7 +1319,7 @@ public class PlayerActivity extends Activity {
             // 5. English (Original)
             if (!enSourceSubUrl.isEmpty()) {
                 boolean isEnSelected = subEnabled && "en".equals(activeSubLang) && "raw".equals(activeEngine);
-                options.add("🇬🇧 English (Original / Asli)" + (isEnSelected ? " ✓" : ""));
+                options.add("[EN] English (Original / Asli)" + (isEnSelected ? " [Aktif]" : ""));
                 actions.add(() -> {
                     subEnabled = true;
                     activeSubLang = "en";
@@ -1230,7 +1339,7 @@ public class PlayerActivity extends Activity {
                     continue;
                 }
                 boolean isThisSelected = subEnabled && "raw".equals(activeEngine) && url.equals(activeSubUrl);
-                options.add("🌐 " + lbl + (isThisSelected ? " ✓" : ""));
+                options.add(lbl + (isThisSelected ? " [Aktif]" : ""));
                 actions.add(() -> {
                     subEnabled = true;
                     activeSubLang = lang.isEmpty() ? "en" : lang;
@@ -1241,11 +1350,11 @@ public class PlayerActivity extends Activity {
         }
 
         // 7. Pengaturan Tampilan & Gaya Subtitle
-        options.add("⚙️ Pengaturan Tampilan (Posisi, Latar Belakang & Ukuran)...");
+        options.add("Pengaturan Tampilan (Posisi, Latar Belakang & Ukuran)...");
         actions.add(this::showSubtitleStyleDialog);
 
         // 8. Matikan Subtitle
-        options.add("❌ Matikan Subtitle" + (!subEnabled ? " ✓" : ""));
+        options.add("Matikan Subtitle" + (!subEnabled ? " [Aktif]" : ""));
         actions.add(() -> {
             subEnabled = false;
         });
@@ -1264,6 +1373,11 @@ public class PlayerActivity extends Activity {
         });
 
         builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
+        builder.setOnDismissListener(dialog -> {
+            if (btnSubSelector != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
+                btnSubSelector.requestFocus();
+            }
+        });
         builder.show();
     }
 
@@ -1325,10 +1439,10 @@ public class PlayerActivity extends Activity {
         String sizeLabel = "small".equals(curSize) ? "Kecil (14sp)" : ("large".equals(curSize) ? "Besar (21sp)" : "Sedang (17sp)");
 
         String[] menu = new String[]{
-                "📍 Posisi Subtitle: " + posLabel,
-                "🎨 Latar Belakang: " + bgLabel,
-                "🔤 Ukuran Huruf: " + sizeLabel,
-                "🔄 Reset ke Default"
+                "Posisi Subtitle: " + posLabel,
+                "Latar Belakang: " + bgLabel,
+                "Ukuran Huruf: " + sizeLabel,
+                "Reset ke Default"
         };
 
         builder.setItems(menu, (dialog, which) -> {
@@ -1346,6 +1460,11 @@ public class PlayerActivity extends Activity {
         });
 
         builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
+        builder.setOnDismissListener(dialog -> {
+            if (btnSubStyle != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
+                btnSubStyle.requestFocus();
+            }
+        });
         builder.show();
     }
 

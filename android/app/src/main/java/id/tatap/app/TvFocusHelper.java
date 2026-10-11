@@ -3,11 +3,14 @@ package id.tatap.app;
 import android.app.UiModeManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
+import android.widget.ImageButton;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 
 public class TvFocusHelper {
@@ -46,11 +49,18 @@ public class TvFocusHelper {
                 v.setTranslationZ(hasFocus ? elevationPx / 2f : 0f);
             }
 
-            // Jika view adalah MaterialCardView, sorot border secara dinamis
+            // Sorot border secara dinamis untuk CardView dan MaterialButton
             if (v instanceof MaterialCardView) {
                 MaterialCardView card = (MaterialCardView) v;
                 card.setStrokeColor(hasFocus ? COLOR_FOCUSED_STROKE : COLOR_NORMAL_STROKE);
                 card.setStrokeWidth(hasFocus ? (int) (2.5f * density) : (int) (1f * density));
+            } else if (v instanceof MaterialButton) {
+                MaterialButton btn = (MaterialButton) v;
+                btn.setStrokeColor(ColorStateList.valueOf(hasFocus ? COLOR_FOCUSED_STROKE : Color.parseColor("#33FFFFFF")));
+                btn.setStrokeWidth(hasFocus ? (int) (2.2f * density) : (int) (1f * density));
+            } else if (v instanceof ImageButton) {
+                ImageButton ib = (ImageButton) v;
+                ib.setBackgroundColor(hasFocus ? Color.parseColor("#3338BDF8") : Color.TRANSPARENT);
             }
         });
     }
