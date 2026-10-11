@@ -280,12 +280,6 @@ public class PlayerActivity extends Activity {
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        hideSystemUi();
-    }
-
     private void checkAiConfig() {
         new Thread(() -> {
             try {
@@ -1246,6 +1240,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        hideSystemUi();
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
             handler.post(subtitleSyncRunnable);
