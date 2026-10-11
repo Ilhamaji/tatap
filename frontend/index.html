@@ -13,12 +13,23 @@
 <div id="bg-glow" aria-hidden="true"></div>
 
 <header class="tui-head">
-  <span class="brand-name">TATAP</span>
-  <span class="brand-ver">v2.2.2</span>
-  <span class="dim tui-sep">·</span>
-  <span class="dim tui-tag">nonton santai di lokal</span>
-  <span class="head-gap"></span>
-  <span id="health" class="health">…</span>
+  <div class="head-brand">
+    <span class="brand-name">TATAP</span>
+    <span class="brand-ver" id="brand-ver">v2.2.2</span>
+  </div>
+
+  <div class="header-search-wrap">
+    <span class="prompt-ps1">tatap$</span>
+    <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul, atau :perintah (cth: :update, :musim)">
+    <span class="caret" aria-hidden="true"></span>
+  </div>
+
+  <div class="head-actions">
+    <span id="health" class="health" title="Status koneksi scraper backend">…</span>
+    <button id="btn-drawer" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
+      <span class="drawer-btn-icon">☰</span>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -49,10 +60,109 @@
     </div>
     <div id="empty-state" class="empty">
       <div class="empty-art">[ ]</div>
-      <p>ketik judul lalu <b>Enter</b>. <span class="dim">(:bantuan untuk daftar perintah)</span></p>
+      <p>ketik judul lalu <b>Enter</b>. <span class="dim">(:bantuan untuk daftar perintah, :update untuk cek pembaruan)</span></p>
     </div>
   </section>
 </main>
+
+<!-- DRAWER NAVIGATION PANEL -->
+<div id="drawer-panel" class="drawer-overlay hidden" role="dialog" aria-modal="true">
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  <aside class="drawer-content">
+    <div class="drawer-head">
+      <div class="drawer-title">
+        <span class="brand-name">TATAP</span>
+        <span class="dim small">v2.2.2</span>
+      </div>
+      <button class="icon-btn big" id="drawer-close" title="Tutup Menu (Esc)">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <div class="drawer-group">
+        <div class="drawer-group-label">NAVIGASI TAMPILAN</div>
+        <button class="drawer-item" data-view="cari">
+          <span class="drawer-item-icon">🔍</span>
+          <span class="drawer-item-label">Cari Anime</span>
+          <span class="drawer-item-badge">:cari</span>
+        </button>
+        <button class="drawer-item" data-view="musim">
+          <span class="drawer-item-icon">🌸</span>
+          <span class="drawer-item-label">Tayang Musim Ini</span>
+          <span class="drawer-item-badge">:musim</span>
+        </button>
+        <button class="drawer-item" data-view="terbaru">
+          <span class="drawer-item-icon">⏱️</span>
+          <span class="drawer-item-label">Sedang Rilis / Terbaru</span>
+          <span class="drawer-item-badge">:terbaru</span>
+        </button>
+        <button class="drawer-item" data-view="lanjutan">
+          <span class="drawer-item-icon">📺</span>
+          <span class="drawer-item-label">Masih Tayang (Lanjut)</span>
+          <span class="drawer-item-badge">:lanjutan</span>
+        </button>
+        <button class="drawer-item" data-view="katalog">
+          <span class="drawer-item-icon">📚</span>
+          <span class="drawer-item-label">Katalog Lengkap</span>
+          <span class="drawer-item-badge">:katalog</span>
+        </button>
+      </div>
+
+      <div class="drawer-group">
+        <div class="drawer-group-label">KONTROL & FILTER</div>
+        <button class="drawer-item" id="drawer-genre">
+          <span class="drawer-item-icon">🏷️</span>
+          <span class="drawer-item-label">Filter Genre</span>
+          <span class="drawer-item-badge">:genre</span>
+        </button>
+        <button class="drawer-item" id="drawer-switch-source">
+          <span class="drawer-item-icon">⇄</span>
+          <span class="drawer-item-label">Sumber Video Stream</span>
+          <span class="drawer-item-badge" id="drawer-src-badge">HiAnime</span>
+        </button>
+        <button class="drawer-item" id="drawer-help">
+          <span class="drawer-item-icon">📖</span>
+          <span class="drawer-item-label">Daftar Perintah Terminal</span>
+          <span class="drawer-item-badge">:bantuan</span>
+        </button>
+      </div>
+
+      <div class="drawer-group">
+        <div class="drawer-group-label">SISTEM & PEMBARUAN</div>
+        <button class="drawer-item highlight" id="drawer-update">
+          <span class="drawer-item-icon">🚀</span>
+          <span class="drawer-item-label">Periksa Pembaruan</span>
+          <span class="drawer-item-badge">:update</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="drawer-foot">
+      <div class="drawer-foot-row">
+        <span>Status Scraper:</span>
+        <span id="drawer-health-text" class="dim">Memeriksa…</span>
+      </div>
+      <div class="dim small" style="margin-top:4px;">Zero-bloat & standalone anime stream aggregator</div>
+    </div>
+  </aside>
+</div>
+
+<!-- UPDATE MODAL DIALOG -->
+<div id="update-modal" class="overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet update-sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="eyebrow" id="um-eyebrow">PEMBARUAN APLIKASI</div>
+        <h2 id="um-title">Tatap Update</h2>
+        <div class="dim small" id="um-sub">Versi rilis resmi</div>
+      </div>
+      <button class="icon-btn big" id="um-close" title="Tutup (Esc)">✕</button>
+    </div>
+    <div class="update-body">
+      <div id="um-content" class="update-notes"></div>
+      <div class="update-actions" id="um-actions"></div>
+    </div>
+  </div>
+</div>
 
 <div id="help-overlay" class="overlay hidden" role="dialog" aria-modal="true">
   <div class="help-sheet">
@@ -69,18 +179,13 @@
   </div>
 </div>
 
-<div class="prompt-line">
-  <span class="prompt-ps1">tatap$</span>
-  <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul, atau :perintah">
-  <span class="caret" aria-hidden="true"></span>
-</div>
 <div class="statusbar">
   <span><b>↑↓</b> pilih</span>
   <span><b>enter</b> buka</span>
   <span><b>tab</b> ganti tampilan</span>
   <span><b>[ ]</b> halaman</span>
   <span><b>esc</b> reset</span>
-  <span><b>:bantuan</b> perintah</span>
+  <span><b>:update</b> cek rilis</span>
   <button id="sb-source" class="sb-source" title="Sumber streaming aktif. Klik atau ketik :switch untuk beralih">src: hianime ⇄</button>
   <span id="sb-view" class="sb-view"></span>
 </div>

@@ -19,7 +19,8 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-app = FastAPI(title="Tatap", version="2.2.0", lifespan=lifespan)
+CURRENT_VERSION = "2.2.2"
+app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
 
 def ok(data):
     return {"success": True, "data": data}
@@ -29,6 +30,73 @@ def fail(msg):
 @app.get("/api/ping")
 async def ping():
     return ok({"status": "running"})
+
+@app.get("/api/update/check")
+async def check_update():
+    """Pemeriksaan pembaruan versi Tatap secara on-demand via GitHub Releases API.
+    Memfilter HANYA 3 berkas resmi sesuai aturan paten agent.md:
+    1. tatap-release-v<VER>.apk (Official Signed APK)
+    2. tatap-windows-x64-portable.zip (Windows Portable)
+    3. Tatap-x86_64.AppImage (Linux AppImage)
+    """
+    try:
+        url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
+        headers = {
+            "User-Agent": "Tatap-App/2.2.2 (https://github.com/bagusazizulamri/tatap)",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+            resp = await client.get(url, headers=headers)
+        if resp.status_code != 200:
+            return fail(f"Gagal memeriksa update (HTTP {resp.status_code})")
+        rel_data = resp.json()
+        tag_name = (rel_data.get("tag_name") or "").strip()
+        latest_clean = re.sub(r"^v", "", tag_name)
+        curr_clean = re.sub(r"^v", "", CURRENT_VERSION)
+
+        def parse_ver(v_str):
+            nums = []
+            for part in v_str.split("."):
+                m = re.match(r"^\d+", part)
+                nums.append(int(m.group(0)) if m else 0)
+            return tuple(nums)
+
+        has_update = False
+        try:
+            has_update = parse_ver(latest_clean) > parse_ver(curr_clean)
+        except Exception:
+            has_update = latest_clean != curr_clean and bool(latest_clean)
+
+        # Filter strictly the 3 official assets according to agent.md
+        assets_out = {
+            "android": "",
+            "windows": "",
+            "linux": ""
+        }
+        raw_assets = rel_data.get("assets") or []
+        for a in raw_assets:
+            fname = (a.get("name") or "").lower()
+            dl_url = a.get("browser_download_url") or ""
+            if "tatap-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
+                assets_out["android"] = dl_url
+            elif "windows" in fname and fname.endswith(".zip"):
+                assets_out["windows"] = dl_url
+            elif fname.endswith(".appimage"):
+                assets_out["linux"] = dl_url
+
+        return ok({
+            "current_version": CURRENT_VERSION,
+            "latest_version": latest_clean or tag_name,
+            "tag_name": tag_name,
+            "has_update": has_update,
+            "release_name": rel_data.get("name") or tag_name,
+            "body": rel_data.get("body") or "",
+            "published_at": rel_data.get("published_at") or "",
+            "release_url": rel_data.get("html_url") or "https://github.com/bagusazizulamri/tatap/releases/latest",
+            "assets": assets_out
+        })
+    except Exception as e:
+        return fail(f"Koneksi gagal: {str(e)}")
 
 @app.get("/api/health")
 async def health():

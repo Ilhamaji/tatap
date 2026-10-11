@@ -30,6 +30,7 @@ saveHist:function(b){return jpost("/api/history",b);},
 playMPV:function(b){return jpost("/api/play-mpv",b);},
 // Settings (termasuk sub_lang).
 getSettings:function(){return jget("/api/settings");},
-setSetting:function(b){return jpost("/api/settings",b);}
+setSetting:function(b){return jpost("/api/settings",b);},
+checkUpdate:function(){return jget("/api/update/check");}
 };
 

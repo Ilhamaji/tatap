@@ -4,7 +4,12 @@ var Tui = (function () {
 
   function $(id){return document.getElementById(id);}
   function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-  function isModalOpen(){return !$("title-modal").classList.contains("hidden") || !$("player-modal").classList.contains("hidden");}
+  function isModalOpen(){
+    return (!$("title-modal").classList.contains("hidden")) ||
+           (!$("player-modal").classList.contains("hidden")) ||
+           ($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")) ||
+           ($("update-modal") && !$("update-modal").classList.contains("hidden"));
+  }
 
   function log(msg,kind){
     var box=$("log");box.classList.remove("hidden");
@@ -20,7 +25,7 @@ var Tui = (function () {
   function saveCmdHist(h){try{localStorage.setItem("tatap_hist",JSON.stringify(h.slice(0,50)));}catch(e){}}
 
   function cmdUsage(){
-    return "perintah:\n  cari <judul> | :musim | :lanjutan | :katalog\n  :terbaru | :season <winter|spring|summer|fall> <tahun>\n  :switch [hianime|otaku] (ganti sumber video HiAnime / Otakudesu)\n  :filter [key=val...] | :filter reset\n  :genre <slug|title> | :genre | :genre --list | :genre reset\n  :apikey <key> | :ollama <key> | :groq <key> | :gemini <key> | :model <nama> | :apiurl <url>\n  :logs | :crt on|off|toggle | :ambient on|off|toggle\n  :riwayat | :status | :bantuan | :q";
+    return "perintah:\n  cari <judul> | :musim | :lanjutan | :katalog\n  :terbaru | :season <winter|spring|summer|fall> <tahun>\n  :switch [hianime|otaku] (ganti sumber video HiAnime / Otakudesu)\n  :filter [key=val...] | :filter reset\n  :genre <slug|title> | :genre | :genre --list | :genre reset\n  :update (cek versi rilis terbaru secara on-demand)\n  :apikey <key> | :ollama <key> | :groq <key> | :gemini <key> | :model <nama> | :apiurl <url>\n  :logs | :crt on|off|toggle | :ambient on|off|toggle\n  :riwayat | :status | :bantuan | :q";
   }
 
   function applyFilter(){
@@ -573,6 +578,28 @@ var Tui = (function () {
         if(S.filter&&Object.keys(S.filter).length) extra+=" filter="+JSON.stringify(S.filter);
         if(S.seasonFilter) extra+=" season="+S.seasonFilter.season+" "+S.seasonFilter.year;
         log("view="+S.view+" page="+S.page+"/"+S.total+" items="+S.items.length+(S.sel>=0?" sel="+S.sel:"")+extra,"ok");break;
+      case "update":case "upgrade":
+        log("memeriksa rilis terbaru ke GitHub...","dim");
+        if(window.App && window.App.checkForUpdate){
+          window.App.checkForUpdate(true);
+        } else {
+          try{
+            var ures = await window.Tatap.checkUpdate();
+            if(ures && ures.success && ures.data){
+              if(ures.data.has_update){
+                log("pembaruan tersedia: v" + ures.data.latest_version + " — " + ures.data.release_name,"ok");
+                log("kunjungi: " + ures.data.release_url,"ok");
+              } else {
+                log("Tatap v" + ures.data.current_version + " adalah versi terbaru. Tidak ada update.","ok");
+              }
+            } else {
+              log("gagal cek update: " + (ures&&ures.error||"unknown"),"err");
+            }
+          }catch(err){
+            log("koneksi gagal: " + (err&&err.message||err),"err");
+          }
+        }
+        break;
       case "bantuan":case "help":case "?":
         $("help-overlay").classList.remove("hidden");
         $("help-body").textContent=cmdUsage();

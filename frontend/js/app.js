@@ -1110,6 +1110,8 @@ function onKeyPlayer(e){
       // Fullscreen will be closed natively by browser, keep player modal open
       return;
     }
+    if($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")){closeDrawer();return;}
+    if($("update-modal") && !$("update-modal").classList.contains("hidden")){closeUpdateModal();return;}
     if(!$("player-modal").classList.contains("hidden"))closePlayer();
     else if(!$("title-modal").classList.contains("hidden"))closeTitle();
     return;
@@ -1202,10 +1204,115 @@ function switchSource(targetSource){
   return nextSource;
 }
 
+function openDrawer(){
+  var p = $("drawer-panel");
+  if(p) p.classList.remove("hidden");
+  // Update status di footer drawer
+  var hEl = $("health");
+  var dHText = $("drawer-health-text");
+  if(dHText && hEl){
+    dHText.textContent = hEl.textContent || "Online";
+    dHText.className = hEl.className || "dim";
+  }
+}
+function closeDrawer(){
+  var p = $("drawer-panel");
+  if(p) p.classList.add("hidden");
+}
+
+function openUpdateModal(data){
+  var m = $("update-modal");
+  if(!m) return;
+  $("um-title").textContent = data.release_name || ("Tatap v" + data.latest_version);
+  $("um-sub").textContent = "Rilis: " + (data.tag_name || "v" + data.latest_version) + " · Terpasang: v" + data.current_version;
+  $("um-content").textContent = data.body || "Tidak ada catatan rilis.";
+  
+  var act = $("um-actions");
+  act.innerHTML = "";
+  
+  // Deteksi OS user untuk tombol download utama
+  var ua = (navigator.userAgent || "").toLowerCase();
+  var isWin = ua.indexOf("windows") >= 0;
+  var isLinux = ua.indexOf("linux") >= 0 && ua.indexOf("android") === -1;
+  var isAndroid = ua.indexOf("android") >= 0;
+
+  var primaryUrl = "";
+  var primaryLabel = "Unduh Pembaruan";
+  if(isWin && data.assets && data.assets.windows){
+    primaryUrl = data.assets.windows;
+    primaryLabel = "🪟 Unduh Windows Portable (.zip)";
+  } else if(isLinux && data.assets && data.assets.linux){
+    primaryUrl = data.assets.linux;
+    primaryLabel = "🐧 Unduh Linux AppImage";
+  } else if(isAndroid && data.assets && data.assets.android){
+    primaryUrl = data.assets.android;
+    primaryLabel = "📱 Unduh Signed APK Android";
+  } else if(data.assets && data.assets.windows){
+    primaryUrl = data.assets.windows;
+    primaryLabel = "Unduh Rilis Resmi";
+  }
+
+  if(primaryUrl){
+    var a = document.createElement("a");
+    a.className = "update-btn";
+    a.href = primaryUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = primaryLabel;
+    act.appendChild(a);
+  }
+
+  // Tombol buka halaman GitHub release
+  if(data.release_url){
+    var aRel = document.createElement("a");
+    aRel.className = "update-btn secondary";
+    aRel.href = data.release_url;
+    aRel.target = "_blank";
+    aRel.rel = "noopener noreferrer";
+    aRel.textContent = "Buka di GitHub";
+    act.appendChild(aRel);
+  }
+
+  m.classList.remove("hidden");
+}
+
+function closeUpdateModal(){
+  var m = $("update-modal");
+  if(m) m.classList.add("hidden");
+}
+
+function checkForUpdate(manualTrigger){
+  if(manualTrigger) toast("Memeriksa update ke GitHub…", 2000);
+  window.Tatap.checkUpdate().then(function(res){
+    if(res && res.success && res.data){
+      var d = res.data;
+      if(d.has_update){
+        openUpdateModal(d);
+        toast("🚀 Pembaruan Tatap v" + d.latest_version + " tersedia!", 4000);
+      } else {
+        if(manualTrigger){
+          toast("✓ Tatap v" + d.current_version + " adalah versi terbaru!", 3000);
+        }
+      }
+    } else {
+      if(manualTrigger){
+        toast("Gagal memeriksa update: " + (res && res.error || "koneksi bermasalah"), 3000);
+      }
+    }
+  }).catch(function(err){
+    if(manualTrigger){
+      toast("Error cek update: " + (err && err.message || err), 3000);
+    }
+  });
+}
+
 App = {
   openTitle:openTitle, openPlayer:openPlayer, playMPV:playMPV,
   renderContinue:renderContinue, onKeyPlayer:onKeyPlayer,
   switchSource:switchSource,
+  openDrawer:openDrawer, closeDrawer:closeDrawer,
+  openUpdateModal:openUpdateModal, closeUpdateModal:closeUpdateModal,
+  checkForUpdate:checkForUpdate,
   openGenreModal:function(){
     if(typeof window.Tui!=="undefined"&&window.Tui.openGenreModal){
       window.Tui.openGenreModal();
@@ -1309,6 +1416,61 @@ function init(){
   }
   startAmbient();
   renderContinue();
+
+  // Listener Drawer Navigation & Update Modal
+  var btnDrawer = $("btn-drawer");
+  if(btnDrawer) btnDrawer.addEventListener("click", openDrawer);
+  var btnDrawerClose = $("drawer-close");
+  if(btnDrawerClose) btnDrawerClose.addEventListener("click", closeDrawer);
+  var drawerBackdrop = $("drawer-backdrop");
+  if(drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
+
+  // Navigasi menu di dalam Drawer
+  document.querySelectorAll(".drawer-item[data-view]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var v = b.getAttribute("data-view");
+      closeDrawer();
+      if(window.Tui && window.Tui.setView){
+        window.Tui.setView(v);
+      }
+    });
+  });
+
+  var drawerGenre = $("drawer-genre");
+  if(drawerGenre) drawerGenre.addEventListener("click", function(){
+    closeDrawer();
+    if(window.Tui && window.Tui.openGenreModal) window.Tui.openGenreModal();
+  });
+
+  var drawerSrc = $("drawer-switch-source");
+  if(drawerSrc) drawerSrc.addEventListener("click", function(){
+    switchSource();
+    var b = $("drawer-src-badge");
+    if(b) b.textContent = cur.source === "otakudesu" ? "Otakudesu" : "HiAnime";
+  });
+
+  var drawerHelp = $("drawer-help");
+  if(drawerHelp) drawerHelp.addEventListener("click", function(){
+    closeDrawer();
+    var ho = $("help-overlay");
+    if(ho) ho.classList.remove("hidden");
+    var hb = $("help-body");
+    if(hb && window.Tui) hb.textContent = window.Tui.cmdUsage();
+  });
+
+  var drawerUpd = $("drawer-update");
+  if(drawerUpd) drawerUpd.addEventListener("click", function(){
+    closeDrawer();
+    checkForUpdate(true);
+  });
+
+  var umClose = $("um-close");
+  if(umClose) umClose.addEventListener("click", closeUpdateModal);
+  var um = $("update-modal");
+  if(um) um.addEventListener("click", function(e){
+    if(e.target === um) closeUpdateModal();
+  });
+
   window.Tui.boot();
 }
 init();
