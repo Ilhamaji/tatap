@@ -120,18 +120,19 @@ Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debu
 > - [x] Build ulang dan verifikasi ke-3 berkas rilis resmi (`dist/`)
 > - [x] Buat git commit dan tag `v<VERSION>` serta rilis publik GitHub
 >
-### Standar Aset Release Publik (Protokol Ketat "Hanya 3 Aset Resmi")
+### Standar Aset Release Publik (Protokol Ketat "Hanya 4 Aset Resmi")
 > [!CAUTION]
 > **ATURAN MUTLAK / PATENT RULES UNTUK SETIAP AGENT:**
-> Halaman rilis publik GitHub **HANYA BOLEH MENAMPILKAN TEPAT 3 ASET RESMI**. DILARANG KERAS mengunggah atau membiarkan berkas APK mentah (`app-release.apk`, `app-debug.apk`, dsb.) berada di release publik GitHub:
-> 1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed APK via Keystore `release.jks`, Multi-Scheme v2/v3 verified)
-> 2. 🪟 **`tatap-windows-x64-portable.zip`** (Official Windows Portable)
-> 3. 🐧 **`Tatap-x86_64.AppImage`** (Official Linux AppImage)
+> Halaman rilis publik GitHub **HANYA BOLEH MENAMPILKAN TEPAT 4 ASET RESMI**. DILARANG KERAS mengunggah atau membiarkan berkas APK mentah (`app-release.apk`, `app-debug.apk`, dsb.) berada di release publik GitHub:
+> 1. 📱 **`tatap-release-v<VERSION>.apk`** (Official Signed Mobile APK via Keystore `release.jks`, Multi-Scheme v2/v3 verified)
+> 2. 📺 **`tatap-tv-release-v<VERSION>.apk`** (Official Signed Android TV / Google TV APK 10-Foot UI via Keystore `release.jks`)
+> 3. 🪟 **`tatap-windows-x64-portable.zip`** (Official Windows Portable)
+> 4. 🐧 **`Tatap-x86_64.AppImage`** (Official Linux AppImage)
 >
 > Jika CI workflow atau proses otomatis sempat mengunggah `app-release.apk` atau `app-debug.apk`, agent **WAJIB SEGERA** menghapusnya dengan:
 > `gh release delete-asset v<VERSION> app-release.apk -y`
 > `gh release delete-asset v<VERSION> app-debug.apk -y`
-> Jangan pernah menyelesaikan respon ke pengguna sebelum memverifikasi bahwa daftar aset rilis di GitHub HANYA berisi 3 berkas resmi di atas!
+> Jangan pernah menyelesaikan respon ke pengguna sebelum memverifikasi bahwa daftar aset rilis di GitHub HANYA berisi 4 berkas resmi di atas!
 
 **Langkah Penyelarasan Rilis Resmi:**
 1. Update git tag:

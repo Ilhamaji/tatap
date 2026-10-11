@@ -71,20 +71,32 @@ jobs:
         run: |
           mkdir -p dist/android
           TAG_NAME="${GITHUB_REF#refs/tags/}"
-          # Copy or ensure signed release APK naming matches strict agent.md standard: tatap-release-v<VERSION>.apk
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/android/tatap-release-${TAG_NAME}.apk"
+          # Copy signed release APKs according to official naming
+          find android/app/build/outputs/apk -type f -name "tatap-*-release-*.apk" -o -name "tatap-release-*.apk" | while read -r apk; do
+            echo "Copying $apk to dist/android/"
+            cp "$apk" dist/android/
+          done
+          # Ensure fallback naming if needed
+          if [ ! -f "dist/android/tatap-release-${TAG_NAME}.apk" ]; then
+            find android/app/build/outputs/apk -type f -name "*mobile*release*.apk" | head -n 1 | xargs -I {} cp {} "dist/android/tatap-release-${TAG_NAME}.apk"
+          fi
+          if [ ! -f "dist/android/tatap-tv-release-${TAG_NAME}.apk" ]; then
+            find android/app/build/outputs/apk -type f -name "*tv*release*.apk" | head -n 1 | xargs -I {} cp {} "dist/android/tatap-tv-release-${TAG_NAME}.apk"
+          fi
+          echo "Release APKs prepared in dist/android/:"
+          ls -lh dist/android/
 
       - name: Upload Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Tatap-Android-Release
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/**/release/*.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Tatap-Android-Debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/**/debug/*.apk
 
       - name: Attach ONLY Official Signed APK to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
@@ -92,6 +104,7 @@ jobs:
         with:
           files: |
             dist/android/tatap-release-*.apk
+            dist/android/tatap-tv-release-*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
