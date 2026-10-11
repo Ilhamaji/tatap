@@ -42,6 +42,22 @@
 
 ---
 
-## 5. DOKUMENTASI DAN SOP LENGKAP
+## 5. KAIDAH MUTLAK SEMANTIC VERSIONING (SemVer 2.0.0)
+- Setiap pembaruan versi Tatap **WAJIB MENGIKUTI KAIDAH SemVer** (`v<MAJOR>.<MINOR>.<PATCH>`):
+  - **MAJOR (X.0.0):** Breaking changes arsitektur, restrukturisasi skema database SQLite tanpa kompatibilitas otomatis, atau perombakan kontrak runtime fundamental.
+  - **MINOR (x.Y.0):** Penambahan fitur baru yang backward-compatible (misal: Drawer Navigation Panel, In-Player Quality Selector, Update Checker On-Demand, Provider baru, UI revamp). Reset PATCH ke 0.
+  - **PATCH (x.y.Z):** Bug fixes, perbaikan kompatibilitas perangkat/mobile (seperti fullscreen iOS Safari / Android Chrome, notch cutout, immersive mode), dependensi & security patch.
+- **Checklist Sinkronisasi Versi Wajib:**
+  Saat bump version, agent **WAJIB MENYELARASKAN** semua file ini:
+  - `backend/main.py`: `CURRENT_VERSION = "<VERSION>"` & User-Agent header
+  - `android/app/src/main/python/backend/main.py`: `CURRENT_VERSION = "<VERSION>"` & User-Agent header
+  - `android/app/build.gradle`: `versionName "<VERSION>"` dan increment `versionCode`
+  - Rebuild dan verifikasi 3 aset resmi di `dist/`
+  - Tag git `v<VERSION>` dan rilis GitHub
+
+---
+
+## 6. DOKUMENTASI DAN SOP LENGKAP
 Untuk panduan detail mengenai arsitektur, player controls, subtitle styling, dan build pipeline, baca dokumentasi lengkap di:
 👉 **[agent.md](file:///home/b-ict/tatap/agent.md)**
+👉 **[rules.md](file:///home/b-ict/tatap/rules.md)**

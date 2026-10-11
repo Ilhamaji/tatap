@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-CURRENT_VERSION = "2.2.2"
+CURRENT_VERSION = "2.2.3"
 app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
 
 def ok(data):
@@ -42,7 +42,7 @@ async def check_update():
     try:
         url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
         headers = {
-            "User-Agent": "Tatap-App/2.2.2 (https://github.com/bagusazizulamri/tatap)",
+            "User-Agent": "Tatap-App/2.2.3 (https://github.com/bagusazizulamri/tatap)",
             "Accept": "application/vnd.github.v3+json"
         }
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:

@@ -99,13 +99,27 @@ Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debu
 
 ## 5. Protokol Git & GitHub Release
 
-### Konvensi Commit
-Gunakan format **Conventional Commits**:
-- `feat(...)`: Fitur baru (misal: gesture, layout responsif, subtitle provider).
-- `fix(...)`: Perbaikan bug (sertakan referensi isu jika ada, misal: `fix(player): retain subtitles in fullscreen mode (closes #1)`).
-- `docs(...)`: Pembaruan dokumentasi (README, agent.md).
-- `build(...)` / `chore(...)`: Perubahan build system, CI workflow, atau packaging.
-
+### Kaidah Mutlak Semantic Versioning (SemVer 2.0.0)
+> [!IMPORTANT]
+> **STANDAR ATURAN VERSIONING TATAP:**
+> Setiap kenaikan versi aplikasi **WAJIB MENGIKUTI KAIDAH SEMANTIC VERSIONING RESMI (SemVer 2.0.0)** dengan format `v<MAJOR>.<MINOR>.<PATCH>`:
+> 
+> 1. **MAJOR (`X.0.0`):**
+>    - Dinaikkan ketika terjadi perombakan arsitektur besar yang tidak kompatibel ke belakang (*breaking changes*), restrukturisasi skema database SQLite tanpa migrasi otomatis, atau perubahan mendasar pada kontrak runtime eksternal.
+> 2. **MINOR (`x.Y.0`):**
+>    - Dinaikkan ketika menambahkan fungsionalitas atau antarmuka baru yang backward-compatible (misalnya: penambahan Drawer Navigation Panel, In-Player Resolution Selector, On-Demand Update Checker, provider scraping baru, atau perombakan tata letak UI utama).
+>    - Nilai PATCH wajib direset kembali ke `0`.
+> 3. **PATCH (`x.y.Z`):**
+>    - Dinaikkan untuk perbaikan bug (*bug fixes*), perbaikan kompatibilitas platform/perangkat spesifik (seperti perbaikan fullscreen iOS Safari / Android Chrome, display cutout/notch edge-to-edge, immersive mode), optimasi performa, dan pembaruan dependensi/security hardening tanpa penambahan modul arsitektur baru.
+> 
+> **Checklist Sinkronisasi Versi Wajib bagi Agent:**
+> Saat melakukan update versi (apakah Major, Minor, atau Patch), agent **WAJIB SECARA ATOMIK MENYELARASKAN** seluruh berkas berikut:
+> - [x] `backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
+> - [x] `android/app/src/main/python/backend/main.py` -> `CURRENT_VERSION = "<VERSION>"` & User-Agent header
+> - [x] `android/app/build.gradle` -> `versionName "<VERSION>"` dan increment `versionCode`
+> - [x] Build ulang dan verifikasi ke-3 berkas rilis resmi (`dist/`)
+> - [x] Buat git commit dan tag `v<VERSION>` serta rilis publik GitHub
+>
 ### Standar Aset Release Publik (Protokol Ketat "Hanya 3 Aset Resmi")
 > [!CAUTION]
 > **ATURAN MUTLAK / PATENT RULES UNTUK SETIAP AGENT:**
