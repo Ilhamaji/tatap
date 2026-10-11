@@ -106,8 +106,9 @@ public class PlayerActivity extends Activity {
     private String idNativeSubUrl = "";
     private String activeSubUrl = "";
     private String activeSubLang = "id"; // Default Indonesian
-    private String activeEngine = "aigtx"; // "aigtx" | "gtx" | "ai" | "raw"
+    private String activeEngine = "gtx"; // "gtx" | "aigtx" | "ai" | "raw"
     private boolean subEnabled = true;
+    private String activeStreamMode = "sub"; // "sub" | "dub"
     private boolean hasAiKey = false;
     private String configuredAiModel = "gemini-3.1-flash-lite";
 
@@ -202,6 +203,9 @@ public class PlayerActivity extends Activity {
             btnAspect = findViewById(R.id.btn_aspect);
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
             currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
+            activeEngine = sp.getString("pref_sub_engine", "gtx");
+            activeSubLang = sp.getString("pref_sub_lang", "id");
+            subEnabled = sp.getBoolean("pref_sub_enabled", true);
             updateAspectButtonLabel();
             if (playerView != null) {
                 playerView.setResizeMode(currentResizeMode);
@@ -547,6 +551,7 @@ public class PlayerActivity extends Activity {
                 JSONObject res = new JSONObject(sb.toString());
                 if (res.optBoolean("success")) {
                     JSONObject data = res.getJSONObject("data");
+                    activeStreamMode = data.optString("mode", "sub");
                     String streamUrl = "";
                     if (data.has("picked")) {
                         streamUrl = data.getJSONObject("picked").optString("url");
@@ -729,8 +734,15 @@ public class PlayerActivity extends Activity {
             String subModeParam = activeEngine.equals("raw") ? "" : activeEngine;
             String srcParam = activeEngine.equals("raw") ? activeSubLang : "en";
 
+            String effectiveRef = streamReferer != null ? streamReferer : "";
+            if (effectiveRef.isEmpty() && activeSubUrl != null) {
+                String subLower = activeSubUrl.toLowerCase();
+                if (subLower.contains("broforgotsave") || subLower.contains("stellarfrontier") || subLower.contains("megaplay") || subLower.contains("megacloud")) {
+                    effectiveRef = "https://megaplay.buzz/";
+                }
+            }
             String encodedSubUrl = URLEncoder.encode(activeSubUrl, "UTF-8");
-            String encodedRef = URLEncoder.encode(streamReferer != null ? streamReferer : "", "UTF-8");
+            String encodedRef = URLEncoder.encode(effectiveRef, "UTF-8");
 
             // Jika memilih terjemahan (AIGTX / AI / GTX) dan cues belum dimuat:
             // Unduh dulu subtitle sumber (English/Native) secara instan (0.5s) agar penonton tidak mengalami black screen / tanpa sub.
@@ -787,13 +799,19 @@ public class PlayerActivity extends Activity {
 
                 List<SubtitleCue> cues = parseVtt(sb.toString());
                 if (!cues.isEmpty()) {
-                    currentCues = cues;
-                    runOnUiThread(() -> {
-                        if (!isImmediateFallback) {
-                            updateSubStatusText(true);
+                    if (isImmediateFallback) {
+                        // Jangan timpa cues terjemahan jika cues utama sudah terisi
+                        if (currentCues.isEmpty()) {
+                            currentCues = cues;
+                            runOnUiThread(() -> subtitleSyncRunnable.run());
                         }
-                        subtitleSyncRunnable.run();
-                    });
+                    } else {
+                        currentCues = cues;
+                        runOnUiThread(() -> {
+                            updateSubStatusText(true);
+                            subtitleSyncRunnable.run();
+                        });
+                    }
                 }
             } catch (Exception e) {
                 if (!isImmediateFallback && loadId == currentSubLoadId) {
@@ -819,12 +837,16 @@ public class PlayerActivity extends Activity {
 
     private void updateSubStatusText(boolean isLoaded) {
         if (tvSubStatus == null) return;
-        if (!subEnabled) {
-            tvSubStatus.setText("Subtitle: Nonaktif");
+        if (!subEnabled || activeSubUrl == null || activeSubUrl.isEmpty()) {
+            if ("dub".equalsIgnoreCase(activeStreamMode) || (activeSubUrl == null || activeSubUrl.isEmpty())) {
+                tvSubStatus.setText("Audio: English Dub (Tanpa Subtitle)");
+            } else {
+                tvSubStatus.setText("Subtitle: Nonaktif");
+            }
             return;
         }
-        String engineLabel = "AIGTX (Cepat)";
-        if ("gtx".equals(activeEngine)) engineLabel = "Google GTX";
+        String engineLabel = "Google GTX (Cepat)";
+        if ("aigtx".equals(activeEngine)) engineLabel = "AIGTX (Smart Lexicon)";
         else if ("ai".equals(activeEngine)) engineLabel = "AI Fansub (" + configuredAiModel + ")";
         else if ("raw".equals(activeEngine)) {
             if ("en".equals(activeSubLang)) engineLabel = "Source English";
@@ -1017,84 +1039,90 @@ public class PlayerActivity extends Activity {
         List<String> options = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
 
-        // 1. AIGTX (Default & Direkomendasikan)
-        boolean isAigtxSelected = subEnabled && "id".equals(activeSubLang) && "aigtx".equals(activeEngine);
-        options.add("🇮🇩 Bahasa Indonesia (AIGTX - Instan & Cerdas)" + (isAigtxSelected ? " ✓" : ""));
-        actions.add(() -> {
-            subEnabled = true;
-            activeSubLang = "id";
-            activeEngine = "aigtx";
-            activeSubUrl = enSourceSubUrl;
-        });
-
-        // 2. AI Fansub
-        boolean isAiSelected = subEnabled && "id".equals(activeSubLang) && "ai".equals(activeEngine);
-        String aiOptionText = "🇮🇩 Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
-                + (hasAiKey ? " [SIAP]" : " [Butuh Key]")
-                + (isAiSelected ? " ✓" : "");
-        options.add(aiOptionText);
-        actions.add(() -> {
-            subEnabled = true;
-            activeSubLang = "id";
-            activeEngine = "ai";
-            activeSubUrl = enSourceSubUrl;
-            if (!hasAiKey) {
-                Toast.makeText(this, "Perhatian: API Key AI belum disetel (:apikey <key> di home). Menggunakan AIGTX sebagai fallback otomatis.", Toast.LENGTH_LONG).show();
-            }
-        });
-
-        // 3. Google GTX Murni
-        boolean isGtxSelected = subEnabled && "id".equals(activeSubLang) && "gtx".equals(activeEngine);
-        options.add("🇮🇩 Bahasa Indonesia (Google GTX Murni)" + (isGtxSelected ? " ✓" : ""));
-        actions.add(() -> {
-            subEnabled = true;
-            activeSubLang = "id";
-            activeEngine = "gtx";
-            activeSubUrl = enSourceSubUrl;
-        });
-
-        // 4. Native Indonesian (jika tersedia di track asli)
-        if (!idNativeSubUrl.isEmpty()) {
-            boolean isIdNativeSelected = subEnabled && "id".equals(activeSubLang) && "raw".equals(activeEngine) && idNativeSubUrl.equals(activeSubUrl);
-            options.add("🇮🇩 Bahasa Indonesia (Asli / Bawaan)" + (isIdNativeSelected ? " ✓" : ""));
+        if (enSourceSubUrl.isEmpty() && subtitleTracks.isEmpty()) {
+            String msg = "dub".equalsIgnoreCase(activeStreamMode) ? "Audio: English Dub (Tidak ada file subtitle)" : "Tidak ada file subtitle untuk video ini";
+            options.add("⚠️ " + msg);
+            actions.add(() -> {});
+        } else {
+            // 1. Google GTX Murni (Prioritas Pertama / Super Cepat)
+            boolean isGtxSelected = subEnabled && "id".equals(activeSubLang) && "gtx".equals(activeEngine);
+            options.add("🇮🇩 Bahasa Indonesia (Google GTX Murni - Cepat)" + (isGtxSelected ? " ✓" : ""));
             actions.add(() -> {
                 subEnabled = true;
                 activeSubLang = "id";
-                activeEngine = "raw";
-                activeSubUrl = idNativeSubUrl;
-            });
-        }
-
-        // 5. English (Original)
-        if (!enSourceSubUrl.isEmpty()) {
-            boolean isEnSelected = subEnabled && "en".equals(activeSubLang) && "raw".equals(activeEngine);
-            options.add("🇬🇧 English (Original / Asli)" + (isEnSelected ? " ✓" : ""));
-            actions.add(() -> {
-                subEnabled = true;
-                activeSubLang = "en";
-                activeEngine = "raw";
+                activeEngine = "gtx";
                 activeSubUrl = enSourceSubUrl;
             });
-        }
 
-        // 6. Daftar track bahasa lain yang tersedia (misal Spanish, French, Japanese, dsb.)
-        for (int i = 0; i < subtitleTracks.size(); i++) {
-            JSONObject s = subtitleTracks.get(i);
-            String url = s.optString("url", "");
-            String lbl = s.optString("label", "Track " + (i + 1));
-            String lang = s.optString("lang", "").toLowerCase();
-            // Lewati track English & ID native karena sudah disediakan di menu utama di atas
-            if (url.equals(enSourceSubUrl) || url.equals(idNativeSubUrl)) {
-                continue;
-            }
-            boolean isThisSelected = subEnabled && "raw".equals(activeEngine) && url.equals(activeSubUrl);
-            options.add("🌐 " + lbl + (isThisSelected ? " ✓" : ""));
+            // 2. AIGTX (Prioritas Kedua / GTX + Kamus Anime)
+            boolean isAigtxSelected = subEnabled && "id".equals(activeSubLang) && "aigtx".equals(activeEngine);
+            options.add("🇮🇩 Bahasa Indonesia (AIGTX - Smart Lexicon)" + (isAigtxSelected ? " ✓" : ""));
             actions.add(() -> {
                 subEnabled = true;
-                activeSubLang = lang.isEmpty() ? "en" : lang;
-                activeEngine = "raw";
-                activeSubUrl = url;
+                activeSubLang = "id";
+                activeEngine = "aigtx";
+                activeSubUrl = enSourceSubUrl;
             });
+
+            // 3. AI Fansub (Prioritas Ketiga / LLM Translate)
+            boolean isAiSelected = subEnabled && "id".equals(activeSubLang) && "ai".equals(activeEngine);
+            String aiOptionText = "🇮🇩 Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
+                    + (hasAiKey ? " [SIAP]" : " [Butuh Key]")
+                    + (isAiSelected ? " ✓" : "");
+            options.add(aiOptionText);
+            actions.add(() -> {
+                subEnabled = true;
+                activeSubLang = "id";
+                activeEngine = "ai";
+                activeSubUrl = enSourceSubUrl;
+                if (!hasAiKey) {
+                    Toast.makeText(this, "Perhatian: API Key AI belum disetel (:apikey <key> di home). Menggunakan GTX sebagai fallback otomatis.", Toast.LENGTH_LONG).show();
+                }
+            });
+
+            // 4. Native Indonesian (jika tersedia di track asli)
+            if (!idNativeSubUrl.isEmpty()) {
+                boolean isIdNativeSelected = subEnabled && "id".equals(activeSubLang) && "raw".equals(activeEngine) && idNativeSubUrl.equals(activeSubUrl);
+                options.add("🇮🇩 Bahasa Indonesia (Asli / Bawaan)" + (isIdNativeSelected ? " ✓" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "id";
+                    activeEngine = "raw";
+                    activeSubUrl = idNativeSubUrl;
+                });
+            }
+
+            // 5. English (Original)
+            if (!enSourceSubUrl.isEmpty()) {
+                boolean isEnSelected = subEnabled && "en".equals(activeSubLang) && "raw".equals(activeEngine);
+                options.add("🇬🇧 English (Original / Asli)" + (isEnSelected ? " ✓" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "en";
+                    activeEngine = "raw";
+                    activeSubUrl = enSourceSubUrl;
+                });
+            }
+
+            // 6. Daftar track bahasa lain yang tersedia (misal Spanish, French, Japanese, dsb.)
+            for (int i = 0; i < subtitleTracks.size(); i++) {
+                JSONObject s = subtitleTracks.get(i);
+                String url = s.optString("url", "");
+                String lbl = s.optString("label", "Track " + (i + 1));
+                String lang = s.optString("lang", "").toLowerCase();
+                // Lewati track English & ID native karena sudah disediakan di menu utama di atas
+                if (url.equals(enSourceSubUrl) || url.equals(idNativeSubUrl)) {
+                    continue;
+                }
+                boolean isThisSelected = subEnabled && "raw".equals(activeEngine) && url.equals(activeSubUrl);
+                options.add("🌐 " + lbl + (isThisSelected ? " ✓" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = lang.isEmpty() ? "en" : lang;
+                    activeEngine = "raw";
+                    activeSubUrl = url;
+                });
+            }
         }
 
         // 7. Pengaturan Tampilan & Gaya Subtitle
@@ -1110,6 +1138,11 @@ public class PlayerActivity extends Activity {
         builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
             if (which >= 0 && which < actions.size()) {
                 actions.get(which).run();
+                getSharedPreferences("tatap_player_prefs", MODE_PRIVATE).edit()
+                        .putString("pref_sub_engine", activeEngine)
+                        .putString("pref_sub_lang", activeSubLang)
+                        .putBoolean("pref_sub_enabled", subEnabled)
+                        .apply();
                 applySubtitleSelection();
                 Toast.makeText(this, "Subtitle diperbarui: " + (subEnabled ? activeSubLang.toUpperCase() + " [" + activeEngine + "]" : "OFF"), Toast.LENGTH_SHORT).show();
             }

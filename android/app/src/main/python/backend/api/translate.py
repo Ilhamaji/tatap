@@ -1217,49 +1217,47 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
     t_start = _time.time()
     log_translate(f"Mulai translate Google GTX (HTML-Preserved): {len(cues)} cues | {len(batches)} batches | mode={mode}")
     
+    from concurrent.futures import ThreadPoolExecutor
+
     def _fetch_batch_sync(batch_lines):
         html_chunks = []
         for i, line in enumerate(batch_lines):
-            # Escape XML/HTML entities
             safe_text = _html.escape(line) if line else ""
             html_chunks.append(f'<p id="{i}">{safe_text}</p>')
         joined = "".join(html_chunks)
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={src}&tl={tgt}&dt=t&q={_up.quote(joined)}"
         req = _ur.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             "Accept": "*/*"
         })
-        with _ur.urlopen(req, timeout=timeout) as resp:
-            data = _json.loads(resp.read().decode("utf-8"))
-            raw_out = "".join([item[0] for item in data[0] if item and item[0]])
-            # Ekstrak konten per ID secara deterministik
-            matches = dict(_re.findall(r'<p\s+id=[\"\']?(\d+)[\"\']?>(.*?)</p>', raw_out, _re.DOTALL))
-            res = []
-            for i in range(len(batch_lines)):
-                if str(i) in matches:
-                    unescaped = _html.unescape(matches[str(i)]).strip()
-                    res.append(unescaped)
-                else:
-                    # Fallback ke teks awal jika ID hilang
-                    res.append(batch_lines[i])
-            return res
+        for attempt in range(2):
+            try:
+                with _ur.urlopen(req, timeout=timeout) as resp:
+                    data = _json.loads(resp.read().decode("utf-8"))
+                    raw_out = "".join([item[0] for item in data[0] if item and item[0]])
+                    matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
+                    res = []
+                    for i in range(len(batch_lines)):
+                        if str(i) in matches:
+                            unescaped = _html.unescape(matches[str(i)]).strip()
+                            res.append(unescaped)
+                        else:
+                            res.append(batch_lines[i])
+                    return res
+            except Exception as e:
+                if attempt == 1:
+                    log_translate(f"GTX batch fallback ke teks asli: {e}")
+                    return batch_lines
+                _time.sleep(0.4)
+        return batch_lines
 
     loop = _asyncio.get_running_loop()
-    for idx, batch in enumerate(batches):
-        if idx > 0:
-            await _asyncio.sleep(0.3)
-        lines = [cue["text"].replace("\n", " ").strip() for cue in batch]
-        parts = None
-        for attempt in range(3):
-            try:
-                parts = await loop.run_in_executor(None, lambda l=lines: _fetch_batch_sync(l))
-                break
-            except Exception as e:
-                if attempt < 2 and any(k in str(e).lower() for k in ("temporary failure", "name resolution", "timed out", "timeout")):
-                    await _asyncio.sleep(1.0 * (attempt + 1))
-                    continue
-                log_translate(f"GTX Batch {idx+1}/{len(batches)} error: {e}")
-                raise e
+    batch_lines_list = [[cue["text"].replace("\n", " ").strip() for cue in b] for b in batches]
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        tasks = [loop.run_in_executor(executor, lambda b=bl: _fetch_batch_sync(b)) for bl in batch_lines_list]
+        batch_results = await _asyncio.gather(*tasks)
+
+    for parts in batch_results:
         all_translated.extend(parts)
 
     dur = _time.time() - t_start

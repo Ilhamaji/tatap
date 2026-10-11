@@ -6,132 +6,47 @@
     android:orientation="vertical"
     android:background="#090A0F">
 
-    <!-- Top App Bar / Minimalist Header -->
+    <!-- Top App Bar / Redesigned Header with Search & Folded Menu -->
     <LinearLayout
+        android:id="@+id/layout_header_root"
         android:layout_width="match_parent"
         android:layout_height="56dp"
+        android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
+        android:paddingHorizontal="12dp"
         android:background="#090A0F">
 
+        <!-- App Brand Logo / Title -->
         <TextView
+            android:id="@+id/tv_app_logo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Tatap"
             android:textColor="#FFFFFF"
-            android:textSize="20sp"
+            android:textSize="18sp"
             android:textStyle="bold"
-            android:letterSpacing="0.01" />
+            android:letterSpacing="0.01"
+            android:layout_marginEnd="10dp" />
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <!-- Header Quick Action: AI Settings Button -->
-        <TextView
-            android:id="@+id/btn_header_ai"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_header_button"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:text="✨ AI"
-            android:textColor="#38BDF8"
-            android:textSize="11.5sp"
-            android:textStyle="bold" />
-
-        <!-- Header Quick Action: Genre Selector Button -->
-        <TextView
-            android:id="@+id/btn_header_genre"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_header_button"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:text="🏷 Genre"
-            android:textColor="#94A3B8"
-            android:textSize="11.5sp" />
-
-        <!-- Header Quick Action: Watch History Button -->
-        <TextView
-            android:id="@+id/btn_header_history"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginEnd="6dp"
-            android:background="@drawable/bg_header_button"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:paddingHorizontal="10dp"
-            android:text="🕒 Riwayat"
-            android:textColor="#94A3B8"
-            android:textSize="11.5sp" />
-
-        <!-- Header Quick Action: Terminal Help Button -->
-        <TextView
-            android:id="@+id/btn_header_help"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_header_button"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:paddingHorizontal="9dp"
-            android:text=":cmd"
-            android:textColor="#64748B"
-            android:textSize="11sp" />
-
-        <!-- Status Badge -->
-        <TextView
-            android:id="@+id/tv_status_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:background="@drawable/bg_status_pill"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            android:gravity="center"
-            android:paddingHorizontal="9dp"
-            android:text="● Online"
-            android:textColor="#10B981"
-            android:textSize="10.5sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- Search Input Bar -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingHorizontal="14dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="6dp">
-
+        <!-- Search Box (Expands when folded menu is closed, shrinks when opened) -->
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
+            android:id="@+id/layout_search_box"
+            android:layout_width="0dp"
+            android:layout_height="38dp"
+            android:layout_weight="1"
+            android:minWidth="96dp"
             android:background="@drawable/bg_search_box"
             android:gravity="center_vertical"
-            android:paddingHorizontal="14dp">
+            android:paddingHorizontal="10dp"
+            android:layout_marginEnd="6dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🔍"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textColor="#64748B"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginEnd="6dp" />
 
             <EditText
                 android:id="@+id/et_search"
@@ -142,7 +57,7 @@
                 android:hint="Cari judul anime atau ketik :command..."
                 android:textColorHint="#4B5563"
                 android:textColor="#F1F5F9"
-                android:textSize="13sp"
+                android:textSize="12.5sp"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:singleLine="true" />
@@ -150,12 +65,12 @@
             <!-- Clear Search Button -->
             <TextView
                 android:id="@+id/btn_clear_search"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:gravity="center"
                 android:text="✕"
                 android:textColor="#64748B"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:visibility="gone"
                 android:clickable="true"
                 android:focusable="true"
@@ -163,11 +78,124 @@
 
             <ProgressBar
                 android:id="@+id/pb_loading"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
                 android:visibility="gone"
                 android:indeterminateTint="#38BDF8" />
         </LinearLayout>
+
+        <!-- Folded Menu Container (Scrollable strip when open, hidden by default) -->
+        <HorizontalScrollView
+            android:id="@+id/layout_folded_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:scrollbars="none"
+            android:overScrollMode="never"
+            android:layout_marginEnd="6dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="38dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <!-- Header Quick Action: AI Settings Button -->
+                <TextView
+                    android:id="@+id/btn_header_ai"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_header_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:paddingHorizontal="9dp"
+                    android:text="✨ AI"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <!-- Header Quick Action: Genre Selector Button -->
+                <TextView
+                    android:id="@+id/btn_header_genre"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_header_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:paddingHorizontal="9dp"
+                    android:text="🏷 Genre"
+                    android:textColor="#94A3B8"
+                    android:textSize="11sp" />
+
+                <!-- Header Quick Action: Watch History Button -->
+                <TextView
+                    android:id="@+id/btn_header_history"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_header_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:paddingHorizontal="9dp"
+                    android:text="🕒 Riwayat"
+                    android:textColor="#94A3B8"
+                    android:textSize="11sp" />
+
+                <!-- Header Quick Action: Terminal Help Button -->
+                <TextView
+                    android:id="@+id/btn_header_help"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="5dp"
+                    android:background="@drawable/bg_header_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:text=":cmd"
+                    android:textColor="#64748B"
+                    android:textSize="10.5sp" />
+
+                <!-- Status Badge -->
+                <TextView
+                    android:id="@+id/tv_status_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:background="@drawable/bg_status_pill"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:paddingHorizontal="8dp"
+                    android:text="● Online"
+                    android:textColor="#10B981"
+                    android:textSize="10sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Toggle Button for Folded Menu (☰ when closed, ✕ when open) -->
+        <TextView
+            android:id="@+id/btn_toggle_menu"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_menu_toggle"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="☰"
+            android:textColor="#CBD5E1"
+            android:textSize="18sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
     <!-- Command Execution Feedback Banner -->

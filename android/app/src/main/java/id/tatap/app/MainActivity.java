@@ -13,6 +13,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -23,6 +25,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.HorizontalScrollView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,6 +56,13 @@ public class MainActivity extends Activity {
     private RecyclerView rvGrid;
     private AnimeAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
+
+    // Header & Dynamic Folded Menu
+    private ViewGroup layoutHeaderRoot;
+    private View layoutSearchBox;
+    private HorizontalScrollView layoutFoldedMenu;
+    private TextView btnToggleMenu;
+    private boolean isFoldedMenuOpen = false;
 
     // Header Quick Actions
     private TextView btnHeaderAi, btnHeaderGenre, btnHeaderHelp, btnHeaderHistory;
@@ -93,6 +103,11 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        layoutHeaderRoot = findViewById(R.id.layout_header_root);
+        layoutSearchBox = findViewById(R.id.layout_search_box);
+        layoutFoldedMenu = findViewById(R.id.layout_folded_menu);
+        btnToggleMenu = findViewById(R.id.btn_toggle_menu);
 
         etSearch = findViewById(R.id.et_search);
         btnClearSearch = findViewById(R.id.btn_clear_search);
@@ -145,10 +160,23 @@ public class MainActivity extends Activity {
     }
 
     private void setupTabsAndListeners() {
+        if (btnToggleMenu != null) {
+            btnToggleMenu.setOnClickListener(v -> toggleFoldedMenu());
+        }
+
+        etSearch.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus && isFoldedMenuOpen) {
+                setFoldedMenuOpen(false);
+            }
+        });
+
         etSearch.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                     (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
                 hideKeyboard();
+                if (isFoldedMenuOpen) {
+                    setFoldedMenuOpen(false);
+                }
                 String raw = etSearch.getText().toString().trim();
                 if (!raw.isEmpty()) {
                     if (raw.startsWith(":") || raw.startsWith("/")) {
@@ -203,19 +231,31 @@ public class MainActivity extends Activity {
         }
 
         if (btnHeaderAi != null) {
-            btnHeaderAi.setOnClickListener(v -> showAiSettingsDialog());
+            btnHeaderAi.setOnClickListener(v -> {
+                setFoldedMenuOpen(false);
+                showAiSettingsDialog();
+            });
         }
 
         if (btnHeaderGenre != null) {
-            btnHeaderGenre.setOnClickListener(v -> showGenreSelectorDialog());
+            btnHeaderGenre.setOnClickListener(v -> {
+                setFoldedMenuOpen(false);
+                showGenreSelectorDialog();
+            });
         }
 
         if (btnHeaderHelp != null) {
-            btnHeaderHelp.setOnClickListener(v -> showCommandHelpDialog());
+            btnHeaderHelp.setOnClickListener(v -> {
+                setFoldedMenuOpen(false);
+                showCommandHelpDialog();
+            });
         }
 
         if (btnHeaderHistory != null) {
-            btnHeaderHistory.setOnClickListener(v -> switchView("riwayat"));
+            btnHeaderHistory.setOnClickListener(v -> {
+                setFoldedMenuOpen(false);
+                switchView("riwayat");
+            });
         }
 
         if (btnClearHistoryAll != null) {
@@ -240,6 +280,9 @@ public class MainActivity extends Activity {
                 if (btnClearSearch != null) {
                     btnClearSearch.setVisibility(s != null && s.length() > 0 ? View.VISIBLE : View.GONE);
                 }
+                if (s != null && s.length() > 0 && isFoldedMenuOpen) {
+                    setFoldedMenuOpen(false);
+                }
             }
 
             @Override
@@ -257,8 +300,42 @@ public class MainActivity extends Activity {
         }
 
         if (tvStatusBadge != null) {
-            tvStatusBadge.setOnClickListener(v -> checkBackendStatus());
+            tvStatusBadge.setOnClickListener(v -> {
+                setFoldedMenuOpen(false);
+                checkBackendStatus();
+            });
         }
+    }
+
+    private void toggleFoldedMenu() {
+        setFoldedMenuOpen(!isFoldedMenuOpen);
+    }
+
+    private void setFoldedMenuOpen(boolean open) {
+        if (isFoldedMenuOpen == open) return;
+        isFoldedMenuOpen = open;
+        if (layoutHeaderRoot != null) {
+            TransitionManager.beginDelayedTransition(layoutHeaderRoot, new AutoTransition().setDuration(200));
+        }
+        if (layoutFoldedMenu != null) {
+            layoutFoldedMenu.setVisibility(isFoldedMenuOpen ? View.VISIBLE : View.GONE);
+        }
+        if (btnToggleMenu != null) {
+            btnToggleMenu.setText(isFoldedMenuOpen ? "✕" : "☰");
+            btnToggleMenu.setTextColor(isFoldedMenuOpen ? 0xFF38BDF8 : 0xFFCBD5E1);
+        }
+        if (etSearch != null) {
+            etSearch.setHint(isFoldedMenuOpen ? "Cari judul..." : "Cari judul anime atau ketik :command...");
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isFoldedMenuOpen) {
+            setFoldedMenuOpen(false);
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void showCommandOutput(String message, boolean isError) {

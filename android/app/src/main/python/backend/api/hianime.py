@@ -316,11 +316,19 @@ def deobfuscate_blob(b64: str) -> str:
 def _clean(s: str) -> str:
     return htmlmod.unescape(s or "").strip()
 
+_SEARCH_ALIASES = {
+    "ghost at school": "ghost stories",
+    "ghost in school": "ghost stories",
+    "ghosts at school": "ghost stories",
+    "gakkou no kaidan": "ghost stories",
+}
+
 def hianime_search(query: str, limit: int = 15):
     q_str = (query or "").strip()
     if not q_str or q_str.lower() == "hentai" or "hentai" in q_str.lower().split():
         return []
-    q = re.sub(r"\s+", "+", q_str)
+    canonical = _SEARCH_ALIASES.get(q_str.lower())
+    q = re.sub(r"\s+", "+", canonical or q_str)
     page = _fetch(SEARCH_API.format(q))
     if "<title>Just a moment" in page:
         raise RuntimeError("Blocked by cloudflare.")
@@ -779,6 +787,12 @@ def _validate_sub_url(sub_url: str, referer: str):
                 r = c.get(sub_url)
                 if r.status_code == 200 and r.content and len(r.content) >= 10:
                     return sub_url
+                # Fallback khusus host Megaplay / CDN jika referer asal ditolak
+                if any(k in host for k in ("broforgotsave", "stellarfrontier", "megaplay")):
+                    headers["Referer"] = "https://megaplay.buzz/"
+                    r2 = c.get(sub_url, headers=headers)
+                    if r2.status_code == 200 and r2.content and len(r2.content) >= 10:
+                        return sub_url
                 return None
     except Exception:
         return None
@@ -835,7 +849,7 @@ def _try_embed_legacy(embed: str):
             "subtitles": subtitles}
 
 def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
-    mode = "dub" if str(mode).lower() == "dub" else "sub"
+    req_mode = "dub" if str(mode).lower() == "dub" else "sub"
     ep_id = None
     for e in episode_maps:
         if int(e["ep"]) == int(ep_no):
@@ -844,9 +858,18 @@ def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
     if not ep_id:
         raise RuntimeError(f"Episode {ep_no} not released!")
     servers_html = _fetch(SERVERS_API.format(ep_id))
-    servers = _order_servers(_parse_servers(servers_html, mode))
+    servers = _order_servers(_parse_servers(servers_html, req_mode))
+    actual_mode = req_mode
     if not servers:
-        raise RuntimeError(f"No {mode} server found for ep {ep_no}")
+        # Fallback ke mode alternatif jika mode yang diminta tidak memiliki server sama sekali (misal anime dub-only atau sub-only)
+        alt_mode = "dub" if req_mode == "sub" else "sub"
+        alt_servers = _order_servers(_parse_servers(servers_html, alt_mode))
+        if alt_servers:
+            servers = alt_servers
+            actual_mode = alt_mode
+
+    if not servers:
+        raise RuntimeError(f"No {req_mode} server found for ep {ep_no}")
 
     # Smart-fallback tier: megaplay dulu (HD-1, Vidstream-2), kalau gagal ke VidToglap
     # (vidtube.site), terakhir ke ZokoAnime.
@@ -884,6 +907,7 @@ def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
                 got = _try_megaplay(srv["embed"])
             if got:
                 got["server"] = srv["name"]
+                got["mode"] = actual_mode
                 return got
             last_err = f"{srv['name']} gave no m3u8"
         except Exception as e:

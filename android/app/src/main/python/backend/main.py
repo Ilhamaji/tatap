@@ -19,7 +19,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
 
-CURRENT_VERSION = "2.2.4"
+CURRENT_VERSION = "2.3.0"
 app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
 
 def ok(data):
@@ -42,7 +42,7 @@ async def check_update():
     try:
         url = "https://api.github.com/repos/bagusazizulamri/tatap/releases/latest"
         headers = {
-            "User-Agent": "Tatap-App/2.2.4 (https://github.com/bagusazizulamri/tatap)",
+            "User-Agent": "Tatap-App/2.3.0 (https://github.com/bagusazizulamri/tatap)",
             "Accept": "application/vnd.github.v3+json"
         }
         async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
@@ -550,6 +550,10 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         # Cache key mencakup source agar stream tidak tertukar
         cache_slug = f"{active_source}:{slug}" if active_source != "hianime" else slug
         hit = await get_episode_cache(cache_slug, ep, mode)
+        if not hit and mode == "sub":
+            hit = await get_episode_cache(cache_slug, ep, "dub")
+        elif not hit and mode == "dub":
+            hit = await get_episode_cache(cache_slug, ep, "sub")
         async def _check_and_prewarm(ep_data):
             try:
                 sub_lang = (await get_setting("sub_lang", "Indonesian")).strip().lower()
@@ -634,12 +638,19 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         got["picked"] = hi.select_quality(got["variants"], q)
         got["cached"] = False
         got["subtitles"] = got.get("subtitles") or []
+        actual_mode = got.get("mode") or mode
+        got["mode"] = actual_mode
 
         # Simpan cache episode
         await set_episode_cache(cache_slug, ep, mode, got["master"], got["variants"],
                                 got.get("sub"), got.get("sub_lang"),
                                 got.get("referer"), got.get("server"),
                                 subtitles=got["subtitles"])
+        if actual_mode != mode:
+            await set_episode_cache(cache_slug, ep, actual_mode, got["master"], got["variants"],
+                                    got.get("sub"), got.get("sub_lang"),
+                                    got.get("referer"), got.get("server"),
+                                    subtitles=got["subtitles"])
         await _check_and_prewarm(got)
         return ok(got)
     except Exception as e:
@@ -844,7 +855,15 @@ async def _fetch_sub_text(target_url, ref):
     candidates = []
     if ref:
         candidates.append(ref)
-    for f_ref in ("https://zokoanime.video/", "https://megacloud.blog/", "https://hianime.to/", ""):
+
+    # Domain-specific smart prioritization (Megaplay CDN butuh origin megaplay)
+    t_low = target_url.lower()
+    if any(k in t_low for k in ("broforgotsave", "stellarfrontier", "megaplay", "megacloud")):
+        candidates.extend(["https://megaplay.buzz/", "https://megaplay.top/", "https://megacloud.tv/"])
+    if any(k in t_low for k in ("dramahot", "zokoanime")):
+        candidates.extend(["https://zokoanime.video/", "https://dramahot.top/"])
+
+    for f_ref in ("https://megaplay.buzz/", "https://megaplay.top/", "https://zokoanime.video/", "https://megacloud.blog/", "https://hianime.at/", "https://hianime.to/", ""):
         if f_ref not in candidates:
             candidates.append(f_ref)
 
@@ -901,23 +920,22 @@ async def _prewarm_sub_translation(url: str, referer: str, src: str = "en", lang
     import hashlib
     base_hash = hashlib.sha1((url + "|" + (referer or "") + "|" + lang).encode("utf-8")).hexdigest()
     llm_on = await _llm_enabled()
+    key_gtx = "sub2|gtx|" + base_hash
+    key_aigtx = "sub2|aigtx|" + base_hash
     key_llm = "sub2|llm|" + base_hash
-    key_mt = "sub2|mt|" + base_hash
-    hit = await get_subtitle_cache(key_llm)
-    if hit is None and not llm_on:
-        hit = await get_subtitle_cache(key_mt, ttl=7 * 24 * 3600)
+    hit = await get_subtitle_cache(key_gtx, ttl=7 * 24 * 3600)
     if hit is not None:
         return  # Sudah ada di cache, tidak perlu prefetch
 
-    job_key = base_hash + ("|llm" if llm_on else "|mt")
+    job_key = base_hash + "|gtx_prewarm"
     fut = _SUB_INFLIGHT.get(job_key)
     if fut is None:
         try:
             from api.translate import log_translate
-            log_translate(f"Prefetch subtitle [{lang}] dimulai di background...")
+            log_translate(f"Prefetch subtitle [{lang}] dimulai di background (prioritas GTX)...")
         except Exception:
             pass
-        fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_mt, _fetch_sub_text))
+        fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, _fetch_sub_text))
         _SUB_INFLIGHT[job_key] = fut
         fut.add_done_callback(lambda _f, k=job_key: _SUB_INFLIGHT.pop(k, None))
 
@@ -1020,16 +1038,19 @@ async def proxy_sub(url: str = Query(""),
             except Exception:
                 raise HTTPException(status_code=502, detail=f"gagal translate AIGTX: {e}")
 
-    # Cache sadar-kualitas: hasil AI Fansub ("llm") disimpan terpisah dari hasil AIGTX.
-    llm_on = await _llm_enabled()
-    hit = await get_subtitle_cache(key_llm)
-    hit_tier = "cached"
-    if hit is None and not llm_on:
+    # Cache sadar-kualitas: prioritaskan gtx, lalu aigtx, lalu ai fansub
+    hit = await get_subtitle_cache(key_gtx, ttl=7 * 24 * 3600)
+    hit_tier = "cached-gtx"
+    if hit is None:
         hit = await get_subtitle_cache(key_aigtx, ttl=7 * 24 * 3600)
         if not hit:
             hit = await get_subtitle_cache("sub2|mt|" + base_hash, ttl=7 * 24 * 3600)
-        hit_tier = "cached-aigtx"
-    if hit is not None:
+        hit_tier = "cached-aigtx" if hit else ""
+    if hit is None:
+        hit = await get_subtitle_cache(key_llm)
+        hit_tier = "cached-llm" if hit else ""
+
+    if hit is not None and hit_tier:
         try:
             from api.translate import log_translate
             log_translate(f"Cache HIT subtitle [{lang}] ({hit_tier}): dimuat instan dari database lokal")
@@ -1039,47 +1060,27 @@ async def proxy_sub(url: str = Query(""),
         resp.headers["X-Translate-Tier"] = hit_tier
         return resp
 
-    # Jika LLM aktif, jalankan background prefetch/job LLM tanpa memblokir player.
-    # Player segera disajikan versi AIGTX (instan 1-2 detik) agar penonton tidak menunggu 2-4 menit.
-    if llm_on:
-        job_key = base_hash + "|llm"
-        if job_key not in _SUB_INFLIGHT:
-            fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, _fetch_sub_text))
-            _SUB_INFLIGHT[job_key] = fut
-            fut.add_done_callback(lambda _f, k=job_key: _SUB_INFLIGHT.pop(k, None))
-
-        # Cek apakah sudah ada AIGTX cache
-        aigtx_hit = await get_subtitle_cache(key_aigtx, ttl=7 * 24 * 3600)
-        if not aigtx_hit:
-            aigtx_hit = await get_subtitle_cache("sub2|mt|" + base_hash, ttl=7 * 24 * 3600)
-        if aigtx_hit:
-            resp = Response(content=aigtx_hit, media_type="text/vtt")
-            resp.headers["X-Translate-Tier"] = "cached-aigtx"
-            resp.headers["X-Translate-Background"] = "llm-translating"
+    # Prioritas 1: Google GTX Murni langsung (Super Cepat & Zero-Key)
+    try:
+        text = await _fetch_sub_text(url, referer)
+        from api.translate import parse_vtt, build_vtt, call_gtx_translate
+        cues = parse_vtt(text)
+        if cues:
+            gtx_cues = await call_gtx_translate(cues, src, lang, mode="gtx")
+            gtx_text = build_vtt(gtx_cues)
+            await set_subtitle_cache(key_gtx, gtx_text)
+            resp = Response(content=gtx_text, media_type="text/vtt")
+            resp.headers["X-Translate-Tier"] = "pure_gtx"
             return resp
-
-        # Jika belum ada AIGTX cache, terjemahkan cepat via AIGTX
+    except Exception as e:
         try:
-            text = await _fetch_sub_text(url, referer)
-            from api.translate import parse_vtt, build_vtt, call_gtx_translate
-            cues = parse_vtt(text)
-            if cues:
-                aigtx_cues = await call_gtx_translate(cues, src, lang, mode="aigtx")
-                aigtx_text = build_vtt(aigtx_cues)
-                await set_subtitle_cache(key_aigtx, aigtx_text)
-                resp = Response(content=aigtx_text, media_type="text/vtt")
-                resp.headers["X-Translate-Tier"] = "aigtx"
-                resp.headers["X-Translate-Background"] = "llm-translating"
-                return resp
-        except Exception as e:
-            try:
-                from api.translate import log_translate
-                log_translate(f"Fast AIGTX translation gagal: {e}, fallback ke job reguler")
-            except Exception:
-                pass
+            from api.translate import log_translate
+            log_translate(f"Fast pure GTX gagal: {e}, lanjut ke pipeline fallback (AIGTX -> AI Fansub)")
+        except Exception:
+            pass
 
-    # Dedup in-flight fallback / saat LLM mati
-    job_key = base_hash + ("|llm" if llm_on else "|aigtx")
+    # Pipeline fallback: AIGTX -> AI Fansub -> MyMemory
+    job_key = base_hash + "|sub_fallback"
     fut = _SUB_INFLIGHT.get(job_key)
     if fut is None:
         fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, _fetch_sub_text))
@@ -1096,22 +1097,25 @@ async def proxy_sub(url: str = Query(""),
     if tier.get("gtx_lines"):
         resp.headers["X-Translate-Mixed"] = f'{tier.get("gtx_lines")}/{tier.get("total", 0)}'
     if tier.get("error"):
-        # Bersihkan newline & non-latin1 dari header agar valid HTTP header
         clean_err = re.sub(r"[\r\n]+", " ", str(tier["error"])).strip()
         resp.headers["X-Translate-Error"] = clean_err.encode("latin-1", "replace").decode("latin-1")[:200]
     return resp
 
 
 async def _llm_enabled():
-    """Tier 1 aktif kalau ada API key, atau endpoint LLM lokal (Ollama di localhost)."""
+    """Tier aktif kalau ada API key, atau endpoint LLM lokal (Ollama di localhost)."""
     from api.translate import is_local_llm
     apikey = await get_setting("translate_apikey", "")
     apiurl = await get_setting("translate_apiurl", "")
     return bool(apikey) or is_local_llm(apiurl)
 
 
-async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetcher):
+async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetcher, key_gtx=None):
     """Fetch + translate + cache. Return (vtt_text, tier_dict)."""
+    if not key_gtx:
+        import hashlib
+        b_hash = hashlib.sha1((url + "|" + (referer or "") + "|" + lang).encode("utf-8")).hexdigest()
+        key_gtx = "sub2|gtx|" + b_hash
     try:
         text = await fetcher(url, referer)
     except Exception as e:
@@ -1125,55 +1129,66 @@ async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetche
         new_text = build_vtt(tier["cues"])
     except Exception as e:
         return text, {"cues": None, "level": "source", "error": str(e)}
-    # Cache: hasil AI (>= 80% baris dari LLM) -> slot "llm" 30 hari. Hasil AIGTX / hybrid
-    # dominan GTX -> slot "aigtx" 7 hari.
-    # Jangan cache source fallback agar user bisa retry.
+
     lvl = tier.get("level")
     if lvl == "tier1":
+        await set_subtitle_cache(key_gtx, new_text)
+    elif lvl == "tier2":
+        await set_subtitle_cache(key_aigtx, new_text)
+    elif lvl == "tier3":
         total = max(1, tier.get("total") or len(cues))
         if tier.get("llm_lines", 0) / total >= 0.8:
             await set_subtitle_cache(key_llm, new_text)
         else:
             await set_subtitle_cache(key_aigtx, new_text)
-    elif lvl in ("tier2", "tier3"):
-        await set_subtitle_cache(key_aigtx, new_text)
+    elif lvl == "tier4":
+        await set_subtitle_cache(key_gtx, new_text)
     return new_text, tier
 
 
 async def _translate_with_fallback(cues, src, tgt):
     """Multi-tier translate:
-    Tier 1 (API key / LLM lokal): AI Fansub LLM (Ollama Cloud / Gemini / Groq / OpenRouter / OpenAI)
-            — hybrid: baris yang gagal diisi GTX.
-    Tier 2 (Default / Fallback): Google GTX Web RPC (HTML-Preserved, Unmetered, Zero-Key)
-    Tier 3: MyMemory Public REST (Cadangan cloud gratis)
-    Tier 4: Source original fallback (Safety net, tanpa crash)
-    Return {"cues": [...], "level": "tier1|tier2|tier3|source", "error": "...", ...stats}."""
+    Tier 1 (Prioritas Pertama): Google GTX Murni (HTML-Preserved, Zero-Key, Unmetered, Super Cepat)
+    Tier 2 (Prioritas Kedua): AIGTX Web RPC (Google GTX + Anime Lexicon & Scene Normalization)
+    Tier 3 (Prioritas Ketiga): AI Fansub LLM (Ollama Cloud / Gemini / Groq / OpenRouter / OpenAI)
+    Tier 4: MyMemory Public REST (Cadangan cloud gratis)
+    Tier 5: Source original fallback (Safety net, tanpa crash)
+    Return {"cues": [...], "level": "tier1|tier2|tier3|tier4|source", "error": "...", ...stats}."""
     from api.translate import call_openai_translate, call_gtx_translate, call_mymemory_translate, estimate_chars
     import datetime as _dt
     last_err = ""
 
-    # Tier 1: AI Fansub LLM
+    # Tier 1 (Prioritas Pertama): Google GTX Murni
+    try:
+        translated = await call_gtx_translate(cues, src, tgt, mode="gtx")
+        return {"cues": translated, "level": "tier1", "engine": "gtx"}
+    except Exception as e:
+        last_err = f"Tier 1 (GTX) error: {e}"
+        print(f"[TRANSLATE TIER 1 GTX ERROR] {e}")
+
+    # Tier 2 (Prioritas Kedua): AIGTX Web RPC
+    try:
+        translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
+        return {"cues": translated, "level": "tier2", "engine": "aigtx", "error": last_err}
+    except Exception as e:
+        if not last_err:
+            last_err = f"Tier 2 (AIGTX) error: {e}"
+        print(f"[TRANSLATE TIER 2 AIGTX ERROR] {e}")
+
+    # Tier 3 (Prioritas Ketiga): AI Fansub LLM
     if await _llm_enabled():
         apikey = await get_setting("translate_apikey", "")
         model = await get_setting("translate_model", "")
         apiurl = await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai")
         try:
             translated, stats = await call_openai_translate(cues, src, tgt, apikey, model, apiurl)
-            return {"cues": translated, "level": "tier1", **stats}
+            return {"cues": translated, "level": "tier3", "engine": "ai", **stats}
         except Exception as e:
-            last_err = f"Tier 1 (AI LLM) error: {e}"
-            print(f"[TRANSLATE TIER 1 ERROR] {e}")
+            if not last_err:
+                last_err = f"Tier 3 (AI LLM) error: {e}"
+            print(f"[TRANSLATE TIER 3 LLM ERROR] {e}")
 
-    # Tier 2: AIGTX Web RPC (HTML-Preserved, Zero-Key, Unmetered)
-    try:
-        translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
-        return {"cues": translated, "level": "tier2", "error": last_err}
-    except Exception as e:
-        if not last_err:
-            last_err = f"Tier 2 (AIGTX) error: {e}"
-        print(f"[TRANSLATE TIER 2 ERROR] {e}")
-
-    # Tier 3: MyMemory dengan soft-limit per-IP per-day.
+    # Tier 4: MyMemory dengan soft-limit per-IP per-day.
     day = _dt.datetime.utcnow().strftime("%Y-%m-%d")
     used = await get_today_char_count(day)
     needed = estimate_chars(cues)
@@ -1182,7 +1197,7 @@ async def _translate_with_fallback(cues, src, tgt):
         try:
             translated = await call_mymemory_translate(cues, src, tgt)
             await add_today_char_count(day, needed)
-            return {"cues": translated, "level": "tier3", "error": last_err}
+            return {"cues": translated, "level": "tier4", "engine": "mymemory", "error": last_err}
         except Exception as e:
             if not last_err:
                 last_err = f"MyMemory error: {e}"
@@ -1190,7 +1205,7 @@ async def _translate_with_fallback(cues, src, tgt):
         if not last_err:
             last_err = f"Kuota gratis MyMemory harian habis ({used}/{SOFT_LIMIT} char)"
 
-    # Tier 4: source fallback (return cues asli dengan label source).
+    # Tier 5: source fallback (return cues asli dengan label source).
     return {"cues": cues, "level": "source", "error": last_err}
 
 def find_mpv_binary():
@@ -1222,6 +1237,10 @@ async def play_mpv(body: dict = None):
 
         loop = asyncio.get_running_loop()
         hit = await get_episode_cache(slug, ep, mode)
+        if not hit and mode == "sub":
+            hit = await get_episode_cache(slug, ep, "dub")
+        elif not hit and mode == "dub":
+            hit = await get_episode_cache(slug, ep, "sub")
         if hit:
             got = dict(hit)
         else:

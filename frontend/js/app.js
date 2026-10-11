@@ -201,9 +201,9 @@ function pickSubtitleUrl(subtitles, preferLang){
         }
       }
       if(enTrack&&enTrack.url){
-        if(low==="indonesian (gtx)") return "gtx:"+enTrack.url;
+        if(low==="indonesian (aigtx)") return "aigtx:"+enTrack.url;
         if(low==="indonesian (ai)") return "ai:"+enTrack.url;
-        return "aigtx:"+enTrack.url;
+        return "gtx:"+enTrack.url;
       }
     }
   }
@@ -267,6 +267,15 @@ function renderSubtitles(subtitles, activeUrl){
     })(subtitles[i]);
   }
   if(englishTrack&&englishTrack.url){
+    var gtxOpt=document.createElement("option");
+    gtxOpt.value="gtx:"+englishTrack.url;
+    gtxOpt.textContent="Indonesian (Google GTX)";
+    gtxOpt.setAttribute("data-gtx-source",englishTrack.url);
+    if(activeUrl&&(activeUrl===gtxOpt.value||(activeUrl.indexOf("gtx:")===0&&activeUrl.slice(4)===englishTrack.url))){
+      gtxOpt.selected=true;
+    }
+    sel.appendChild(gtxOpt);
+
     var aigtxOpt=document.createElement("option");
     aigtxOpt.value="aigtx:"+englishTrack.url;
     aigtxOpt.textContent="Indonesian (AIGTX)";
@@ -284,15 +293,6 @@ function renderSubtitles(subtitles, activeUrl){
       aiOpt.selected=true;
     }
     sel.appendChild(aiOpt);
-
-    var gtxOpt=document.createElement("option");
-    gtxOpt.value="gtx:"+englishTrack.url;
-    gtxOpt.textContent="Indonesian (Google GTX)";
-    gtxOpt.setAttribute("data-gtx-source",englishTrack.url);
-    if(activeUrl&&(activeUrl===gtxOpt.value||(activeUrl.indexOf("gtx:")===0&&activeUrl.slice(4)===englishTrack.url))){
-      gtxOpt.selected=true;
-    }
-    sel.appendChild(gtxOpt);
   }
   // Set value juga kalau match dari default tidak ketemu (URL di pickSubtitleUrl).
   if(activeUrl){
