@@ -181,6 +181,19 @@
                 android:textSize="11.5sp" />
         </LinearLayout>
 
+        <!-- Tombol Skala Layar / Mode Fullscreen (Fit, Zoom, Fill) -->
+        <Button
+            android:id="@+id/btn_aspect"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:layout_marginEnd="8dp"
+            android:paddingHorizontal="10dp"
+            android:text="⛶ Fit"
+            android:textSize="11.5sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1E2433" />
+
         <!-- Tombol Pilihan Resolusi / Kualitas Video -->
         <Button
             android:id="@+id/btn_quality"

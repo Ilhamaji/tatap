@@ -38,6 +38,7 @@ import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
+import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
 import androidx.media3.ui.SubtitleView;
 
@@ -96,6 +97,8 @@ public class PlayerActivity extends Activity {
     private String rawStreamUrl = "";
     private String streamReferer = "";
     private Button btnQuality;
+    private Button btnAspect;
+    private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
     private final List<JSONObject> streamVariants = new ArrayList<>();
     private String activeQuality = "best";
     private List<JSONObject> subtitleTracks = new ArrayList<>();
@@ -144,6 +147,13 @@ public class PlayerActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(lp);
+        }
+        hideSystemUi();
+
         setContentView(R.layout.activity_player);
 
         slug = getIntent().getStringExtra("slug");
@@ -175,6 +185,19 @@ public class PlayerActivity extends Activity {
         }
 
         btnPlayerBack.setOnClickListener(v -> finish());
+
+        // Aspect Ratio & Fullscreen Mode Setup
+        btnAspect = findViewById(R.id.btn_aspect);
+        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+        currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        updateAspectButtonLabel();
+        if (playerView != null) {
+            playerView.setResizeMode(currentResizeMode);
+        }
+        if (btnAspect != null) {
+            btnAspect.setOnClickListener(v -> cycleAspectRatio());
+        }
+
         btnQuality = findViewById(R.id.btn_quality);
         if (btnQuality != null) {
             btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
@@ -193,6 +216,74 @@ public class PlayerActivity extends Activity {
         initExoPlayer();
         setupGestureControls();
         resolveAndPlayStream();
+    }
+
+    private void updateAspectButtonLabel() {
+        if (btnAspect == null) return;
+        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+            btnAspect.setText("⛶ Zoom");
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+            btnAspect.setText("⛶ Fill");
+        } else {
+            btnAspect.setText("⛶ Fit");
+        }
+    }
+
+    private void cycleAspectRatio() {
+        if (playerView == null) return;
+        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
+            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
+            Toast.makeText(this, "Mode Layar: ZOOM (Penuh)", Toast.LENGTH_SHORT).show();
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
+            Toast.makeText(this, "Mode Layar: FILL (Stretch)", Toast.LENGTH_SHORT).show();
+        } else {
+            currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
+            Toast.makeText(this, "Mode Layar: FIT (Skala Asli)", Toast.LENGTH_SHORT).show();
+        }
+        updateAspectButtonLabel();
+        playerView.setResizeMode(currentResizeMode);
+        getSharedPreferences("tatap_player_prefs", MODE_PRIVATE)
+                .edit().putInt("aspect_mode", currentResizeMode).apply();
+    }
+
+    private void hideSystemUi() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Window window = getWindow();
+            if (window != null) {
+                android.view.WindowInsetsController controller = window.getInsetsController();
+                if (controller != null) {
+                    controller.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                    controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                }
+            }
+        } else {
+            View decorView = getWindow().getDecorView();
+            if (decorView != null) {
+                decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN
+                );
+            }
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            hideSystemUi();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        hideSystemUi();
     }
 
     private void checkAiConfig() {
@@ -275,11 +366,13 @@ public class PlayerActivity extends Activity {
                 // Toggle visibility top bar
                 if (layoutTopBar.getVisibility() == View.VISIBLE) {
                     layoutTopBar.setVisibility(View.GONE);
+                    hideSystemUi();
                 } else {
                     layoutTopBar.setVisibility(View.VISIBLE);
                     handler.postDelayed(() -> {
                         if (player != null && player.isPlaying()) {
                             layoutTopBar.setVisibility(View.GONE);
+                            hideSystemUi();
                         }
                     }, 4000);
                 }

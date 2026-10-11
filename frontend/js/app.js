@@ -381,9 +381,19 @@ function clearOverlay(){
   if(s){s.innerHTML="";s._last="";}
 }
 function isVideoFullscreen(){
-  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
   var v=$("vid");
-  return !!(fsEl&&fsEl===v);
+  if(!v)return false;
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
+  if(fsEl&&fsEl===v)return true;
+  if(v.webkitDisplayingFullscreen)return true;
+  return false;
+}
+function isFullscreenActive(){
+  var v=$("vid");
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
+  if(fsEl)return true;
+  if(v&&v.webkitDisplayingFullscreen)return true;
+  return false;
 }
 function syncFullscreenSubtitles(){
   var v=$("vid");
@@ -459,22 +469,76 @@ function syncNativeTextTrack(vttText, cues, langCode){
   }
 }
 function toggleFullscreen(){
+  var v=$("vid");
   var stage=document.querySelector(".ambient-stage");
   var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
-  if(fsEl){
-    if(document.exitFullscreen)document.exitFullscreen();
-    else if(document.webkitExitFullscreen)document.webkitExitFullscreen();
-    else if(document.mozCancelFullScreen)document.mozCancelFullScreen();
-    else if(document.msExitFullscreen)document.msExitFullscreen();
-  }else if(stage){
-    if(stage.requestFullscreen)stage.requestFullscreen();
-    else if(stage.webkitRequestFullscreen)stage.webkitRequestFullscreen();
-    else if(stage.mozRequestFullScreen)stage.mozRequestFullScreen();
-    else if(stage.msRequestFullscreen)stage.msRequestFullscreen();
-    else{
-      var v=$("vid");
-      if(v&&v.requestFullscreen)v.requestFullscreen();
+  var isVideoFs=(v&&v.webkitDisplayingFullscreen);
+
+  if(fsEl||isVideoFs){
+    if(document.exitFullscreen){
+      try{document.exitFullscreen().catch(function(){});}catch(e){}
+    }else if(document.webkitExitFullscreen){
+      try{document.webkitExitFullscreen();}catch(e){}
+    }else if(document.mozCancelFullScreen){
+      try{document.mozCancelFullScreen();}catch(e){}
+    }else if(document.msExitFullscreen){
+      try{document.msExitFullscreen();}catch(e){}
     }
+    if(v&&v.webkitExitFullscreen&&v.webkitDisplayingFullscreen){
+      try{v.webkitExitFullscreen();}catch(e){}
+    }
+    return;
+  }
+
+  // iOS Safari video native fullscreen
+  if(v&&v.webkitEnterFullscreen&&(!stage||!stage.requestFullscreen)){
+    try{
+      v.webkitEnterFullscreen();
+      return;
+    }catch(err){
+      console.warn("webkitEnterFullscreen error:",err);
+    }
+  }
+
+  var enterVideoFs=function(){
+    if(!v)return;
+    if(v.requestFullscreen){
+      try{v.requestFullscreen().catch(function(){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();});}catch(e){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();}
+    }else if(v.webkitRequestFullscreen){
+      try{v.webkitRequestFullscreen();}catch(e){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();}
+    }else if(v.mozRequestFullScreen){
+      try{v.mozRequestFullScreen();}catch(e){}
+    }else if(v.msRequestFullscreen){
+      try{v.msRequestFullscreen();}catch(e){}
+    }else if(v.webkitEnterFullscreen){
+      try{v.webkitEnterFullscreen();}catch(e){}
+    }
+  };
+
+  if(stage&&(stage.requestFullscreen||stage.webkitRequestFullscreen||stage.mozRequestFullScreen||stage.msRequestFullscreen)){
+    var p;
+    try{
+      if(stage.requestFullscreen){
+        p=stage.requestFullscreen();
+      }else if(stage.webkitRequestFullscreen){
+        p=stage.webkitRequestFullscreen();
+      }else if(stage.mozRequestFullScreen){
+        p=stage.mozRequestFullScreen();
+      }else if(stage.msRequestFullscreen){
+        p=stage.msRequestFullscreen();
+      }
+      if(p&&p.catch){
+        p.catch(function(err){
+          console.warn("stage.requestFullscreen rejected, falling back to video:",err);
+          enterVideoFs();
+        });
+      }
+    }catch(err){
+      console.warn("stage fullscreen exception, falling back to video:",err);
+      enterVideoFs();
+    }
+  }else{
+    enterVideoFs();
   }
 }
 function paintCue(){
@@ -1344,6 +1408,8 @@ function init(){
     v.addEventListener("seeked",paintCue);
     v.addEventListener("fullscreenchange",syncFullscreenSubtitles);
     v.addEventListener("webkitfullscreenchange",syncFullscreenSubtitles);
+    v.addEventListener("webkitbeginfullscreen",syncFullscreenSubtitles);
+    v.addEventListener("webkitendfullscreen",syncFullscreenSubtitles);
     v.addEventListener("dblclick",function(e){
       e.preventDefault();
       toggleFullscreen();
@@ -1354,12 +1420,26 @@ function init(){
       var fsHandler=function(options){
         var stage=document.querySelector(".ambient-stage");
         if(stage&&(stage.requestFullscreen||stage.webkitRequestFullscreen)){
-          if(stage.requestFullscreen)return stage.requestFullscreen(options);
-          if(stage.webkitRequestFullscreen)return stage.webkitRequestFullscreen(options);
+          var p;
+          try{
+            if(stage.requestFullscreen)p=stage.requestFullscreen(options);
+            else if(stage.webkitRequestFullscreen)p=stage.webkitRequestFullscreen(options);
+            if(p&&p.catch){
+              return p.catch(function(){
+                if(origFs)return origFs.call(v,options);
+                if(v.webkitEnterFullscreen)try{v.webkitEnterFullscreen();}catch(e){}
+              });
+            }
+            return p;
+          }catch(e){
+            if(origFs)return origFs.call(v,options);
+            if(v.webkitEnterFullscreen)try{v.webkitEnterFullscreen();}catch(err){}
+          }
         }
         if(origFs)return origFs.call(v,options);
+        if(v.webkitEnterFullscreen)try{v.webkitEnterFullscreen();}catch(e){}
       };
-      v.requestFullscreen=fsHandler;
+      if(v.requestFullscreen)v.requestFullscreen=fsHandler;
       if(v.webkitRequestFullscreen)v.webkitRequestFullscreen=fsHandler;
       if(v.mozRequestFullScreen)v.mozRequestFullScreen=fsHandler;
       if(v.msRequestFullscreen)v.msRequestFullscreen=fsHandler;
