@@ -170,7 +170,7 @@ def _extract_err(resp):
 # Model Ollama Cloud yang masuk Free plan (khusus gpt-oss)
 OLLAMA_FREE_MODELS = ["gpt-oss:20b", "gpt-oss:120b"]
 
-# Normalisasi penamaan model lama ke gpt-oss:20b
+# Normalisasi penamaan model lama ke model aktif
 _LEGACY_MODEL_UPGRADE = {
     "ollama": {
         "gemma4:31b": "gpt-oss:20b",
@@ -179,12 +179,17 @@ _LEGACY_MODEL_UPGRADE = {
         "gpt-oss:20b-cloud": "gpt-oss:20b",
         "gpt-oss-20b": "gpt-oss:20b",
     },
+    "google": {
+        "gemini-3.1-flash-lite": "gemini-2.0-flash",
+        "gemini-3.8-flash": "gemini-2.0-flash",
+        "gemini-1.5-flash-latest": "gemini-1.5-flash",
+    },
 }
 
 _DEFAULT_MODEL = {
     "ollama": "gpt-oss:20b",
     "ollama_local": "gpt-oss:20b",
-    "google": "gemini-3.1-flash-lite",
+    "google": "gemini-2.0-flash",
     "groq": "llama-3.3-70b-versatile",
     "openrouter": "google/gemini-2.0-flash-exp:free",
     "openai": "gpt-4o-mini",
@@ -235,11 +240,11 @@ def detect_provider_from_key(key: str) -> tuple:
     """Mengembalikan (provider, default_model, default_apiurl) menyesuaikan apikey dari user."""
     k = (key or "").strip().strip("\"'").strip()
     if not k:
-        return ("google", "gemini-3.1-flash-lite", "https://generativelanguage.googleapis.com/v1beta/openai")
+        return ("google", "gemini-2.0-flash", "https://generativelanguage.googleapis.com/v1beta/openai")
     if k.startswith("gsk_"):
         return ("groq", "llama-3.3-70b-versatile", "https://api.groq.com/openai/v1")
     if k.startswith("AQ.") or k.startswith("AIza") or k.startswith("AQ"):
-        return ("google", "gemini-3.1-flash-lite", "https://generativelanguage.googleapis.com/v1beta/openai")
+        return ("google", "gemini-2.0-flash", "https://generativelanguage.googleapis.com/v1beta/openai")
     if k.startswith("sk-or-"):
         return ("openrouter", "google/gemini-2.0-flash-exp:free", "https://openrouter.ai/api/v1")
     if k.startswith("ollama_") or k.startswith("ol_") or (len(k) > 35 and "." in k):
@@ -255,7 +260,7 @@ def _model_chain(prov: str, model: str):
     if prov == "ollama":
         chain += OLLAMA_FREE_MODELS
     elif prov == "google":
-        chain.append("gemini-3.8-flash" if "flash-lite" in model else "gemini-3.1-flash-lite")
+        chain += ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"]
     elif prov == "groq":
         chain.append("llama-3.3-70b-versatile")
     seen, out = set(), []
@@ -1219,11 +1224,11 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
         return cues
     import urllib.parse as _up
     
-    BATCH_SIZE = 20
+    BATCH_SIZE = 25
     batches = [cues[i:i + BATCH_SIZE] for i in range(0, len(cues), BATCH_SIZE)]
     all_translated = []
     t_start = _time.time()
-    log_translate(f"Mulai translate Google GTX (POST/Multi-Client): {len(cues)} cues | {len(batches)} batches | mode={mode}")
+    log_translate(f"Mulai translate Google (POST/Multi-Client): {len(cues)} cues | {len(batches)} batches | mode={mode}")
     
     from concurrent.futures import ThreadPoolExecutor
 
@@ -1235,20 +1240,17 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
         joined = "".join(html_chunks)
 
         endpoints = [
-            ("https://translate.googleapis.com/translate_a/single", {
-                "client": "gtx", "sl": src, "tl": tgt, "dt": "t"
+            ("https://clients5.google.com/translate_a/t", {
+                "client": "dict-chrome-ex", "sl": src, "tl": tgt
             }),
             ("https://clients5.google.com/translate_a/t", {
+                "client": "tw-ob", "sl": src, "tl": tgt
+            }),
+            ("https://translate.google.com/translate_a/t", {
                 "client": "dict-chrome-ex", "sl": src, "tl": tgt
             }),
             ("https://translate.googleapis.com/translate_a/single", {
                 "client": "dict-chrome-ex", "sl": src, "tl": tgt, "dt": "t"
-            }),
-            ("https://clients5.google.com/translate_a/t", {
-                "client": "gtx", "sl": src, "tl": tgt
-            }),
-            ("https://clients5.google.com/translate_a/t", {
-                "client": "tw-ob", "sl": src, "tl": tgt
             }),
         ]
 
@@ -1260,42 +1262,66 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
 
         body_data = {"q": joined}
 
-        # 1. Coba via HTTP POST menggunakan httpx (dengan fallback SSL verify untuk Android Chaquopy)
+        # 1. Coba via HTTP POST menggunakan httpx
         for ep_url, ep_params in endpoints:
-            for verify_ssl in (True, False):
-                try:
-                    with _httpx.Client(timeout=timeout, verify=verify_ssl, follow_redirects=True) as client:
-                        resp = client.post(ep_url, params=ep_params, data=body_data, headers=headers)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            raw_out = ""
-                            if isinstance(data, list) and data and isinstance(data[0], list):
-                                raw_out = "".join([item[0] for item in data[0] if item and item[0]])
-                            elif isinstance(data, list) and data and isinstance(data[0], str):
-                                raw_out = "".join(data)
-                            elif isinstance(data, str):
-                                raw_out = data
+            try:
+                with _httpx.Client(timeout=6.0, follow_redirects=True) as client:
+                    resp = client.post(ep_url, params=ep_params, data=body_data, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        raw_out = ""
+                        if isinstance(data, list) and data and isinstance(data[0], list):
+                            raw_out = "".join([item[0] for item in data[0] if item and item[0]])
+                        elif isinstance(data, list) and data and isinstance(data[0], str):
+                            raw_out = "".join(data)
+                        elif isinstance(data, str):
+                            raw_out = data
 
-                            matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
-                            if matches:
-                                res = []
-                                for i in range(len(batch_lines)):
-                                    unescaped = _html.unescape(matches.get(str(i), batch_lines[i])).strip()
-                                    res.append(unescaped)
-                                return res, True
-                except Exception:
-                    pass
+                        matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
+                        if matches:
+                            res = []
+                            for i in range(len(batch_lines)):
+                                unescaped = _html.unescape(matches.get(str(i), batch_lines[i])).strip()
+                                res.append(unescaped)
+                            return res, True
+            except Exception:
+                pass
 
-        # 2. Coba fallback via urllib.request (POST) dengan unverified SSL context
+        # 2. Coba fallback via httpx dengan unverified SSL (untuk Android Chaquopy lama)
+        for ep_url, ep_params in endpoints[:2]:
+            try:
+                with _httpx.Client(timeout=6.0, verify=False, follow_redirects=True) as client:
+                    resp = client.post(ep_url, params=ep_params, data=body_data, headers=headers)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        raw_out = ""
+                        if isinstance(data, list) and data and isinstance(data[0], list):
+                            raw_out = "".join([item[0] for item in data[0] if item and item[0]])
+                        elif isinstance(data, list) and data and isinstance(data[0], str):
+                            raw_out = "".join(data)
+                        elif isinstance(data, str):
+                            raw_out = data
+
+                        matches = dict(_re.findall(r'<p\s+id=[\"\']?\s*(\d+)\s*[\"\']?\s*>(.*?)</p>', raw_out, _re.DOTALL))
+                        if matches:
+                            res = []
+                            for i in range(len(batch_lines)):
+                                unescaped = _html.unescape(matches.get(str(i), batch_lines[i])).strip()
+                                res.append(unescaped)
+                            return res, True
+            except Exception:
+                pass
+
+        # 3. Coba fallback via urllib.request (POST) dengan unverified SSL context
         try:
             import urllib.request as _ur
             import ssl
             ssl_ctx = ssl._create_unverified_context()
             encoded_body = _up.urlencode(body_data).encode("utf-8")
-            for ep_url, ep_params in endpoints[:3]:
+            for ep_url, ep_params in endpoints[:2]:
                 url_full = ep_url + "?" + _up.urlencode(ep_params)
                 req = _ur.Request(url_full, data=encoded_body, headers=headers)
-                with _ur.urlopen(req, context=ssl_ctx, timeout=timeout) as resp:
+                with _ur.urlopen(req, context=ssl_ctx, timeout=6.0) as resp:
                     if resp.status == 200:
                         data = _json.loads(resp.read().decode("utf-8"))
                         raw_out = ""
@@ -1318,18 +1344,17 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
         return batch_lines, False
 
     def _fetch_batch_sync(batch_lines):
-        # Berikan jeda mikro agar request tidak menumpuk dalam milidetik yang sama
-        _time.sleep(0.04)
+        _time.sleep(0.02)
         res, ok = _fetch_single_chunk_sync(batch_lines)
         if ok:
             return res, True
 
-        # Jika batch 20 gagal, coba bagi 2 (mini-batch 10) sebagai safety net
+        # Jika batch 25 gagal, bagi dua menjadi mini-batch sebagai safety net
         if len(batch_lines) > 6:
             mid = len(batch_lines) // 2
-            _time.sleep(0.1)
+            _time.sleep(0.05)
             p1, ok1 = _fetch_single_chunk_sync(batch_lines[:mid])
-            _time.sleep(0.1)
+            _time.sleep(0.05)
             p2, ok2 = _fetch_single_chunk_sync(batch_lines[mid:])
             if ok1 or ok2:
                 return p1 + p2, True
@@ -1338,7 +1363,7 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
 
     loop = _asyncio.get_running_loop()
     batch_lines_list = [[cue["text"].replace("\n", " ").strip() for cue in b] for b in batches]
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         tasks = [loop.run_in_executor(executor, lambda b=bl: _fetch_batch_sync(b)) for bl in batch_lines_list]
         batch_results = await _asyncio.gather(*tasks)
 
@@ -1353,7 +1378,7 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
             success_count += 1
 
     dur = _time.time() - t_start
-    log_translate(f"Selesai translate Google GTX: {len(cues)} cues | {success_count}/{len(batches)} batch sukses ({dur:.2f}s) | mode={mode}")
+    log_translate(f"Selesai translate Google: {len(cues)} cues | {success_count}/{len(batches)} batch sukses ({dur:.2f}s) | mode={mode}")
 
     # Jika seluruh batch gagal, lempar exception agar fallback ke tier berikutnya
     if len(batches) > 0 and success_count == 0:

@@ -976,7 +976,7 @@ public class MainActivity extends Activity {
                     JSONObject d = res.optJSONObject("data");
                     if (d == null) d = res;
                     String key = d.optString("translate_apikey", "");
-                    String model = d.optString("translate_model", "gemini-3.1-flash-lite");
+                    String model = d.optString("translate_model", "gemini-2.0-flash");
                     String url = d.optString("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai");
 
                     runOnUiThread(() -> {
@@ -994,7 +994,7 @@ public class MainActivity extends Activity {
         if (args.equalsIgnoreCase("clear") || args.equalsIgnoreCase("reset")) {
             JSONObject body = new JSONObject();
             try {
-                if (cmd.equals("model")) body.put("translate_model", "gemini-3.1-flash-lite");
+                if (cmd.equals("model")) body.put("translate_model", "gemini-2.0-flash");
                 else if (cmd.equals("apiurl")) body.put("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai");
                 else body.put("translate_apikey", "");
             } catch (Exception ignored) {}
@@ -1021,8 +1021,8 @@ public class MainActivity extends Activity {
                     extra = " [Auto: Ollama Cloud (gpt-oss:20b)]";
                 } else if (cmd.equals("gemini") || args.startsWith("AQ.") || args.startsWith("AIza") || args.startsWith("AQ")) {
                     body.put("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai");
-                    body.put("translate_model", "gemini-3.1-flash-lite");
-                    extra = " [Auto: Google AI Studio (gemini-3.1-flash-lite)]";
+                    body.put("translate_model", "gemini-2.0-flash");
+                    extra = " [Auto: Google AI Studio (gemini-2.0-flash)]";
                 } else if (cmd.equals("groq") || args.startsWith("gsk_")) {
                     body.put("translate_apiurl", "https://api.groq.com/openai/v1");
                     body.put("translate_model", "llama-3.3-70b-versatile");
@@ -1157,7 +1157,7 @@ public class MainActivity extends Activity {
                     etUrl.setText("https://api.groq.com/openai/v1");
                     tvKey.setText("API Key : " + maskKey(k) + " (Groq Cloud)");
                 } else if (k.startsWith("AQ.") || k.startsWith("AIza") || k.startsWith("AQ")) {
-                    etModel.setText("gemini-3.1-flash-lite");
+                    etModel.setText("gemini-2.0-flash");
                     etUrl.setText("https://generativelanguage.googleapis.com/v1beta/openai");
                     tvKey.setText("API Key : " + maskKey(k) + " (Google AI Studio)");
                 } else if (k.startsWith("sk-or-")) {
@@ -1184,7 +1184,7 @@ public class MainActivity extends Activity {
         });
 
         btnPresetGemini.setOnClickListener(v -> {
-            etModel.setText("gemini-3.1-flash-lite");
+            etModel.setText("gemini-2.0-flash");
             etUrl.setText("https://generativelanguage.googleapis.com/v1beta/openai");
             etKey.setHint("Tempel kunci Google AI (AQ...)");
             Toast.makeText(this, "Preset Google Gemini dipilih", Toast.LENGTH_SHORT).show();
@@ -1247,7 +1247,7 @@ public class MainActivity extends Activity {
                 JSONObject d = res.optJSONObject("data");
                 if (d == null) d = res;
                 String k = d.optString("translate_apikey", "");
-                String m = d.optString("translate_model", "gemini-3.1-flash-lite");
+                String m = d.optString("translate_model", "gemini-2.0-flash");
                 String u = d.optString("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai");
 
                 runOnUiThread(() -> {

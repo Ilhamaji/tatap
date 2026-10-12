@@ -123,7 +123,7 @@ public class PlayerActivity extends Activity {
     private boolean subEnabled = true;
     private String activeStreamMode = "sub"; // "sub" | "dub"
     private boolean hasAiKey = false;
-    private String configuredAiModel = "gemini-3.1-flash-lite";
+    private String configuredAiModel = "gemini-2.0-flash";
     private boolean isHlsMode = false;
     private boolean hasFallbackAttempted = false;
 
@@ -371,7 +371,7 @@ public class PlayerActivity extends Activity {
                 JSONObject d = res.optJSONObject("data");
                 if (d == null) d = res;
                 String k = d.optString("translate_apikey", "");
-                String m = d.optString("translate_model", "gemini-3.1-flash-lite");
+                String m = d.optString("translate_model", "gemini-2.0-flash");
                 hasAiKey = !k.isEmpty();
                 if (!m.isEmpty()) configuredAiModel = m;
             } catch (Exception ignored) {}
@@ -1669,14 +1669,17 @@ public class PlayerActivity extends Activity {
 
         builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
             if (which >= 0 && which < actions.size()) {
+                String chosen = options.get(which);
                 actions.get(which).run();
-                getSharedPreferences("tatap_player_prefs", MODE_PRIVATE).edit()
-                        .putString("pref_sub_engine", activeEngine)
-                        .putString("pref_sub_lang", activeSubLang)
-                        .putBoolean("pref_sub_enabled", subEnabled)
-                        .apply();
-                applySubtitleSelection();
-                Toast.makeText(this, "Subtitle diperbarui: " + (subEnabled ? activeSubLang.toUpperCase() + " [" + activeEngine + "]" : "OFF"), Toast.LENGTH_SHORT).show();
+                if (!chosen.contains("[Refresh]")) {
+                    getSharedPreferences("tatap_player_prefs", MODE_PRIVATE).edit()
+                            .putString("pref_sub_engine", activeEngine)
+                            .putString("pref_sub_lang", activeSubLang)
+                            .putBoolean("pref_sub_enabled", subEnabled)
+                            .apply();
+                    applySubtitleSelection();
+                    Toast.makeText(this, "Subtitle diperbarui: " + (subEnabled ? activeSubLang.toUpperCase() + " [" + activeEngine + "]" : "OFF"), Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

@@ -66,7 +66,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="3dp"
-                    android:text="Model   : gemini-3.1-flash-lite"
+                    android:text="Model   : gemini-2.0-flash"
                     android:textColor="#E1E7EF"
                     android:textSize="11.5sp" />
 
@@ -187,7 +187,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="40dp"
                 android:background="@drawable/bg_input_field"
-                android:hint="gemini-3.1-flash-lite"
+                android:hint="gemini-2.0-flash"
                 android:textColorHint="#5A6578"
                 android:textColor="#F1F5F9"
                 android:textSize="12sp"

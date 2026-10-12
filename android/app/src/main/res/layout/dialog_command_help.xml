@@ -326,7 +326,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Preset Google AI Studio (Model gemini-3.1-flash-lite)"
+                    android:text="Preset Google AI Studio (Model gemini-2.0-flash)"
           android:textColor="#8892B0"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />

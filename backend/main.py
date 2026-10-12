@@ -1061,9 +1061,11 @@ _SUB_INFLIGHT = {}
 
 
 def _is_valid_id_subtitle(vtt_text: str) -> bool:
-    """True jika subtitle memiliki kosakata bahasa Indonesia wajar (mencegah cache poisoning teks sumber)."""
+    """True jika subtitle memiliki kosakata bahasa Indonesia wajar (mencegah cache poisoning teks sumber atau kuota MyMemory)."""
     if not vtt_text or len(vtt_text.strip()) < 50:
         return True
+    if "MYMEMORY WARNING" in vtt_text or "translated.net" in vtt_text:
+        return False
     return bool(re.search(r"\b(yang|dan|tidak|aku|kamu|di|ini|itu|bisa|ada|nggak|udah|cuma|banget|siapa|kenapa)\b", vtt_text, re.IGNORECASE))
 
 
@@ -1183,8 +1185,8 @@ async def proxy_sub(url: str = Query(""),
                     resp.headers["X-Translate-Tier"] = label
                     return resp
 
-    # Satukan eksekusi translasi agar tidak menduplikasi request bersamaan
-    job_key = f"{base_hash}|{lang}"
+    # Satukan eksekusi translasi agar tidak menduplikasi request bersamaan untuk mode yang sama
+    job_key = f"{base_hash}|{lang}|{req_mode}"
     fut = _SUB_INFLIGHT.get(job_key)
     if fut is None:
         fut = asyncio.ensure_future(
@@ -1249,8 +1251,8 @@ async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetche
         return text, {"cues": None, "level": "source", "error": str(e)}
 
     lvl = tier.get("level")
-    # PENTING: Dilarang menyimpan teks sumber (untranslated) ke dalam cache terjemahan
-    if lvl not in ("source", "source-fallback"):
+    # PENTING: Dilarang menyimpan teks sumber (untranslated) atau hasil kaku MyMemory ke dalam cache berkualitas tinggi
+    if lvl not in ("source", "source-fallback", "tier4", "mymemory"):
         if (lang or "").lower() != "id" or _is_valid_id_subtitle(new_text):
             if lvl in ("tier1", "gtx"):
                 await set_subtitle_cache(key_gtx, new_text)
@@ -1262,63 +1264,119 @@ async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetche
                     await set_subtitle_cache(key_llm, new_text)
                 else:
                     await set_subtitle_cache(key_aigtx, new_text)
-            elif lvl in ("tier4", "mymemory"):
-                await set_subtitle_cache(key_gtx, new_text)
     return new_text, tier
 
 
 async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
-    """Multi-tier translate:
-    Tier 1: Google Translate RPC (POST multi-client, pure GTX atau AIGTX lexicon)
-    Tier 2: AI Fansub LLM (jika diaktifkan pengguna / lokal)
-    Tier 3: MyMemory Public REST
-    Tier 4: Source original fallback (Safety net, tanpa menyimpan ke cache)
-    Return {"cues": [...], "level": "tier1|tier2|tier3|tier4|source", "error": "...", ...stats}."""
-    from api.translate import call_openai_translate, call_gtx_translate, call_mymemory_translate, estimate_chars
-    import datetime as _dt
+    """Multi-tier translate dengan penanganan prioritas sesuai mode yang diminta:
+    Mode AI:
+      1. AI Fansub LLM (jika aktif)
+      2. Fallback: Google Translate AIGTX (Smart Lexicon)
+      3. Fallback: Google Translate GTX murni
+    Mode AIGTX:
+      1. Google Translate AIGTX (Smart Lexicon)
+      2. Fallback: AI Fansub LLM (jika aktif)
+      3. Fallback: Google Translate GTX murni
+    Mode GTX:
+      1. Google Translate GTX murni
+      2. Fallback: Google Translate AIGTX
+      3. Fallback: AI Fansub LLM (jika aktif)
+    Safety net: source original
+    """
+    from api.translate import call_openai_translate, call_gtx_translate
     last_err = ""
 
-    # Tier 1: Google Translate RPC (sesuai requested_mode: gtx / aigtx)
-    effective_mode = "aigtx" if requested_mode == "aigtx" else "gtx"
-    try:
-        translated = await call_gtx_translate(cues, src, tgt, mode=effective_mode)
-        lvl = "tier2" if effective_mode == "aigtx" else "tier1"
-        return {"cues": translated, "level": lvl, "engine": effective_mode}
-    except Exception as e:
-        last_err = f"Google Translate error: {e}"
-        print(f"[TRANSLATE GOOGLE GTX ERROR] {e}")
-
-    # Tier 2: AI Fansub LLM (hanya jika ada API key atau endpoint lokal)
-    if await _llm_enabled():
-        apikey = await get_setting("translate_apikey", "")
-        model = await get_setting("translate_model", "")
-        apiurl = await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai")
-        try:
-            translated, stats = await call_openai_translate(cues, src, tgt, apikey, model, apiurl)
-            return {"cues": translated, "level": "tier3", "engine": "ai", **stats}
-        except Exception as e:
-            if not last_err:
+    if requested_mode == "ai":
+        # 1. Coba AI Fansub jika ada API key atau LLM lokal
+        if await _llm_enabled():
+            apikey = await get_setting("translate_apikey", "")
+            model = await get_setting("translate_model", "gemini-2.0-flash")
+            apiurl = await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai")
+            try:
+                translated, stats = await call_openai_translate(cues, src, tgt, apikey, model, apiurl)
+                return {"cues": translated, "level": "tier3", "engine": "ai", **stats}
+            except Exception as e:
                 last_err = f"AI LLM error: {e}"
-            print(f"[TRANSLATE AI LLM ERROR] {e}")
+                print(f"[TRANSLATE AI LLM ERROR] {e}")
+        else:
+            last_err = "AI LLM belum disetel (masukkan API key di pengaturan)"
+            print(f"[TRANSLATE AI LLM] {last_err}")
 
-    # Tier 3: MyMemory jika di bawah kuota
-    day = _dt.datetime.utcnow().strftime("%Y-%m-%d")
-    used = await get_today_char_count(day)
-    needed = estimate_chars(cues)
-    SOFT_LIMIT = 4500
-    if used + needed <= SOFT_LIMIT:
+        # Fallback ke Google AIGTX
         try:
-            translated = await call_mymemory_translate(cues, src, tgt)
-            await add_today_char_count(day, needed)
-            return {"cues": translated, "level": "tier4", "engine": "mymemory", "error": last_err}
+            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
+            return {"cues": translated, "level": "tier2", "engine": "aigtx", "error": last_err}
         except Exception as e:
-            if not last_err:
-                last_err = f"MyMemory error: {e}"
-    else:
-        if not last_err:
-            last_err = f"Kuota gratis MyMemory harian habis ({used}/{SOFT_LIMIT} char)"
+            last_err = f"{last_err} | AIGTX error: {e}"
+            print(f"[TRANSLATE AIGTX ERROR] {e}")
 
-    # Tier 4: source fallback (return cues asli dengan label source).
+        # Fallback ke Google GTX
+        try:
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx")
+            return {"cues": translated, "level": "tier1", "engine": "gtx", "error": last_err}
+        except Exception as e:
+            last_err = f"{last_err} | GTX error: {e}"
+            print(f"[TRANSLATE GTX ERROR] {e}")
+
+    elif requested_mode == "aigtx":
+        # 1. Coba Google AIGTX (Smart Lexicon)
+        try:
+            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
+            return {"cues": translated, "level": "tier2", "engine": "aigtx"}
+        except Exception as e:
+            last_err = f"AIGTX error: {e}"
+            print(f"[TRANSLATE AIGTX ERROR] {e}")
+
+        # 2. Coba AI jika aktif
+        if await _llm_enabled():
+            apikey = await get_setting("translate_apikey", "")
+            model = await get_setting("translate_model", "gemini-2.0-flash")
+            apiurl = await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai")
+            try:
+                translated, stats = await call_openai_translate(cues, src, tgt, apikey, model, apiurl)
+                return {"cues": translated, "level": "tier3", "engine": "ai", **stats}
+            except Exception as e:
+                last_err = f"{last_err} | AI LLM error: {e}"
+                print(f"[TRANSLATE AI LLM ERROR] {e}")
+
+        # 3. Fallback ke Google GTX
+        try:
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx")
+            return {"cues": translated, "level": "tier1", "engine": "gtx", "error": last_err}
+        except Exception as e:
+            last_err = f"{last_err} | GTX error: {e}"
+            print(f"[TRANSLATE GTX ERROR] {e}")
+
+    else:
+        # 1. Coba Google GTX murni
+        try:
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx")
+            return {"cues": translated, "level": "tier1", "engine": "gtx"}
+        except Exception as e:
+            last_err = f"Google Translate error: {e}"
+            print(f"[TRANSLATE GOOGLE GTX ERROR] {e}")
+
+        # 2. Fallback ke Google AIGTX
+        try:
+            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
+            return {"cues": translated, "level": "tier2", "engine": "aigtx", "error": last_err}
+        except Exception as e:
+            last_err = f"{last_err} | AIGTX error: {e}"
+            print(f"[TRANSLATE AIGTX ERROR] {e}")
+
+        # 3. Coba AI jika aktif
+        if await _llm_enabled():
+            apikey = await get_setting("translate_apikey", "")
+            model = await get_setting("translate_model", "gemini-2.0-flash")
+            apiurl = await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai")
+            try:
+                translated, stats = await call_openai_translate(cues, src, tgt, apikey, model, apiurl)
+                return {"cues": translated, "level": "tier3", "engine": "ai", **stats}
+            except Exception as e:
+                last_err = f"{last_err} | AI LLM error: {e}"
+                print(f"[TRANSLATE AI LLM ERROR] {e}")
+
+    # Return cues asli jika semua penerjemah gagal
     return {"cues": cues, "level": "source", "error": last_err}
 
 def find_mpv_binary():
@@ -1487,7 +1545,7 @@ async def get_set():
         # Translate API (opsional). User isi via settings panel. Fallback ke
         # MyMemory kalau kosong. translate_apikey tidak pernah di-log.
         "translate_apikey": await get_setting("translate_apikey", ""),
-        "translate_model": await get_setting("translate_model", "gemini-3.1-flash-lite"),
+        "translate_model": await get_setting("translate_model", "gemini-2.0-flash"),
         "translate_apiurl": await get_setting("translate_apiurl", "https://generativelanguage.googleapis.com/v1beta/openai"),
     })
 
