@@ -3,7 +3,13 @@
 Pemutar anime mandiri multi-platform (Android, Windows, Linux, Web) yang ringan, bebas iklan, tanpa registrasi akun, dan menjaga privasi data di penyimpanan lokal.
 
 [![Release](https://img.shields.io/github/v/release/asfaraguest/tatap?style=flat-square&color=00f0ff)](https://github.com/asfaraguest/tatap/releases)
+[![Stars](https://img.shields.io/github/stars/asfaraguest/tatap?style=flat-square&logo=github&color=e3b341)](https://github.com/asfaraguest/tatap/stargazers)
+[![Forks](https://img.shields.io/github/forks/asfaraguest/tatap?style=flat-square&logo=github&color=58a6ff)](https://github.com/asfaraguest/tatap/network/members)
+[![Downloads](https://img.shields.io/github/downloads/asfaraguest/tatap/total?style=flat-square&logo=github&color=3fb950)](https://github.com/asfaraguest/tatap/releases)
+[![Views](https://hits.sh/github.com/asfaraguest/tatap.svg?style=flat-square&label=views&color=00f0ff)](https://hits.sh/github.com/asfaraguest/tatap/)
+[![Issues](https://img.shields.io/github/issues/asfaraguest/tatap?style=flat-square&logo=github&color=f85149)](https://github.com/asfaraguest/tatap/issues)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
+
 [![Trakteer](https://img.shields.io/badge/Trakteer-Dukung%20Saya-be1e2d?style=flat-square&logo=ko-fi&logoColor=white)](https://trakteer.id/bagus_azizul)
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/L5J028GNTA)
 
