@@ -152,6 +152,37 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
+    <!-- Seasons & Relations Section (Prekuel / Season 1 / Sekuel) -->
+    <LinearLayout
+        android:id="@+id/layout_detail_seasons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="6dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SEASON / RELASI TERKAIT"
+            android:textColor="#38BDF8"
+            android:textSize="10.5sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_detail_seasons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:clipToPadding="false"
+            android:clipChildren="false"
+            android:orientation="horizontal"
+            android:nextFocusUp="@+id/btn_quick_play"
+            android:nextFocusDown="@+id/btn_sort_order" />
+    </LinearLayout>
+
     <!-- Section Header (Daftar Episode & Sort Order) -->
     <LinearLayout
         android:layout_width="match_parent"

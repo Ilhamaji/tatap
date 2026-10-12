@@ -123,3 +123,69 @@ def anilist_schedules(now_ts, end_ts, per_page=50):
             return r.json().get("data", {}).get("Page", {}).get("airingSchedules", []) or []
     except Exception:
         return []
+
+
+RELATIONS_QUERY = """
+query ($search: String) {
+  Media(search: $search, type: ANIME) {
+    id
+    title { romaji english }
+    format
+    seasonYear
+    relations {
+      edges {
+        relationType
+        node {
+          id
+          title { romaji english }
+          format
+          seasonYear
+          status
+          coverImage { medium large }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+def anime_relations(search_query: str):
+    """Ambil relasi franchise anime (Prequel, Sequel, Parent, Side Story, dll) dari AniList."""
+    if not search_query or not search_query.strip():
+        return []
+    try:
+        c = _get_al_client()
+        r = c.post(ANILIST_URL, json={
+            "query": RELATIONS_QUERY,
+            "variables": {"search": search_query.strip()}
+        })
+        if r.status_code != 200:
+            return []
+        data = r.json().get("data", {}).get("Media", {})
+        edges = data.get("relations", {}).get("edges", []) or []
+        out = []
+        for edge in edges:
+            rel = edge.get("relationType", "")
+            node = edge.get("node", {})
+            fmt = (node.get("format") or "").upper()
+            if rel in ("PREQUEL", "SEQUEL", "PARENT", "SIDE_STORY", "ALTERNATIVE", "SUMMARY") and fmt in ("TV", "MOVIE", "OVA", "ONA", "SPECIAL"):
+                t_obj = node.get("title", {}) or {}
+                t_eng = t_obj.get("english") or ""
+                t_rom = t_obj.get("romaji") or ""
+                title = t_eng if t_eng else t_rom
+                img = (node.get("coverImage") or {}).get("medium") or ""
+                out.append({
+                    "id": node.get("id"),
+                    "relation": rel,
+                    "format": fmt,
+                    "title": title,
+                    "title_romaji": t_rom,
+                    "year": node.get("seasonYear"),
+                    "status": node.get("status"),
+                    "poster": img
+                })
+        return out
+    except Exception:
+        return []
+

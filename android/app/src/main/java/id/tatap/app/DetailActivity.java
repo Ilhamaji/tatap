@@ -52,6 +52,10 @@ public class DetailActivity extends Activity {
     private final List<Integer> originalEpisodes = new ArrayList<>();
     private boolean isAscending = true;
 
+    private View layoutSeasons;
+    private RecyclerView rvSeasons;
+    private SeasonAdapter seasonAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -76,6 +80,8 @@ public class DetailActivity extends Activity {
         pbLoading = findViewById(R.id.pb_detail_loading);
         ImageButton btnBack = findViewById(R.id.btn_back);
         rvEpisodes = findViewById(R.id.rv_episodes);
+        layoutSeasons = findViewById(R.id.layout_detail_seasons);
+        rvSeasons = findViewById(R.id.rv_detail_seasons);
 
         tvTitle.setText(title != null ? title : "Detail Anime");
         tvTitleFull.setText(title != null ? title : "Anime");
@@ -100,6 +106,12 @@ public class DetailActivity extends Activity {
         adapter = new EpisodeAdapter();
         rvEpisodes.setAdapter(adapter);
 
+        if (rvSeasons != null) {
+            rvSeasons.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            seasonAdapter = new SeasonAdapter();
+            rvSeasons.setAdapter(seasonAdapter);
+        }
+
         btnSortOrder.setOnClickListener(v -> {
             isAscending = !isAscending;
             btnSortOrder.setText(isAscending ? "1 - N" : "N - 1");
@@ -123,6 +135,7 @@ public class DetailActivity extends Activity {
             btnQuickPlay.post(() -> btnQuickPlay.requestFocus());
         }
         loadEpisodes();
+        loadRelations();
     }
 
     @Override
@@ -302,6 +315,119 @@ public class DetailActivity extends Activity {
                 card = itemView.findViewById(R.id.card_episode);
                 tvTitle = itemView.findViewById(R.id.tv_ep_title);
                 tvBadge = itemView.findViewById(R.id.tv_ep_status_badge);
+                TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
+            }
+        }
+    }
+
+    private void loadRelations() {
+        if (slug == null || slug.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                String u = "http://127.0.0.1:8767/api/anime/" + URLEncoder.encode(slug, "UTF-8") + "/relations"
+                        + "?title=" + URLEncoder.encode(title != null ? title : "", "UTF-8");
+                HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(12000);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+
+                JSONObject res = new JSONObject(sb.toString());
+                if (res.optBoolean("success")) {
+                    JSONArray relArr = res.getJSONObject("data").getJSONArray("relations");
+                    List<JSONObject> list = new ArrayList<>();
+                    for (int i = 0; i < relArr.length(); i++) {
+                        JSONObject item = relArr.getJSONObject(i);
+                        String itemSlug = item.optString("slug", "");
+                        if (!itemSlug.isEmpty() && !itemSlug.equals(slug)) {
+                            list.add(item);
+                        }
+                    }
+                    runOnUiThread(() -> {
+                        if (!list.isEmpty() && seasonAdapter != null && layoutSeasons != null) {
+                            seasonAdapter.setRelations(list);
+                            layoutSeasons.setVisibility(View.VISIBLE);
+                        } else if (layoutSeasons != null) {
+                            layoutSeasons.setVisibility(View.GONE);
+                        }
+                    });
+                }
+            } catch (Exception ignored) {
+                runOnUiThread(() -> {
+                    if (layoutSeasons != null) layoutSeasons.setVisibility(View.GONE);
+                });
+            }
+        }).start();
+    }
+
+    class SeasonAdapter extends RecyclerView.Adapter<SeasonAdapter.SeasonViewHolder> {
+        private final List<JSONObject> relations = new ArrayList<>();
+
+        public void setRelations(List<JSONObject> list) {
+            relations.clear();
+            if (list != null) relations.addAll(list);
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public SeasonViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_season_chip, parent, false);
+            return new SeasonViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull SeasonViewHolder holder, int position) {
+            JSONObject item = relations.get(position);
+            String relType = item.optString("relation", "");
+            String label = item.optString("label", "Season");
+            String relTitle = item.optString("title", "");
+            String relSlug = item.optString("slug", "");
+            String relPoster = item.optString("poster", "");
+            String relFormat = item.optString("format", "TV");
+
+            holder.tvBadge.setText(label.toUpperCase());
+            holder.tvTitle.setText(relTitle);
+
+            if ("PREQUEL".equalsIgnoreCase(relType)) {
+                holder.tvBadge.setTextColor(0xFF38BDF8); // Cyan
+            } else if ("SEQUEL".equalsIgnoreCase(relType)) {
+                holder.tvBadge.setTextColor(0xFFC084FC); // Purple
+            } else if ("MOVIE".equalsIgnoreCase(relFormat)) {
+                holder.tvBadge.setTextColor(0xFFFACC15); // Gold/Yellow
+            } else {
+                holder.tvBadge.setTextColor(0xFF94A3B8); // Slate
+            }
+
+            holder.itemView.setOnClickListener(v -> {
+                Intent intent = new Intent(DetailActivity.this, DetailActivity.class);
+                intent.putExtra("slug", relSlug);
+                intent.putExtra("title", relTitle);
+                intent.putExtra("poster", relPoster.isEmpty() ? poster : relPoster);
+                intent.putExtra("type", relFormat);
+                intent.putExtra("eps", "");
+                intent.putExtra("sub", "SUB");
+                startActivity(intent);
+                finish();
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return relations.size();
+        }
+
+        class SeasonViewHolder extends RecyclerView.ViewHolder {
+            TextView tvBadge;
+            TextView tvTitle;
+
+            public SeasonViewHolder(@NonNull View itemView) {
+                super(itemView);
+                tvBadge = itemView.findViewById(R.id.tv_season_badge);
+                tvTitle = itemView.findViewById(R.id.tv_season_title);
                 TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
             }
         }

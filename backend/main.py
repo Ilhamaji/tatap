@@ -549,6 +549,73 @@ async def episodes(slug: str):
     except Exception as e:
         return fail(str(e))
 
+@app.get("/api/anime/{slug}/relations")
+async def anime_relations_endpoint(slug: str, title: str = Query("")):
+    """Ambil daftar season/prekuel/sekuel terkait untuk anime yang sedang dibuka."""
+    try:
+        if "hentai" in (slug or "").lower() or "hentai" in (title or "").lower():
+            return fail("Konten genre Hentai diblokir")
+        
+        loop = asyncio.get_running_loop()
+        cache_key = f"relations_v1|{slug}"
+        cached = await get_browse_cache(cache_key, ttl=86400 * 3) # Cache 3 hari
+        if cached:
+            return ok(cached)
+
+        # Gunakan title dari query parameter atau tebak dari slug
+        search_query = title.strip() if title else slug.rsplit("-", 1)[0].replace("-", " ")
+        raw_relations = await loop.run_in_executor(None, lambda: al.anime_relations(search_query))
+
+        results = []
+        for r in raw_relations:
+            rel_type = r.get("relation", "")
+            r_title = r.get("title", "")
+            r_romaji = r.get("title_romaji", "")
+            r_year = r.get("year")
+            r_fmt = r.get("format", "TV")
+            r_poster = r.get("poster", "")
+
+            # Cari slug HiAnime yang cocok untuk relasi ini
+            matched_slug = await _match_slug_one(loop, r_title, r_romaji)
+            if not matched_slug and r_romaji:
+                matched_slug = await _match_slug_one(loop, r_romaji, r_title)
+
+            # Buat label yang mudah dimengerti user (misal: "Season 1", "Prekuel", "Sekuel", "Movie")
+            label = "Terkait"
+            season_num = _extract_season_num(r_title) or _extract_season_num(r_romaji)
+            if rel_type == "PREQUEL":
+                label = f"Season {season_num}" if season_num > 1 else "Prekuel"
+                if "season" not in r_title.lower() and season_num == 1:
+                    label = "Season 1"
+            elif rel_type == "SEQUEL":
+                label = f"Season {season_num}" if season_num > 1 else "Sekuel"
+            elif r_fmt == "MOVIE":
+                label = "Movie"
+            elif r_fmt in ("OVA", "ONA", "SPECIAL"):
+                label = r_fmt
+
+            results.append({
+                "relation": rel_type,
+                "label": label,
+                "title": r_title,
+                "title_romaji": r_romaji,
+                "year": r_year,
+                "format": r_fmt,
+                "poster": r_poster,
+                "slug": matched_slug
+            })
+
+        # Urutkan: PREQUEL paling kiri (agar mudah menemukan Season 1), lalu PARENT, SEQUEL, MOVIE, dll
+        order_map = {"PREQUEL": 0, "PARENT": 1, "SEQUEL": 2, "ALTERNATIVE": 3, "SIDE_STORY": 4, "SUMMARY": 5}
+        results.sort(key=lambda x: (order_map.get(x["relation"], 9), x.get("year") or 9999))
+
+        data = {"current_slug": slug, "relations": results}
+        await set_browse_cache(cache_key, data)
+        return ok(data)
+    except Exception as e:
+        return fail(str(e))
+
+
 @app.get("/api/stream/resolve")
 async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("sub"), q: str = Query("best"), source: str = Query("")):
     try:

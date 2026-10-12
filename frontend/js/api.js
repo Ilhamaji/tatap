@@ -22,6 +22,7 @@ browse:function(params,page){
   return jget("/api/browse?page="+(page||1)+qs);
 },
 episodes:function(slug){return jget("/api/anime/"+encodeURIComponent(slug)+"/episodes");},
+relations:function(slug,title){return jget("/api/anime/"+encodeURIComponent(slug)+"/relations?title="+encodeURIComponent(title||""));},
 resolve:function(slug,ep,mode,q,source){return jget("/api/stream/resolve?slug="+encodeURIComponent(slug)+"&ep="+ep+"&mode="+(mode||"sub")+"&q="+(q||"best")+(source?"&source="+encodeURIComponent(source):""));},
 genres:function(){return jget("/api/genres");},
 health:function(){return jget("/api/health");},

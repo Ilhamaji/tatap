@@ -29,8 +29,54 @@ function openTitle(slug,title){
   $("tm-count").textContent="memuat...";
   $("tm-eps").innerHTML="";
   $("ep-filter").value="";
+  var sBar=$("tm-seasons");if(sBar)sBar.classList.add("hidden");
+  var sChips=$("tm-seasons-chips");if(sChips)sChips.innerHTML="";
   $("title-modal").classList.remove("hidden");
   loadEps();
+  loadRelations();
+}
+function loadRelations(){
+  var thisSlug=cur.slug;
+  window.Tatap.relations(thisSlug, cur.title).then(function(r){
+    if(thisSlug!==cur.slug)return; // Stale modal
+    var sBar=$("tm-seasons");
+    var sChips=$("tm-seasons-chips");
+    if(!sBar||!sChips)return;
+    if(!r||!r.success||!r.data||!r.data.relations||!r.data.relations.length){
+      sBar.classList.add("hidden");
+      return;
+    }
+    var rels=r.data.relations;
+    sChips.innerHTML="";
+    var count=0;
+    for(var i=0;i<rels.length;i++){
+      (function(rel){
+        if(!rel.slug)return; // Lewati jika belum termap ke sumber video
+        count++;
+        var b=document.createElement("button");
+        var cls="season-chip";
+        var icon="📺";
+        if(rel.relation==="PREQUEL"){cls+=" prequel";icon="⏮";}
+        else if(rel.relation==="SEQUEL"){cls+=" sequel";icon="⏭";}
+        else if(rel.format==="MOVIE"){cls+=" movie";icon="🎬";}
+        b.className=cls;
+        b.title=rel.title+(rel.year?" ("+rel.year+")":"");
+        b.innerHTML="<span>"+icon+"</span> <b>"+rel.label+"</b>: "+esc(rel.title);
+        b.addEventListener("click",function(e){
+          if(e)e.stopPropagation();
+          openTitle(rel.slug,rel.title);
+        });
+        sChips.appendChild(b);
+      })(rels[i]);
+    }
+    if(count>0){
+      sBar.classList.remove("hidden");
+    }else{
+      sBar.classList.add("hidden");
+    }
+  }).catch(function(){
+    var sBar=$("tm-seasons");if(sBar)sBar.classList.add("hidden");
+  });
 }
 function loadEps(){
   window.Tatap.episodes(cur.slug).then(function(r){
