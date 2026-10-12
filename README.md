@@ -117,6 +117,12 @@ Jika Anda merasa aplikasi ini bermanfaat, dukung pengembangan Tatap agar tetap a
 
 ---
 
+## Riwayat Versi & Changelog
+
+Proyek ini sepenuhnya mematuhi kaidah [Semantic Versioning 2.0.0](https://semver.org/lang/id/). Catatan riwayat perubahan terperinci dan alasan kenaikan tiap nomor versi didokumentasikan di [CHANGELOG.md](CHANGELOG.md).
+
+---
+
 ## Batasan Layanan
 
 - Memerlukan koneksi internet aktif untuk mengambil metadata dan memutar stream.
