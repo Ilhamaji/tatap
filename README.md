@@ -4,6 +4,7 @@ Pemutar anime mandiri multi-platform (Android, Windows, Linux, Web) yang ringan,
 
 [![Release](https://img.shields.io/github/v/release/asfaraguest/tatap?style=flat-square&color=00f0ff)](https://github.com/asfaraguest/tatap/releases)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
+[![Trakteer](https://img.shields.io/badge/Trakteer-Dukung%20Saya-be1e2d?style=flat-square&logo=ko-fi&logoColor=white)](https://trakteer.id/bagus_azizul)
 [![Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/L5J028GNTA)
 
 ---
@@ -76,6 +77,15 @@ Perintah utilitas:
 - Cek kunci: `:apikey`
 - Hapus kunci: `:apikey clear`
 - Ganti model: `:model <nama_model>`
+
+---
+
+## Dukungan / Donasi
+
+Jika Anda merasa aplikasi ini bermanfaat, dukung pengembangan Tatap agar tetap aktif, bebas iklan, dan terus diperbarui:
+
+<a href="https://trakteer.id/bagus_azizul" target="_blank"><img id="wse-buttons-preview" src="https://edge-cdn.trakteer.id/images/embed/trbtn-red.png" height="40" style="border:0px;height:40px;" alt="Trakteer Saya"></a>
+<a href="https://ko-fi.com/L5J028GNTA" target="_blank"><img src="https://ko-fi.com/img/githubbutton_sm.svg" height="36" style="border:0px;height:36px;margin-left:8px;" alt="Support on Ko-fi"></a>
 
 ---
 
