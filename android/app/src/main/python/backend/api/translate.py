@@ -1199,25 +1199,35 @@ async def call_openai_translate(cues, src, tgt, apikey, model, apiurl, timeout=1
     return out, stats
 
 
+def is_valid_translation(original_cues, translated_cues, tgt="id"):
+    """Validasi apakah hasil terjemahan benar-benar bahasa sasaran dan bukan teks sumber."""
+    if not translated_cues:
+        return False
+    if (tgt or "").lower() != "id":
+        return True
+    combined = " ".join([c.get("text", "") for c in translated_cues[:50]])
+    marker_match = _re.search(r"\b(yang|dan|tidak|aku|kamu|di|ini|itu|bisa|ada|nggak|udah|cuma|banget|siapa|kenapa)\b", combined, _re.IGNORECASE)
+    return bool(marker_match)
+
+
 async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx"):
     """Translate via Google Translate Web RPC (Unmetered, Zero-Key, Super Cepat).
-    Menggunakan multi-endpoint failover (dict-chrome-ex, clients5.google.com, gtx)
-    dengan HTML preservation (<p id="i">...</p>) per batch (25 cues/batch).
-    Google Translate menjaga 100% struktur tag HTML dan atribut id sehingga urutan dialog
-    dijamin presisi dan tidak pernah bergeser."""
+    Menggunakan HTTP POST form-encoded dengan HTML preservation (<p id="i">...</p>)
+    dan multi-client pool failover (gtx, dict-chrome-ex, tw-ob).
+    Tahan batas laju IP/CGNAT operator seluler dan tidak memotong URI."""
     if not cues:
         return cues
     import urllib.parse as _up
     
-    BATCH_SIZE = 25
+    BATCH_SIZE = 20
     batches = [cues[i:i + BATCH_SIZE] for i in range(0, len(cues), BATCH_SIZE)]
     all_translated = []
     t_start = _time.time()
-    log_translate(f"Mulai translate Google GTX (HTML-Preserved): {len(cues)} cues | {len(batches)} batches | mode={mode}")
+    log_translate(f"Mulai translate Google GTX (POST/Multi-Client): {len(cues)} cues | {len(batches)} batches | mode={mode}")
     
     from concurrent.futures import ThreadPoolExecutor
 
-    def _fetch_batch_sync(batch_lines):
+    def _fetch_single_chunk_sync(batch_lines):
         html_chunks = []
         for i, line in enumerate(batch_lines):
             safe_text = _html.escape(line) if line else ""
@@ -1226,27 +1236,36 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
 
         endpoints = [
             ("https://translate.googleapis.com/translate_a/single", {
-                "client": "dict-chrome-ex", "sl": src, "tl": tgt, "dt": "t", "q": joined
+                "client": "gtx", "sl": src, "tl": tgt, "dt": "t"
             }),
             ("https://clients5.google.com/translate_a/t", {
-                "client": "dict-chrome-ex", "sl": src, "tl": tgt, "q": joined
+                "client": "dict-chrome-ex", "sl": src, "tl": tgt
             }),
             ("https://translate.googleapis.com/translate_a/single", {
-                "client": "gtx", "sl": src, "tl": tgt, "dt": "t", "q": joined
-            })
+                "client": "dict-chrome-ex", "sl": src, "tl": tgt, "dt": "t"
+            }),
+            ("https://clients5.google.com/translate_a/t", {
+                "client": "gtx", "sl": src, "tl": tgt
+            }),
+            ("https://clients5.google.com/translate_a/t", {
+                "client": "tw-ob", "sl": src, "tl": tgt
+            }),
         ]
 
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
             "Accept": "*/*"
         }
 
-        # 1. Coba via httpx dengan auto-fallback SSL verify jika di lingkungan Android Chaquopy
+        body_data = {"q": joined}
+
+        # 1. Coba via HTTP POST menggunakan httpx (dengan fallback SSL verify untuk Android Chaquopy)
         for ep_url, ep_params in endpoints:
             for verify_ssl in (True, False):
                 try:
                     with _httpx.Client(timeout=timeout, verify=verify_ssl, follow_redirects=True) as client:
-                        resp = client.get(ep_url, params=ep_params, headers=headers)
+                        resp = client.post(ep_url, params=ep_params, data=body_data, headers=headers)
                         if resp.status_code == 200:
                             data = resp.json()
                             raw_out = ""
@@ -1267,14 +1286,15 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
                 except Exception:
                     pass
 
-        # 2. Coba fallback via urllib.request dengan unverified ssl context
+        # 2. Coba fallback via urllib.request (POST) dengan unverified SSL context
         try:
             import urllib.request as _ur
             import ssl
             ssl_ctx = ssl._create_unverified_context()
-            for ep_url, ep_params in endpoints[:2]:
+            encoded_body = _up.urlencode(body_data).encode("utf-8")
+            for ep_url, ep_params in endpoints[:3]:
                 url_full = ep_url + "?" + _up.urlencode(ep_params)
-                req = _ur.Request(url_full, headers=headers)
+                req = _ur.Request(url_full, data=encoded_body, headers=headers)
                 with _ur.urlopen(req, context=ssl_ctx, timeout=timeout) as resp:
                     if resp.status == 200:
                         data = _json.loads(resp.read().decode("utf-8"))
@@ -1297,9 +1317,28 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
 
         return batch_lines, False
 
+    def _fetch_batch_sync(batch_lines):
+        # Berikan jeda mikro agar request tidak menumpuk dalam milidetik yang sama
+        _time.sleep(0.04)
+        res, ok = _fetch_single_chunk_sync(batch_lines)
+        if ok:
+            return res, True
+
+        # Jika batch 20 gagal, coba bagi 2 (mini-batch 10) sebagai safety net
+        if len(batch_lines) > 6:
+            mid = len(batch_lines) // 2
+            _time.sleep(0.1)
+            p1, ok1 = _fetch_single_chunk_sync(batch_lines[:mid])
+            _time.sleep(0.1)
+            p2, ok2 = _fetch_single_chunk_sync(batch_lines[mid:])
+            if ok1 or ok2:
+                return p1 + p2, True
+
+        return batch_lines, False
+
     loop = _asyncio.get_running_loop()
     batch_lines_list = [[cue["text"].replace("\n", " ").strip() for cue in b] for b in batches]
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         tasks = [loop.run_in_executor(executor, lambda b=bl: _fetch_batch_sync(b)) for bl in batch_lines_list]
         batch_results = await _asyncio.gather(*tasks)
 

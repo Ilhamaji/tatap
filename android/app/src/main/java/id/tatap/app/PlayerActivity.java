@@ -1041,6 +1041,10 @@ public class PlayerActivity extends Activity {
     }
 
     private void applySubtitleSelection() {
+        applySubtitleSelection(false);
+    }
+
+    private void applySubtitleSelection(boolean forceRefresh) {
         updateSubStatusText(false);
         updateExoButtonStates();
 
@@ -1056,6 +1060,9 @@ public class PlayerActivity extends Activity {
         }
 
         try {
+            if (forceRefresh) {
+                currentCues = new ArrayList<>();
+            }
             String subModeParam = activeEngine.equals("raw") ? "" : activeEngine;
             String srcParam = activeEngine.equals("raw") ? activeSubLang : "en";
 
@@ -1071,7 +1078,7 @@ public class PlayerActivity extends Activity {
 
             // Jika memilih terjemahan (AIGTX / AI / GTX) dan cues belum dimuat:
             // Unduh dulu subtitle sumber (English/Native) secara instan (0.5s) agar penonton tidak mengalami black screen / tanpa sub.
-            if (!subModeParam.isEmpty() && currentCues.isEmpty() && enSourceSubUrl != null && !enSourceSubUrl.isEmpty()) {
+            if (!subModeParam.isEmpty() && currentCues.isEmpty() && enSourceSubUrl != null && !enSourceSubUrl.isEmpty() && !forceRefresh) {
                 String rawSubUrl = "http://127.0.0.1:8767/api/player/sub?url=" + URLEncoder.encode(enSourceSubUrl, "UTF-8")
                         + "&referer=" + encodedRef
                         + "&src=" + URLEncoder.encode(srcParam, "UTF-8")
@@ -1084,7 +1091,8 @@ public class PlayerActivity extends Activity {
                     + "&referer=" + encodedRef
                     + "&src=" + URLEncoder.encode(srcParam, "UTF-8")
                     + "&lang=" + URLEncoder.encode(activeSubLang, "UTF-8")
-                    + (subModeParam.isEmpty() ? "" : "&mode=" + URLEncoder.encode(subModeParam, "UTF-8"));
+                    + (subModeParam.isEmpty() ? "" : "&mode=" + URLEncoder.encode(subModeParam, "UTF-8"))
+                    + (forceRefresh ? "&refresh=true" : "");
 
             loadSubtitlesAsync(proxiedSub, false);
         } catch (Exception e) {
@@ -1112,6 +1120,9 @@ public class PlayerActivity extends Activity {
                     throw new Exception("HTTP " + respCode);
                 }
 
+                String trTier = conn.getHeaderField("X-Translate-Tier");
+                String trErr = conn.getHeaderField("X-Translate-Error");
+
                 BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                 StringBuilder sb = new StringBuilder();
                 String line;
@@ -1133,7 +1144,14 @@ public class PlayerActivity extends Activity {
                     } else {
                         currentCues = cues;
                         runOnUiThread(() -> {
-                            updateSubStatusText(true);
+                            boolean isFallbackTier = "source".equalsIgnoreCase(trTier) || "source-fallback".equalsIgnoreCase(trTier);
+                            if (isFallbackTier) {
+                                if (tvSubStatus != null) {
+                                    tvSubStatus.setText("Sub: " + activeSubLang.toUpperCase() + " [Terjemahan Gagal, Teks Asli]");
+                                }
+                            } else {
+                                updateSubStatusText(true);
+                            }
                             subtitleSyncRunnable.run();
                         });
                     }
@@ -1568,6 +1586,15 @@ public class PlayerActivity extends Activity {
                     activeSubUrl = url;
                 });
             }
+        }
+
+        // Opsi Muat Ulang / Terjemahkan Ulang Subtitle (Hapus Cache)
+        if (subEnabled && !"raw".equals(activeEngine)) {
+            options.add("[Refresh] Terjemahkan Ulang Subtitle (Hapus Cache)");
+            actions.add(() -> {
+                Toast.makeText(this, "Menerjemahkan ulang subtitle dari awal...", Toast.LENGTH_SHORT).show();
+                applySubtitleSelection(true);
+            });
         }
 
         // 7. Pengaturan Tampilan & Gaya Subtitle

@@ -15,6 +15,21 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 
 ---
 
+## [2.4.1] - 2026-10-13
+
+### Diperbaiki
+- **Pencegahan Cache Poisoning Subtitle:** Memperbaiki bug kritis di mana kegagalan terjemahan sementara menyebabkan subtitle teks asli (bahasa Inggris) tersimpan ke database `subtitle_cache` lokal selama 7 hari, sehingga episode tersebut terkunci permanen dalam bahasa Inggris.
+- **Validasi dan Pembersihan Cache Otomatis:** Sistem kini memvalidasi struktur kosakata bahasa Indonesia saat membaca cache subtitle. Entri cache lama yang terindikasi berisi teks mentah bahasa Inggris otomatis dihapus dan diterjemahkan ulang secara transparan.
+- **Eliminasi Race Condition & Deduplikasi Inflight:** Menggabungkan antrean prefetch di latar belakang dan permintaan aktif pemutar ke dalam satu Future bersama (`base_hash|lang`), mencegah request ganda bersamaan yang memicu batas laju HTTP 429 Google pada koneksi CGNAT operator seluler.
+- **Transisi ke HTTP POST Google Translate RPC:** Mengubah metode permintaan batch Google Translate dari GET menjadi POST dengan form encoding (`q`) dan rotasi multi-client (`gtx`, `dict-chrome-ex`, `tw-ob`), mengatasi pemotongan URL panjang dan blokir WAF/DPI operator.
+- **Indikator Akurat Kegagalan Terjemahan di Pemutar Android:** Pemutar Android kini mendeteksi status tier `source` atau `source-fallback`, menampilkan label yang jujur di HUD (`[Terjemahan Gagal, Teks Asli]`) dan tidak lagi mengklaim berhasil saat teks masih bahasa Inggris.
+
+### Ditingkatkan
+- **Menu Refresh / Terjemahkan Ulang Subtitle:** Menambahkan opsi aksi `[Refresh] Terjemahkan Ulang Subtitle (Hapus Cache)` pada dialog pemilih subtitle Android untuk membersihkan cache episode secara instan dan mengulang translasi dari awal.
+- **Pacing dan Pembagian Mini-Batch Adaptif:** Mengurangi konkurensi pekerja menjadi 2 thread dengan jeda mikro antar batch dan mekanisme pembagian otomatis batch 20 baris menjadi 10 baris jika terjadi penolakan paket.
+
+---
+
 ## [2.4.0] - 2026-10-12
 
 ### Ditambahkan

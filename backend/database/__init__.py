@@ -221,6 +221,13 @@ async def get_subtitle_cache(key, ttl=30 * 24 * 3600):
             return row[0]
 
 
+async def delete_subtitle_cache(key):
+    """Hapus entri subtitle cache spesifik."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM subtitle_cache WHERE key=?", (key,))
+        await db.commit()
+
+
 async def set_subtitle_cache(key, payload):
     """Cache translated VTT TEXT."""
     async with aiosqlite.connect(DB_PATH) as db:

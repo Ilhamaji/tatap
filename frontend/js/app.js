@@ -801,7 +801,7 @@ function switchSubtitleTrack(url, langCode){
     paintCue();
     syncNativeTextTrack(res.text, cur.cues, langCode);
     if(langCode==="id"){
-      if(res.tier==="source"){
+      if(res.tier==="source"||res.tier==="source-fallback"){
         var msg="Gagal translate";
         if(res.error) msg+=": "+res.error;
         else msg+=" (menampilkan subtitle asli)";
