@@ -15,20 +15,7 @@
 <header class="tui-head">
   <div class="head-brand">
     <span class="brand-name">TATAP</span>
-    <span class="brand-ver" id="brand-ver">v2.3.5</span>
-  </div>
-
-  <div class="header-search-wrap">
-    <span class="prompt-ps1">tatap$</span>
-    <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul, atau :perintah (cth: :update, :musim)">
-    <span class="caret" aria-hidden="true"></span>
-  </div>
-
-  <div class="head-actions">
-    <span id="health" class="health" title="Status koneksi scraper backend">…</span>
-    <button id="btn-drawer" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
-      <span class="drawer-btn-icon">☰</span>
-    </button>
+    <span class="brand-ver" id="brand-ver">v2.3.6</span>
   </div>
 </header>
 
@@ -72,7 +59,7 @@
     <div class="drawer-head">
       <div class="drawer-title">
         <span class="brand-name">TATAP</span>
-        <span class="dim small">v2.3.5</span>
+        <span class="dim small">v2.3.6</span>
       </div>
       <button class="icon-btn big" id="drawer-close" title="Tutup Menu (Esc)">✕</button>
     </div>
@@ -179,16 +166,35 @@
   </div>
 </div>
 
-<div class="statusbar">
-  <span><b>↑↓</b> pilih</span>
-  <span><b>enter</b> buka</span>
-  <span><b>tab</b> ganti tampilan</span>
-  <span><b>[ ]</b> halaman</span>
-  <span><b>esc</b> reset</span>
-  <span><b>:update</b> cek rilis</span>
-  <button id="sb-source" class="sb-source" title="Sumber streaming aktif. Klik atau ketik :switch untuk beralih">src: hianime ⇄</button>
-  <span id="sb-view" class="sb-view"></span>
-</div>
+<footer class="bottom-bar">
+  <div class="bottom-search-row">
+    <div class="search-input-wrap">
+      <span class="prompt-ps1">tatap$</span>
+      <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul, atau :perintah (cth: :update, :musim, :bantuan)">
+      <span class="caret" aria-hidden="true"></span>
+    </div>
+    <div class="bottom-actions">
+      <span id="health" class="health" title="Status koneksi scraper backend">…</span>
+      <button id="btn-drawer" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
+        <span class="drawer-btn-icon">☰</span>
+      </button>
+    </div>
+  </div>
+  <div class="statusbar">
+    <div class="sb-shortcuts">
+      <span><b>↑↓</b> pilih</span>
+      <span><b>enter</b> buka</span>
+      <span><b>tab</b> ganti tampilan</span>
+      <span><b>[ ]</b> halaman</span>
+      <span><b>esc</b> reset</span>
+      <span><b>:update</b> cek rilis</span>
+    </div>
+    <div class="sb-meta">
+      <button id="sb-source" class="sb-source" title="Sumber streaming aktif. Klik atau ketik :switch untuk beralih">src: hianime ⇄</button>
+      <span id="sb-view" class="sb-view"></span>
+    </div>
+  </div>
+</footer>
 
 <!-- TITLE / EPISODE MODAL -->
 <div id="title-modal" class="overlay hidden" role="dialog" aria-modal="true">
