@@ -23,10 +23,14 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **Eliminasi Race Condition & Deduplikasi Inflight:** Menggabungkan antrean prefetch di latar belakang dan permintaan aktif pemutar ke dalam satu Future bersama (`base_hash|lang`), mencegah request ganda bersamaan yang memicu batas laju HTTP 429 Google pada koneksi CGNAT operator seluler.
 - **Transisi ke HTTP POST Google Translate RPC:** Mengubah metode permintaan batch Google Translate dari GET menjadi POST dengan form encoding (`q`) dan rotasi multi-client (`gtx`, `dict-chrome-ex`, `tw-ob`), mengatasi pemotongan URL panjang dan blokir WAF/DPI operator.
 - **Indikator Akurat Kegagalan Terjemahan di Pemutar Android:** Pemutar Android kini mendeteksi status tier `source` atau `source-fallback`, menampilkan label yang jujur di HUD (`[Terjemahan Gagal, Teks Asli]`) dan tidak lagi mengklaim berhasil saat teks masih bahasa Inggris.
+- **Navigasi Next dan Previous Episode di ExoPlayer:** Mengatasi kendala tombol kontrol Next (`exo_next`) dan Previous (`exo_prev`) di `PlayerControlView` ExoPlayer (Media3) yang terkunci nonaktif secara internal akibat timeline MediaItem tunggal. Mengintegrasikan `ForwardingPlayer` untuk mengontrol ketersediaan command seek (`COMMAND_SEEK_TO_NEXT_MEDIA_ITEM` dan `COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM`) serta sinkronisasi status tombol sesuai ketersediaan episode.
+- **Pembersihan State saat Pergantian Episode:** Membersihkan referensi subtitle (`currentCues`, `currentSubLoadId`, teks overlay), stream URL, dan memanggil `player.clearMediaItems()` saat berpindah episode untuk mencegah tumpang tindih audio/video atau kebocoran subtitle episode sebelumnya.
 
 ### Ditingkatkan
 - **Menu Refresh / Terjemahkan Ulang Subtitle:** Menambahkan opsi aksi `[Refresh] Terjemahkan Ulang Subtitle (Hapus Cache)` pada dialog pemilih subtitle Android untuk membersihkan cache episode secara instan dan mengulang translasi dari awal.
 - **Pacing dan Pembagian Mini-Batch Adaptif:** Mengurangi konkurensi pekerja menjadi 2 thread dengan jeda mikro antar batch dan mekanisme pembagian otomatis batch 20 baris menjadi 10 baris jika terjadi penolakan paket.
+- **Pemuatan Asinkron Cadangan Daftar Episode di Pemutar:** Menambahkan `ensureEpisodeListLoaded()` di `PlayerActivity` untuk mengambil daftar episode secara otomatis jika pemutar dibuka langsung dari tautan riwayat atau intent eksternal tanpa membawa daftar episode lengkap.
+- **Dukungan Tombol Fisik dan Keyboard Navigasi Episode:** Menambahkan pintasan `KEYCODE_N` (Next Episode) dan `KEYCODE_P` (Previous Episode) selain tombol media bawaan untuk kenyamanan pengendali remote TV dan keyboard fisik.
 
 ---
 

@@ -32,6 +32,7 @@ import android.widget.ImageButton;
 
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
+import androidx.media3.common.ForwardingPlayer;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
@@ -59,6 +60,7 @@ import java.util.Map;
 
 public class PlayerActivity extends Activity {
     private ExoPlayer player;
+    private ForwardingPlayer forwardingPlayer;
     private PlayerView playerView;
     private GestureDetector gestureDetector;
     private AudioManager audioManager;
@@ -77,6 +79,7 @@ public class PlayerActivity extends Activity {
     private int ep;
     private String title;
     private List<Integer> episodeList = new ArrayList<>();
+    private boolean isEpisodeListLoading = false;
     private View btnExoNext;
     private View btnExoPrev;
     private View btnExoSub;
@@ -200,6 +203,7 @@ public class PlayerActivity extends Activity {
         if (passedList != null) {
             episodeList.addAll(passedList);
         }
+        ensureEpisodeListLoaded();
 
         playerView = findViewById(R.id.player_view);
         hudOsd = findViewById(R.id.hud_osd);
@@ -390,7 +394,60 @@ public class PlayerActivity extends Activity {
                 .setSeekForwardIncrementMs(5000)
                 .setSeekBackIncrementMs(5000)
                 .build();
-        playerView.setPlayer(player);
+
+        forwardingPlayer = new ForwardingPlayer(player) {
+            @Override
+            public boolean isCommandAvailable(int command) {
+                if (command == COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) {
+                    return hasNextEpisode();
+                }
+                if (command == COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM) {
+                    return hasPrevEpisode();
+                }
+                return super.isCommandAvailable(command);
+            }
+
+            @Override
+            public Commands getAvailableCommands() {
+                Commands.Builder builder = super.getAvailableCommands().buildUpon();
+                if (hasNextEpisode()) {
+                    builder.add(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM);
+                } else {
+                    builder.remove(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM);
+                }
+                if (hasPrevEpisode()) {
+                    builder.add(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM);
+                } else {
+                    builder.remove(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM);
+                }
+                return builder.build();
+            }
+
+            @Override
+            public boolean hasNextMediaItem() {
+                return hasNextEpisode();
+            }
+
+            @Override
+            public boolean hasPreviousMediaItem() {
+                return hasPrevEpisode();
+            }
+
+            @Override
+            public void seekToNextMediaItem() {
+                if (hasNextEpisode()) {
+                    playNextEpisode();
+                }
+            }
+
+            @Override
+            public void seekToPreviousMediaItem() {
+                if (hasPrevEpisode()) {
+                    playPrevEpisode();
+                }
+            }
+        };
+        playerView.setPlayer(forwardingPlayer);
 
         // Hide default ExoPlayer subtitle view since we use seamless custom overlay
         SubtitleView subView = playerView.getSubtitleView();
@@ -415,6 +472,7 @@ public class PlayerActivity extends Activity {
                         layoutBuffering.setVisibility(View.GONE);
                     }
                     if (hasNextEpisode()) {
+                        Toast.makeText(PlayerActivity.this, "Episode selesai. Memutar Episode " + getNextEpisodeNumber() + "...", Toast.LENGTH_SHORT).show();
                         playNextEpisode();
                     }
                 }
@@ -684,6 +742,7 @@ public class PlayerActivity extends Activity {
 
                 case KeyEvent.KEYCODE_MEDIA_NEXT:
                 case KeyEvent.KEYCODE_PAGE_DOWN:
+                case KeyEvent.KEYCODE_N:
                     if (hasNextEpisode()) {
                         playNextEpisode();
                         return true;
@@ -692,6 +751,7 @@ public class PlayerActivity extends Activity {
 
                 case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
                 case KeyEvent.KEYCODE_PAGE_UP:
+                case KeyEvent.KEYCODE_P:
                     if (hasPrevEpisode()) {
                         playPrevEpisode();
                         return true;
@@ -1942,10 +2002,55 @@ public class PlayerActivity extends Activity {
         }
     }
 
+    private void ensureEpisodeListLoaded() {
+        if (!episodeList.isEmpty() || isEpisodeListLoading || slug == null || slug.isEmpty()) return;
+        isEpisodeListLoading = true;
+        new Thread(() -> {
+            try {
+                String u = "http://127.0.0.1:8767/api/anime/" + URLEncoder.encode(slug, "UTF-8") + "/episodes";
+                HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                conn.setConnectTimeout(6000);
+                conn.setReadTimeout(8000);
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+                    JSONObject res = new JSONObject(sb.toString());
+                    if (res.optBoolean("success")) {
+                        JSONArray epsArr = res.getJSONObject("data").getJSONArray("episodes");
+                        List<Integer> list = new ArrayList<>();
+                        for (int i = 0; i < epsArr.length(); i++) {
+                            list.add(epsArr.getJSONObject(i).getInt("ep"));
+                        }
+                        java.util.Collections.sort(list);
+                        runOnUiThread(() -> {
+                            if (!list.isEmpty()) {
+                                episodeList.clear();
+                                episodeList.addAll(list);
+                                updateExoButtonStates();
+                                preResolveNeighbors();
+                            }
+                        });
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception ignored) {}
+            isEpisodeListLoading = false;
+        }).start();
+    }
+
     private boolean hasNextEpisode() {
         if (episodeList != null && !episodeList.isEmpty()) {
             int idx = episodeList.indexOf(ep);
-            return idx >= 0 && idx < episodeList.size() - 1;
+            if (idx >= 0) {
+                return idx < episodeList.size() - 1;
+            }
+            for (int e : episodeList) {
+                if (e > ep) return true;
+            }
+            return false;
         }
         return false;
     }
@@ -1953,23 +2058,43 @@ public class PlayerActivity extends Activity {
     private boolean hasPrevEpisode() {
         if (episodeList != null && !episodeList.isEmpty()) {
             int idx = episodeList.indexOf(ep);
-            return idx > 0;
+            if (idx >= 0) {
+                return idx > 0;
+            }
+            for (int e : episodeList) {
+                if (e < ep) return true;
+            }
+            return false;
         }
         return false;
     }
 
     private int getNextEpisodeNumber() {
-        if (hasNextEpisode()) {
+        if (episodeList != null && !episodeList.isEmpty()) {
             int idx = episodeList.indexOf(ep);
-            return episodeList.get(idx + 1);
+            if (idx >= 0 && idx < episodeList.size() - 1) {
+                return episodeList.get(idx + 1);
+            }
+            for (int e : episodeList) {
+                if (e > ep) return e;
+            }
         }
         return ep + 1;
     }
 
     private int getPrevEpisodeNumber() {
-        if (hasPrevEpisode()) {
+        if (episodeList != null && !episodeList.isEmpty()) {
             int idx = episodeList.indexOf(ep);
-            return episodeList.get(idx - 1);
+            if (idx > 0) {
+                return episodeList.get(idx - 1);
+            }
+            int prev = -1;
+            for (int e : episodeList) {
+                if (e < ep) {
+                    if (prev == -1 || e > prev) prev = e;
+                }
+            }
+            if (prev != -1) return prev;
         }
         return Math.max(1, ep - 1);
     }
@@ -1988,8 +2113,19 @@ public class PlayerActivity extends Activity {
         if (ep == targetEp) return;
         ep = targetEp;
 
+        currentSubLoadId++;
+        currentCues = new ArrayList<>();
+        if (tvSubtitles != null) {
+            tvSubtitles.setText("");
+            tvSubtitles.setVisibility(View.GONE);
+        }
+        rawStreamUrl = "";
+        activeSubUrl = "";
+        subtitleTracks.clear();
+
         if (player != null) {
             player.stop();
+            player.clearMediaItems();
         }
 
         if (title != null && !title.isEmpty()) {
@@ -1999,6 +2135,11 @@ public class PlayerActivity extends Activity {
         }
 
         updateExoButtonStates();
+
+        if (layoutBuffering != null) {
+            layoutBuffering.setVisibility(View.VISIBLE);
+            if (tvBufferingText != null) tvBufferingText.setText("MEMUAT EPISODE " + ep + "...");
+        }
 
         // Rekam episode baru ke riwayat
         new Thread(() -> {
