@@ -218,6 +218,20 @@
             android:paddingHorizontal="10dp" />
     </LinearLayout>
 
+    <!-- Episode Ranges Filter (untuk anime dengan 100+ episode seperti One Piece) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_episode_ranges"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="6dp"
+        android:paddingHorizontal="14dp"
+        android:clipToPadding="false"
+        android:clipChildren="false"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        android:nextFocusUp="@+id/btn_sort_order"
+        android:nextFocusDown="@+id/rv_episodes" />
+
     <!-- Episode Grid -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_episodes"
@@ -227,6 +241,6 @@
         android:paddingHorizontal="11dp"
         android:clipToPadding="false"
         android:clipChildren="false"
-        android:nextFocusUp="@+id/btn_sort_order"
+        android:nextFocusUp="@+id/rv_episode_ranges"
         android:scrollbars="vertical" />
 </LinearLayout>

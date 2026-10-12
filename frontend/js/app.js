@@ -78,38 +78,127 @@ function loadRelations(){
     var sBar=$("tm-seasons");if(sBar)sBar.classList.add("hidden");
   });
 }
-function loadEps(){
-  window.Tatap.episodes(cur.slug).then(function(r){
-    if(!r.success){$("tm-count").textContent="error: "+r.error;return;}
-    cur.eps=r.data.episodes||[];
-    var watched={};
-    window.Tatap.history().then(function(h){
-      (h.data||[]).forEach(function(x){if(x.slug===cur.slug)watched[x.episode]=1;});
-      cur.watched=watched;
-      $("tm-count").textContent=cur.eps.length+" episode · "+cur.mode.toUpperCase();
+var _epsMemCache = {};
+cur.activeEpRange = null;
+
+function renderEpRanges(){
+  var bar = $("tm-ep-ranges");
+  if(!bar) return;
+  if(!cur.eps || cur.eps.length <= 100){
+    bar.innerHTML = "";
+    bar.classList.add("hidden");
+    cur.activeEpRange = null;
+    return;
+  }
+  bar.innerHTML = "";
+  bar.classList.remove("hidden");
+  var total = cur.eps.length;
+  var step = 100;
+  var lastWatchedEp = -1;
+  if(cur.watched){
+    for(var w in cur.watched){
+      var n = parseInt(w);
+      if(n > lastWatchedEp) lastWatchedEp = n;
+    }
+  }
+
+  var ranges = [];
+  for(var s = 1; s <= total; s += step){
+    var e = Math.min(s + step - 1, total);
+    ranges.push({start: s, end: e, label: s + " - " + e});
+  }
+  ranges.push({start: 1, end: total, label: "Semua (" + total + ")", isAll: true});
+
+  if(!cur.activeEpRange){
+    cur.activeEpRange = ranges[0];
+    if(lastWatchedEp > 0){
+      for(var r = 0; r < ranges.length - 1; r++){
+        if(lastWatchedEp >= ranges[r].start && lastWatchedEp <= ranges[r].end){
+          cur.activeEpRange = ranges[r];
+          break;
+        }
+      }
+    }
+  }
+
+  ranges.forEach(function(rng){
+    var btn = document.createElement("button");
+    btn.className = "ep-range-chip" + (cur.activeEpRange && cur.activeEpRange.label === rng.label ? " active" : "");
+    btn.textContent = rng.label;
+    btn.addEventListener("click", function(){
+      cur.activeEpRange = rng;
+      renderEpRanges();
       renderEpGrid();
-    }).catch(function(){});
+    });
+    bar.appendChild(btn);
   });
 }
-function renderEpGrid(){
-  var f=$("ep-filter").value.trim();
-  var box=$("tm-eps");box.innerHTML="";
-  var shown=0;
-  for(var i=0;i<cur.eps.length;i++){
-    (function(ep){
-      if(f&&String(ep).indexOf(f)<0)return;
-      shown++;
-      var b=document.createElement("button");
-      b.className="ep"+(cur.watched&&cur.watched[ep]?" watched":"");
-      b.textContent=ep;
-      b.addEventListener("click",function(e){
-        if(e) e.stopPropagation();
-        openPlayer(ep);
-      });
-      box.appendChild(b);
-    })(cur.eps[i].ep);
+
+function loadEps(){
+  cur.activeEpRange = null;
+  var cached = _epsMemCache[cur.slug];
+  if(cached){
+    cur.eps = cached;
+    $("tm-count").textContent = cur.eps.length + " episode · " + cur.mode.toUpperCase();
+    renderEpRanges();
+    renderEpGrid();
   }
-  if(!shown)box.innerHTML="<p class='dim'>Tidak ada episode cocok filter.</p>";
+
+  window.Tatap.episodes(cur.slug).then(function(r){
+    if(!r.success){
+      if(!cached) $("tm-count").textContent = "error: " + r.error;
+      return;
+    }
+    cur.eps = r.data.episodes || [];
+    _epsMemCache[cur.slug] = cur.eps;
+    var watched = {};
+    window.Tatap.history().then(function(h){
+      (h.data || []).forEach(function(x){ if(x.slug === cur.slug) watched[x.episode] = 1; });
+      cur.watched = watched;
+      $("tm-count").textContent = cur.eps.length + " episode · " + cur.mode.toUpperCase();
+      renderEpRanges();
+      renderEpGrid();
+    }).catch(function(){
+      renderEpRanges();
+      renderEpGrid();
+    });
+  });
+}
+
+function renderEpGrid(){
+  var f = $("ep-filter").value.trim();
+  var box = $("tm-eps");
+  box.innerHTML = "";
+  var shown = 0;
+  var frag = document.createDocumentFragment();
+
+  var epsToRender = cur.eps || [];
+  var useRange = !f && cur.activeEpRange && !cur.activeEpRange.isAll;
+
+  for(var i = 0; i < epsToRender.length; i++){
+    var epObj = epsToRender[i];
+    var ep = epObj.ep;
+    if(f && String(ep).indexOf(f) < 0) continue;
+    if(useRange && (ep < cur.activeEpRange.start || ep > cur.activeEpRange.end)) continue;
+
+    shown++;
+    var b = document.createElement("button");
+    b.className = "ep" + (cur.watched && cur.watched[ep] ? " watched" : "");
+    b.textContent = ep;
+    (function(targetEp){
+      b.addEventListener("click", function(e){
+        if(e) e.stopPropagation();
+        openPlayer(targetEp);
+      });
+    })(ep);
+    frag.appendChild(b);
+  }
+
+  if(shown > 0){
+    box.appendChild(frag);
+  } else {
+    box.innerHTML = "<p class='dim'>Tidak ada episode cocok filter.</p>";
+  }
 }
 function closeTitle(){$("title-modal").classList.add("hidden");}
 function syncSeg(){

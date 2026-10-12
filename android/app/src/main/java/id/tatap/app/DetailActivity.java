@@ -31,7 +31,10 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import com.google.android.material.card.MaterialCardView;
 
 public class DetailActivity extends Activity {
     private String slug;
@@ -55,6 +58,24 @@ public class DetailActivity extends Activity {
     private View layoutSeasons;
     private RecyclerView rvSeasons;
     private SeasonAdapter seasonAdapter;
+
+    private RecyclerView rvEpisodeRanges;
+    private RangeAdapter rangeAdapter;
+    private EpisodeRange activeRange = null;
+
+    static class EpisodeRange {
+        final int start;
+        final int end;
+        final String label;
+        final boolean isAll;
+
+        EpisodeRange(int start, int end, String label, boolean isAll) {
+            this.start = start;
+            this.end = end;
+            this.label = label;
+            this.isAll = isAll;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +103,7 @@ public class DetailActivity extends Activity {
         rvEpisodes = findViewById(R.id.rv_episodes);
         layoutSeasons = findViewById(R.id.layout_detail_seasons);
         rvSeasons = findViewById(R.id.rv_detail_seasons);
+        rvEpisodeRanges = findViewById(R.id.rv_episode_ranges);
 
         tvTitle.setText(title != null ? title : "Detail Anime");
         tvTitleFull.setText(title != null ? title : "Anime");
@@ -105,6 +127,12 @@ public class DetailActivity extends Activity {
         rvEpisodes.setLayoutManager(new GridLayoutManager(this, epSpan));
         adapter = new EpisodeAdapter();
         rvEpisodes.setAdapter(adapter);
+
+        if (rvEpisodeRanges != null) {
+            rvEpisodeRanges.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
+            rangeAdapter = new RangeAdapter();
+            rvEpisodeRanges.setAdapter(rangeAdapter);
+        }
 
         if (rvSeasons != null) {
             rvSeasons.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
@@ -225,6 +253,7 @@ public class DetailActivity extends Activity {
                         originalEpisodes.clear();
                         originalEpisodes.addAll(list);
                         tvSlug.setText(list.size() + " Episode Tersedia");
+                        setupEpisodeRanges(list);
                         updateEpisodeDisplay();
                         updateQuickPlayButton();
                     });
@@ -244,8 +273,50 @@ public class DetailActivity extends Activity {
         }).start();
     }
 
+    private void setupEpisodeRanges(List<Integer> list) {
+        if (rvEpisodeRanges == null) return;
+        if (list != null && list.size() > 100) {
+            rvEpisodeRanges.setVisibility(View.VISIBLE);
+            List<EpisodeRange> ranges = new ArrayList<>();
+            int total = list.size();
+            int step = 100;
+            for (int s = 1; s <= total; s += step) {
+                int e = Math.min(s + step - 1, total);
+                ranges.add(new EpisodeRange(s, e, s + " - " + e, false));
+            }
+            ranges.add(new EpisodeRange(1, total, "Semua (" + total + ")", true));
+
+            int lastPlayedEp = prefs.getInt("last_ep_" + slug, -1);
+            activeRange = ranges.get(0);
+            if (lastPlayedEp > 0) {
+                for (int i = 0; i < ranges.size() - 1; i++) {
+                    EpisodeRange r = ranges.get(i);
+                    if (lastPlayedEp >= r.start && lastPlayedEp <= r.end) {
+                        activeRange = r;
+                        break;
+                    }
+                }
+            }
+            if (rangeAdapter != null) {
+                rangeAdapter.setRanges(ranges, activeRange);
+            }
+        } else {
+            rvEpisodeRanges.setVisibility(View.GONE);
+            activeRange = null;
+        }
+    }
+
     private void updateEpisodeDisplay() {
-        List<Integer> displayList = new ArrayList<>(originalEpisodes);
+        List<Integer> displayList = new ArrayList<>();
+        if (activeRange != null && !activeRange.isAll) {
+            for (int ep : originalEpisodes) {
+                if (ep >= activeRange.start && ep <= activeRange.end) {
+                    displayList.add(ep);
+                }
+            }
+        } else {
+            displayList.addAll(originalEpisodes);
+        }
         if (!isAscending) {
             Collections.reverse(displayList);
         }
@@ -254,10 +325,21 @@ public class DetailActivity extends Activity {
 
     class EpisodeAdapter extends RecyclerView.Adapter<EpisodeAdapter.EpisodeViewHolder> {
         private final List<Integer> episodes = new ArrayList<>();
+        private int cachedLastPlayedEp = -1;
+        private final Set<Integer> cachedWatchedSet = new HashSet<>();
 
         public void setEpisodes(List<Integer> list) {
             episodes.clear();
-            if (list != null) episodes.addAll(list);
+            cachedWatchedSet.clear();
+            cachedLastPlayedEp = prefs.getInt("last_ep_" + slug, -1);
+            if (list != null) {
+                episodes.addAll(list);
+                for (int ep : list) {
+                    if (prefs.getBoolean("watched_" + slug + "_" + ep, false)) {
+                        cachedWatchedSet.add(ep);
+                    }
+                }
+            }
             notifyDataSetChanged();
         }
 
@@ -273,17 +355,14 @@ public class DetailActivity extends Activity {
             int ep = episodes.get(position);
             holder.tvTitle.setText(String.format("EP %02d", ep));
 
-            int lastPlayedEp = prefs.getInt("last_ep_" + slug, -1);
-            boolean isWatched = prefs.getBoolean("watched_" + slug + "_" + ep, false);
-
-            if (ep == lastPlayedEp) {
+            if (ep == cachedLastPlayedEp) {
                 // Last played episode
                 holder.card.setCardBackgroundColor(0xFF1C2230);
                 holder.tvTitle.setTextColor(0xFF38BDF8);
                 holder.tvBadge.setVisibility(View.VISIBLE);
                 holder.tvBadge.setText("TERAKHIR");
                 holder.tvBadge.setTextColor(0xFF38BDF8);
-            } else if (isWatched) {
+            } else if (cachedWatchedSet.contains(ep)) {
                 // Watched episode
                 holder.card.setCardBackgroundColor(0xFF0E1017);
                 holder.tvTitle.setTextColor(0xFF64748B);
@@ -315,6 +394,64 @@ public class DetailActivity extends Activity {
                 card = itemView.findViewById(R.id.card_episode);
                 tvTitle = itemView.findViewById(R.id.tv_ep_title);
                 tvBadge = itemView.findViewById(R.id.tv_ep_status_badge);
+                TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
+            }
+        }
+    }
+
+    class RangeAdapter extends RecyclerView.Adapter<RangeAdapter.RangeViewHolder> {
+        private final List<EpisodeRange> ranges = new ArrayList<>();
+        private EpisodeRange selectedRange;
+
+        public void setRanges(List<EpisodeRange> list, EpisodeRange selected) {
+            ranges.clear();
+            if (list != null) ranges.addAll(list);
+            this.selectedRange = selected;
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public RangeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_range_chip, parent, false);
+            return new RangeViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RangeViewHolder holder, int position) {
+            EpisodeRange r = ranges.get(position);
+            holder.tvLabel.setText(r.label);
+            boolean isSel = (selectedRange != null && selectedRange.label.equals(r.label));
+            if (isSel) {
+                holder.card.setCardBackgroundColor(0xFF1E293B);
+                holder.card.setStrokeColor(0xFF38BDF8);
+                holder.tvLabel.setTextColor(0xFF38BDF8);
+            } else {
+                holder.card.setCardBackgroundColor(0xFF161B26);
+                holder.card.setStrokeColor(0xFF2A3347);
+                holder.tvLabel.setTextColor(0xFF94A3B8);
+            }
+            holder.itemView.setOnClickListener(v -> {
+                selectedRange = r;
+                activeRange = r;
+                notifyDataSetChanged();
+                updateEpisodeDisplay();
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return ranges.size();
+        }
+
+        class RangeViewHolder extends RecyclerView.ViewHolder {
+            MaterialCardView card;
+            TextView tvLabel;
+
+            public RangeViewHolder(@NonNull View itemView) {
+                super(itemView);
+                card = itemView.findViewById(R.id.card_range_chip);
+                tvLabel = itemView.findViewById(R.id.tv_range_label);
                 TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
             }
         }

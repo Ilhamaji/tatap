@@ -347,24 +347,51 @@ def hianime_search(query: str, limit: int = 15):
             out.append({"id": slug, "title": title, "poster": ""})
     return out
 
+_EPISODES_MEM_CACHE = {}
+_EPISODES_MEM_TTL = 6 * 3600  # 6 jam
+
 def hianime_episodes(slug: str):
     if "hentai" in (slug or "").lower():
         raise RuntimeError("Anime ini diblokir (genre hentai)")
+    now = _time.time()
+    cached = _EPISODES_MEM_CACHE.get(slug)
+    if cached and (now - cached[0] < _EPISODES_MEM_TTL):
+        return cached[1]
+
     numeric = slug.rsplit("-", 1)[-1]
-    page = _fetch(EPISODES_API.format(numeric)).replace("\\", "")
+    raw_page = _fetch(EPISODES_API.format(numeric))
+    page = raw_page
+    if not page.startswith("{") and "{" in page:
+        page = page[page.find("{"):]
+    if page.endswith("0\r\n\r\n"):
+        page = page[:page.rfind("}") + 1]
+
+    html = ""
+    try:
+        data = json.loads(page)
+        html = data.get("html", "")
+    except Exception:
+        html = raw_page.replace("\\", "")
+
     eps = []
-    for m in re.finditer(r'data-number="([^"]*)撃.*?data-id="([0-9]+)"', page):
-        pass
-    for m in re.finditer(r'data-number="([^"]*)"[^>]*data-id="([0-9]+)"', page):
-        try:
-            ep_no = int(m.group(1))
-        except ValueError:
-            continue
-        eps.append({"ep": ep_no, "ep_id": m.group(2)})
+    for m in re.finditer(r'data-number="([0-9]+)"[^>]*?data-id="([0-9]+)"', html):
+        eps.append({"ep": int(m.group(1)), "ep_id": m.group(2)})
+    if not eps:
+        # Fallback pola urutan alternatif jika struktur berubah
+        for m in re.finditer(r'data-number="([^"]*)"[^>]*data-id="([0-9]+)"', html):
+            try:
+                ep_no = int(m.group(1))
+            except ValueError:
+                continue
+            eps.append({"ep": ep_no, "ep_id": m.group(2)})
+
     seen = {}
     for e in eps:
         seen[e["ep"]] = e["ep_id"]
-    return [{"ep": k, "ep_id": v} for k, v in sorted(seen.items())]
+    result = [{"ep": k, "ep_id": v} for k, v in sorted(seen.items())]
+    if result:
+        _EPISODES_MEM_CACHE[slug] = (now, result)
+    return result
 
 def _parse_servers(html: str, mode: str):
     items = html.replace('\\"', '"').split("server-item")

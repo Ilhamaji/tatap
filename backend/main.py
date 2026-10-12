@@ -543,9 +543,17 @@ async def episodes(slug: str):
     try:
         if "hentai" in (slug or "").lower():
             return fail("Konten genre Hentai diblokir")
+        cache_key = f"episodes_v1|{slug}"
+        cached = await get_browse_cache(cache_key, ttl=6 * 3600)
+        if cached:
+            cached["cached"] = True
+            return ok(cached)
         loop = asyncio.get_running_loop()
         eps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
-        return ok({"slug": slug, "episodes": eps, "total": len(eps)})
+        data = {"slug": slug, "episodes": eps, "total": len(eps)}
+        await set_browse_cache(cache_key, data)
+        data["cached"] = False
+        return ok(data)
     except Exception as e:
         return fail(str(e))
 
