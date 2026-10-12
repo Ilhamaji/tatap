@@ -252,7 +252,9 @@ public class PlayerActivity extends Activity {
 
         try {
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
-            currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
+            currentResizeMode = TvFocusHelper.isTv(this)
+                    ? AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
             activeEngine = sp.getString("pref_sub_engine", "gtx");
             activeSubLang = sp.getString("pref_sub_lang", "id");
             subEnabled = sp.getBoolean("pref_sub_enabled", true);
@@ -435,15 +437,11 @@ public class PlayerActivity extends Activity {
             public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
                 if (playerView != null) {
                     playerView.setResizeMode(currentResizeMode);
+                    View sv = playerView.getVideoSurfaceView();
+                    if (sv != null) {
+                        sv.requestLayout();
+                    }
                     playerView.requestLayout();
-                }
-            }
-
-            @Override
-            public void onTracksChanged(androidx.media3.common.Tracks tracks) {
-                if (activeQuality != null && !activeQuality.isEmpty()
-                        && !"auto".equalsIgnoreCase(activeQuality) && !"best".equalsIgnoreCase(activeQuality)) {
-                    applyHlsTrackSelection(activeQuality);
                 }
             }
 
@@ -1361,6 +1359,10 @@ public class PlayerActivity extends Activity {
             applyHlsTrackSelection(newQ);
             if (playerView != null) {
                 playerView.setResizeMode(currentResizeMode);
+                View sv = playerView.getVideoSurfaceView();
+                if (sv != null) {
+                    sv.requestLayout();
+                }
                 playerView.requestLayout();
             }
             return;
@@ -1393,6 +1395,10 @@ public class PlayerActivity extends Activity {
 
         if (playerView != null) {
             playerView.setResizeMode(currentResizeMode);
+            View sv = playerView.getVideoSurfaceView();
+            if (sv != null) {
+                sv.requestLayout();
+            }
             playerView.requestLayout();
         }
     }
