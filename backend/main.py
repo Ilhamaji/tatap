@@ -710,7 +710,7 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             referer = "https://megacloud.blog/"
         elif any(h in url for h in ("puterin.biz", "putarin.xyz", "stream121.space")):
             referer = "https://puterin.biz/"
-        elif any(h in url for h in ("phantomharbor", "nexabloom", "megaplay", "vidtube", "vidplay")):
+        elif any(h in url for h in ("phantomharbor", "nexabloom", "silverorbit", "megaplay", "vidtube", "vidplay")):
             referer = "https://megaplay.buzz/"
 
     # Jika host terdeteksi diblokir DPI ISP, gunakan TLS desync murni (aman dari Sangfor)
@@ -720,27 +720,6 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
         return _SR(_pipe_desync_video(url, referer), media_type=media_type,
                    headers={"Access-Control-Allow-Origin": "*"})
 
-    try:
-        c = _get_video_client(url)
-        async with c.stream("GET", url,
-                            headers={"User-Agent": HI_UA, **({"Referer": referer} if referer else {})}) as r:
-            if r.status_code >= 400:
-                return Response(status_code=502,
-                                content=f"upstream {r.status_code}".encode(),
-                                media_type="text/plain")
-    except HTTPException as e:
-        return Response(status_code=e.status_code, content=str(e.detail).encode(),
-                        media_type="text/plain")
-    except Exception as e:
-        # Jika direct gagal (koneksi timeout, RST, SSL, blocked DPI), fallback ke TLS desync
-        _BLOCKED_DPI_HOSTS.add(host)
-        try:
-            return _SR(_pipe_desync_video(url, referer), media_type=media_type,
-                       headers={"Access-Control-Allow-Origin": "*"})
-        except Exception as e2:
-            return Response(status_code=502,
-                            content=f"upstream error: {type(e2).__name__}".encode(),
-                            media_type="text/plain")
     return _SR(_pipe_video(url, referer), media_type=media_type,
                headers={"Access-Control-Allow-Origin": "*"})
 
@@ -813,10 +792,10 @@ def _get_video_client(url: str):
     global _direct_client
     import httpx as _hx
     if _direct_client is None:
-        limits = _hx.Limits(max_connections=40, max_keepalive_connections=20, keepalive_expiry=60.0)
+        limits = _hx.Limits(max_connections=60, max_keepalive_connections=30, keepalive_expiry=90.0)
         _direct_client = _hx.AsyncClient(
             follow_redirects=True,
-            timeout=_hx.Timeout(25.0, connect=8.0),
+            timeout=_hx.Timeout(30.0, connect=15.0),
             limits=limits,
             http2=False
         )
@@ -825,46 +804,60 @@ def _get_video_client(url: str):
 
 async def _pipe_video(url: str, referer: str):
     import urllib.parse as _up
+    import asyncio as _asyncio
     from api.hianime import STRIP_BYTES as _SB, STRIP_RE as _SR2
     c = _get_video_client(url)
-    upstream_status = None
-    try:
-        async with c.stream("GET", url,
-                            headers={"User-Agent": HI_UA, **({"Referer": referer} if referer else {})}) as r:
-            upstream_status = r.status_code
-            ctype = r.headers.get("content-type", "")
-            if upstream_status >= 400:
-                raise HTTPException(status_code=502, detail=f"upstream {upstream_status}")
-            # playlist kecil: baca penuh + tulis ulang agar segmen tetap lewat proxy
-            is_playlist = ("mpegurl" in ctype) or (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
-            if is_playlist:
-                body = await r.aread()
-                try:
-                    txt = body.decode("utf-8", errors="strict")
-                except Exception:
-                    raise HTTPException(status_code=502, detail="upstream m3u8 binary decode error")
-                if "#EXTM3U" not in txt:
-                    raise HTTPException(status_code=502, detail="upstream response missing #EXTM3U")
-                yield _rewrite_m3u8_content(txt, url, referer).encode("utf-8")
+
+    headers = {"User-Agent": HI_UA}
+    if referer:
+        headers["Referer"] = referer
+
+    for attempt in range(2):
+        try:
+            async with c.stream("GET", url, headers=headers) as r:
+                if r.status_code >= 400:
+                    raise HTTPException(status_code=502, detail=f"upstream {r.status_code}")
+                ctype = r.headers.get("content-type", "")
+                is_playlist = ("mpegurl" in ctype) or (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
+                if is_playlist:
+                    body = await r.aread()
+                    try:
+                        txt = body.decode("utf-8", errors="strict")
+                    except Exception:
+                        raise HTTPException(status_code=502, detail="upstream m3u8 binary decode error")
+                    if "#EXTM3U" not in txt:
+                        raise HTTPException(status_code=502, detail="upstream response missing #EXTM3U")
+                    yield _rewrite_m3u8_content(txt, url, referer).encode("utf-8")
+                    return
+
+                skipped = 0
+                need_strip = bool(_SR2.search(url))
+                async for chunk in r.aiter_bytes(65536):
+                    if need_strip and skipped < _SB:
+                        cut = min(len(chunk), _SB - skipped)
+                        skipped += cut
+                        chunk = chunk[cut:]
+                        if not chunk:
+                            continue
+                    if chunk:
+                        yield chunk
                 return
-            # segmen: teruskan per bongkah, buang prefix bila perlu
-            skipped = 0
-            need_strip = bool(_SR2.search(url))
-            async for chunk in r.aiter_bytes(65536):
-                if need_strip and skipped < _SB:
-                    cut = min(len(chunk), _SB - skipped)
-                    skipped += cut
-                    chunk = chunk[cut:]
-                    if not chunk:
-                        continue
-                if chunk:
+        except HTTPException:
+            raise
+        except Exception as e:
+            if attempt == 0:
+                await _asyncio.sleep(0.3)
+                continue
+            # Jika 2x attempt gagal (RST, timeout, DNS), tandai host dan coba TLS desync
+            try:
+                from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
+                host = _host_from(url)
+                _BLOCKED_DPI_HOSTS.add(host)
+                async for chunk in _pipe_desync_video(url, referer):
                     yield chunk
-    except HTTPException:
-        raise
-    except Exception as e:
-        # Upstream error (RST, timeout, DNS) — surface ke client sebagai 502
-        # agar HLS.js deteksi networkError, bukan hang di buffering.
-        raise HTTPException(status_code=502, detail=f"upstream error: {type(e).__name__}")
+                return
+            except Exception:
+                raise HTTPException(status_code=502, detail=f"upstream error: {type(e).__name__}")
 
 async def _fetch_sub_text(target_url, ref):
     """Helper fetcher yang mendukung desync bila host terblokir DPI atau butuh referer khusus."""
