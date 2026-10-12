@@ -1,6 +1,16 @@
-# AGENT.md — Tatap Engineering & Collaboration Workflow
+# AGENTS.md — Tatap Engineering & Collaboration Workflow (Master Directives)
 
-Panduan standar ini mematenkan arsitektur, workflow engineering, tata kelola rilis, dan protokol penanganan isu untuk agen AI dan kontributor pada proyek **Tatap**.
+> [!CAUTION]
+> **DIREKTIF MUTLAK & PATEN UNTUK SEMUA AI AGENTIC TOOLS (ANTIGRAVITY / GEMINI / CURSOR / COPILOT / CLAUDE):**
+> 1. **APLIKASI ANDROID-BASED WAJIB SELALU DITANDATANGANI (SIGNED APK ONLY):** Seluruh file Android APK (`tatap-release-v<VERSION>.apk` dan `tatap-tv-release-v<VERSION>.apk`) **MUTLAK WAJIB DITANDATANGANI** dengan keystore resmi produksi (`android/keystore/release.jks`) via skema signature `v1SigningEnabled true` dan `v2SigningEnabled true`. DILARANG KERAS merilis APK unsigned, debug, atau mentah!
+> 2. **STRICT 4 OFFICIAL ASSETS ON GITHUB RELEASE:** Rilis GitHub publik HANYA boleh memuat 4 aset resmi berikut:
+>    - `tatap-release-v<VERSION>.apk` (Signed Official Mobile APK)
+>    - `tatap-tv-release-v<VERSION>.apk` (Signed Official Android TV / Google TV APK)
+>    - `tatap-windows-x64-portable.zip` (Official Windows Portable)
+>    - `Tatap-x86_64.AppImage` (Official Linux AppImage)
+>    Jika terdapat berkas mentah (`app-release.apk`, `app-debug.apk`), agent WAJIB segera menghapusnya (`gh release delete-asset`).
+> 3. **WORKFLOW PATEN SEMVER 2.0.0:** Setiap patch/fitur/rilis WAJIB mengikuti SemVer 2.0.0 atomik melalui `python3 tools/bump_version.py <patch|minor|major>` dan lulus seluruh test suite `pytest tests/test_semver.py`.
+> 4. **ZERO-TOLERANCE BLACKLIST HENTAI:** Dilarang membypass filter hentai di semua level backend, scraper, maupun UI.
 
 ---
 
@@ -75,25 +85,28 @@ python3 tools/build_windows_portable.py
   - Mengunduh Python 3.11 Embeddable x64 resmi dan mengompilasi launcher native Go `Tatap.exe`.
   - **Pencegahan Konflik Dependensi (Pydantic / Pydantic-Core):** Selalu pasang wheel murni melalui `pip install --target ... --platform win_amd64 --python-version 311 --only-binary=:all:`. Jangan pernah mengekstrak wheel dari folder cache campuran via `glob.glob()`, karena versi pustaka lama dapat menimpa versi baru dan memicu crash `SystemError: The installed pydantic-core version is incompatible with current pydantic`.
 
-### 3. Build & Sign Android Production APK
-Setiap rilis publik Android **wajib berstatus Signed APK resmi** (bukan APK debug atau unsigned):
-1. **Build APK via Gradle atau CI:**
-   - CI (`.github/workflows/android.yml`) otomatis mengompilasi `app-release.apk` dan `app-debug.apk`.
+### 3. Build & Sign Android Production APK (Mandatory Signed APK Only)
+Setiap rilis publik Android (baik varian Mobile maupun Android TV) **MUTLAK WAJIB berstatus Signed APK resmi** (bukan APK debug, mentah, atau unsigned):
+1. **Konfigurasi Signing Otomatis di Gradle:**
+   - Di `android/app/build.gradle`, blok `signingConfigs.release` mengikat keystore produksi `android/keystore/release.jks`.
+   - Skema tanda tangan diaktifkan penuh: `v1SigningEnabled true` dan `v2SigningEnabled true`.
+   - Varian release (`mobileRelease` dan `tvRelease`) secara otomatis menghasilkan output file bertanda tangan:
+     - `android/app/build/outputs/apk/mobile/release/tatap-release-v<VERSION>.apk`
+     - `android/app/build/outputs/apk/tv/release/tatap-tv-release-v<VERSION>.apk`
+2. **Kompilasi Mandiri / CI:**
+   - CI (`.github/workflows/android.yml`) mendekode `KEYSTORE_BASE64` secret dan menjalankan `./gradlew assembleRelease`.
    - Atau build lokal: `cd android && ./gradlew assembleRelease`
-2. **Penandatanganan dengan Release Keystore Resmi (`release.jks`):**
+3. **Penandatanganan Manual / Verifikasi dengan `apksigner`:**
    ```bash
-   apksigner sign --ks android/keystore/release.jks \
-     --ks-pass pass:tatapsecret2026 \
-     --ks-key-alias tatap_release \
-     --key-pass pass:tatapsecret2026 \
-     --out dist/android/tatap-release-v<VERSION>.apk \
-     <PATH_TO_UNFINISHED_RELEASE_APK>
-   ```
-3. **Verifikasi Tanda Tangan:**
-   ```bash
+   # Verifikasi tanda tangan APK Mobile & TV:
    apksigner verify --verbose --print-certs dist/android/tatap-release-v<VERSION>.apk
+   apksigner verify --verbose --print-certs dist/android/tatap-tv-release-v<VERSION>.apk
    ```
-   Pastikan sertifikat menampilkan `CN=Tatap, OU=TatapApp, O=Tatap` dengan `APK Signature Scheme v2: true` dan `v3: true`.
+   Pastikan verifikasi menampilkan:
+   - `CN=Tatap, OU=TatapApp, O=Tatap`
+   - `Verified using v1 scheme (JAR signing): true`
+   - `Verified using v2 scheme (APK Signature Scheme v2): true`
+4. **Larangan Keras:** Dilarang mengunggah file APK yang tidak ditandatangani atau membiarkan file unsigned/debug ke halaman rilis publik.
 
 ---
 
