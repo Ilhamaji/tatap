@@ -431,6 +431,14 @@ public class PlayerActivity extends Activity {
             }
 
             @Override
+            public void onVideoSizeChanged(androidx.media3.common.VideoSize videoSize) {
+                if (playerView != null) {
+                    playerView.setResizeMode(currentResizeMode);
+                    playerView.requestLayout();
+                }
+            }
+
+            @Override
             public void onPlayerError(PlaybackException error) {
                 if (!hasFallbackAttempted && player != null && rawStreamUrl != null && !rawStreamUrl.isEmpty()) {
                     hasFallbackAttempted = true;
@@ -1336,24 +1344,6 @@ public class PlayerActivity extends Activity {
                 .edit().putString("pref_quality", newQ).apply();
 
         hasFallbackAttempted = false;
-        if (isHlsStream(rawStreamUrl) || isHlsMode) {
-            Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
-            if (player != null) {
-                int maxH = Integer.MAX_VALUE;
-                int maxW = Integer.MAX_VALUE;
-                if (newQ.contains("1080")) { maxH = 1080; maxW = 1920; }
-                else if (newQ.contains("720")) { maxH = 720; maxW = 1280; }
-                else if (newQ.contains("480")) { maxH = 480; maxW = 854; }
-                else if (newQ.contains("360")) { maxH = 360; maxW = 640; }
-
-                androidx.media3.common.TrackSelectionParameters params = player.getTrackSelectionParameters().buildUpon()
-                        .setMaxVideoSize(maxW, maxH)
-                        .build();
-                player.setTrackSelectionParameters(params);
-            }
-            return;
-        }
-
         long resumePos = player != null ? player.getCurrentPosition() : 0;
         boolean wasPlaying = player != null && player.isPlaying();
 
@@ -1363,11 +1353,24 @@ public class PlayerActivity extends Activity {
         Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
         applyCurrentStream();
 
-        if (player != null && resumePos > 0) {
-            player.seekTo(resumePos);
-            if (wasPlaying) {
-                player.play();
+        if (player != null) {
+            // Reset constraint ukuran video lama agar decoder me-render resolusi baru secara penuh
+            androidx.media3.common.TrackSelectionParameters params = player.getTrackSelectionParameters().buildUpon()
+                    .clearVideoSizeConstraints()
+                    .build();
+            player.setTrackSelectionParameters(params);
+
+            if (resumePos > 0) {
+                player.seekTo(resumePos);
+                if (wasPlaying) {
+                    player.play();
+                }
             }
+        }
+
+        if (playerView != null) {
+            playerView.setResizeMode(currentResizeMode);
+            playerView.requestLayout();
         }
     }
 

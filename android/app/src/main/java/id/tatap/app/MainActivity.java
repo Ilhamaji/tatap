@@ -178,6 +178,7 @@ public class MainActivity extends Activity {
             if (actionId == EditorInfo.IME_ACTION_SEARCH ||
                     (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER && event.getAction() == KeyEvent.ACTION_DOWN)) {
                 hideKeyboard();
+                etSearch.clearFocus();
                 if (isFoldedMenuOpen) {
                     setFoldedMenuOpen(false);
                 }
@@ -1480,6 +1481,16 @@ public class MainActivity extends Activity {
                             if (rvGrid != null) {
                                 rvGrid.setVisibility(View.VISIBLE);
                                 rvGrid.scrollToPosition(0);
+                                if (TvFocusHelper.isTv(MainActivity.this)) {
+                                    rvGrid.post(() -> {
+                                        RecyclerView.ViewHolder vh = rvGrid.findViewHolderForAdapterPosition(0);
+                                        if (vh != null && vh.itemView != null) {
+                                            vh.itemView.requestFocus();
+                                        } else {
+                                            rvGrid.requestFocus();
+                                        }
+                                    });
+                                }
                             }
                         }
                     });
