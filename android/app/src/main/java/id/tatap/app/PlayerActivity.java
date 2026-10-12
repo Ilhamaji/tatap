@@ -82,6 +82,10 @@ public class PlayerActivity extends Activity {
     private View btnExoSub;
     private View btnExoSettings;
     private View btnExoFullscreen;
+    private Button btnAspect;
+    private Button btnQuality;
+    private Button btnSubStyle;
+    private Button btnSubSelector;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
 
@@ -206,6 +210,26 @@ public class PlayerActivity extends Activity {
             btnPlayerBack.setOnClickListener(v -> finish());
         }
 
+        btnAspect = findViewById(R.id.btn_aspect);
+        if (btnAspect != null) {
+            btnAspect.setOnClickListener(v -> cycleAspectRatio());
+        }
+
+        btnQuality = findViewById(R.id.btn_quality);
+        if (btnQuality != null) {
+            btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
+        }
+
+        btnSubStyle = findViewById(R.id.btn_sub_style);
+        if (btnSubStyle != null) {
+            btnSubStyle.setOnClickListener(v -> showSubtitleStyleDialog());
+        }
+
+        btnSubSelector = findViewById(R.id.btn_sub_selector);
+        if (btnSubSelector != null) {
+            btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
+        }
+
         setupExoNativeControls();
 
         try {
@@ -217,12 +241,17 @@ public class PlayerActivity extends Activity {
             if (playerView != null) {
                 playerView.setResizeMode(currentResizeMode);
             }
+            updateAspectButtonLabel();
         } catch (Throwable ignored) {}
 
         applySubtitleStyle();
 
-        // Pasang respon fokus D-Pad TV pada tombol back
+        // Pasang respon fokus D-Pad TV pada tombol kontrol player
         TvFocusHelper.attachFocusScale(btnPlayerBack, 1.15f, 6f);
+        TvFocusHelper.attachFocusScale(btnAspect, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnQuality, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnSubStyle, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnSubSelector, 1.08f, 6f);
 
         try {
             audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -250,6 +279,20 @@ public class PlayerActivity extends Activity {
             playerView.setResizeMode(currentResizeMode);
             getSharedPreferences("tatap_player_prefs", MODE_PRIVATE)
                     .edit().putInt("aspect_mode", currentResizeMode).apply();
+            updateAspectButtonLabel();
+        } catch (Throwable ignored) {}
+    }
+
+    private void updateAspectButtonLabel() {
+        try {
+            if (btnAspect == null) return;
+            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+                btnAspect.setText("Zoom");
+            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+                btnAspect.setText("Fill");
+            } else {
+                btnAspect.setText("Fit");
+            }
         } catch (Throwable ignored) {}
     }
 
@@ -324,6 +367,8 @@ public class PlayerActivity extends Activity {
 
         player = new ExoPlayer.Builder(this)
                 .setLoadControl(loadControl)
+                .setSeekForwardIncrementMs(5000)
+                .setSeekBackIncrementMs(5000)
                 .build();
         playerView.setPlayer(player);
 
@@ -378,12 +423,19 @@ public class PlayerActivity extends Activity {
         });
 
         playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
+            boolean isVisible = (visibility == View.VISIBLE);
             if (layoutTopBar != null) {
                 layoutTopBar.setVisibility(visibility);
             }
-            if (visibility == View.VISIBLE) {
+            if (isVisible) {
                 handler.removeCallbacks(hideTopBarRunnable);
-                handler.postDelayed(hideTopBarRunnable, 4000);
+                handler.postDelayed(hideTopBarRunnable, 5000);
+                if (btnExoSub != null) {
+                    btnExoSub.setVisibility(View.VISIBLE);
+                }
+                if (btnExoSettings != null) {
+                    btnExoSettings.setVisibility(View.VISIBLE);
+                }
             } else {
                 hideSystemUi();
             }
@@ -416,10 +468,10 @@ public class PlayerActivity extends Activity {
                 float x = e.getX();
 
                 if (x < screenWidth * 0.35f) {
-                    seekRelative(-10000);
+                    seekRelative(-5000);
                     showRipple(tvRippleLeft);
                 } else if (x > screenWidth * 0.65f) {
-                    seekRelative(10000);
+                    seekRelative(5000);
                     showRipple(tvRippleRight);
                 } else {
                     if (player.isPlaying()) {
@@ -608,13 +660,13 @@ public class PlayerActivity extends Activity {
                         showTopBarBriefly();
                         break; // Jangan seek, biarkan navigasi fokus antar tombol
                     }
-                    seekRelative(-10000);
+                    seekRelative(-5000);
                     showRipple(tvRippleLeft);
                     vibrate(15);
                     return true;
 
                 case KeyEvent.KEYCODE_MEDIA_REWIND:
-                    seekRelative(-10000);
+                    seekRelative(-5000);
                     showRipple(tvRippleLeft);
                     vibrate(15);
                     return true;
@@ -624,26 +676,26 @@ public class PlayerActivity extends Activity {
                         showTopBarBriefly();
                         break; // Jangan seek, biarkan navigasi fokus antar tombol
                     }
-                    seekRelative(10000);
+                    seekRelative(5000);
                     showRipple(tvRippleRight);
                     vibrate(15);
                     return true;
 
                 case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
-                    seekRelative(10000);
+                    seekRelative(5000);
                     showRipple(tvRippleRight);
                     vibrate(15);
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_UP:
+                    showTopBarBriefly();
+                    if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
+                        btnSubSelector.requestFocus();
+                        return true;
+                    }
                     if (playerView != null) {
                         playerView.showController();
-                        if (btnExoSub != null && btnExoSub.getVisibility() == View.VISIBLE) {
-                            btnExoSub.requestFocus();
-                            return true;
-                        }
                     }
-                    showTopBarBriefly();
                     break;
 
                 case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -868,6 +920,9 @@ public class PlayerActivity extends Activity {
 
                     if (!rawStreamUrl.isEmpty()) {
                         runOnUiThread(() -> {
+                            if (btnQuality != null && activeQuality != null) {
+                                btnQuality.setText(activeQuality.toUpperCase());
+                            }
                             applyCurrentStream();
                             preResolveNeighbors();
                         });
@@ -933,6 +988,7 @@ public class PlayerActivity extends Activity {
 
     private void applySubtitleSelection() {
         updateSubStatusText(false);
+        updateExoButtonStates();
 
         if (!subEnabled || activeSubUrl == null || activeSubUrl.isEmpty()) {
             currentCues = new ArrayList<>();
@@ -1222,7 +1278,9 @@ public class PlayerActivity extends Activity {
         builder.setOnDismissListener(dialog -> {
             if (playerView != null) {
                 playerView.showController();
-                if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                if (btnQuality != null && btnQuality.getVisibility() == View.VISIBLE) {
+                    btnQuality.requestFocus();
+                } else if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
                     btnExoSettings.requestFocus();
                 }
             }
@@ -1233,6 +1291,9 @@ public class PlayerActivity extends Activity {
     private void switchQuality(String newQ, String newUrl) {
         if (newUrl.equals(rawStreamUrl)) return;
         activeQuality = newQ;
+        if (btnQuality != null) {
+            btnQuality.setText(newQ.toUpperCase());
+        }
         getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE)
                 .edit().putString("pref_quality", newQ).apply();
 
@@ -1390,7 +1451,9 @@ public class PlayerActivity extends Activity {
         builder.setOnDismissListener(dialog -> {
             if (playerView != null) {
                 playerView.showController();
-                if (btnExoSub != null && btnExoSub.getVisibility() == View.VISIBLE) {
+                if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
+                    btnSubSelector.requestFocus();
+                } else if (btnExoSub != null && btnExoSub.getVisibility() == View.VISIBLE) {
                     btnExoSub.requestFocus();
                 }
             }
@@ -1480,7 +1543,9 @@ public class PlayerActivity extends Activity {
         builder.setOnDismissListener(dialog -> {
             if (playerView != null) {
                 playerView.showController();
-                if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                if (btnSubStyle != null && btnSubStyle.getVisibility() == View.VISIBLE) {
+                    btnSubStyle.requestFocus();
+                } else if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
                     btnExoSettings.requestFocus();
                 }
             }
@@ -1649,6 +1714,9 @@ public class PlayerActivity extends Activity {
             if (btnExoSub != null) {
                 btnExoSub.setAlpha(subEnabled ? 1.0f : 0.45f);
             }
+            if (btnSubSelector != null) {
+                btnSubSelector.setAlpha(subEnabled ? 1.0f : 0.6f);
+            }
         });
     }
 
@@ -1657,7 +1725,9 @@ public class PlayerActivity extends Activity {
         builder.setTitle("Pengaturan Pemutar");
 
         String qLabel = activeQuality != null && !activeQuality.isEmpty() ? activeQuality.toUpperCase() : "AUTO";
+        String subLabel = !subEnabled ? "Mati" : (activeSubLang.toUpperCase() + " [" + activeEngine + "]");
         String[] menu = new String[]{
+                "Pilihan Subtitle & Terjemahan (" + subLabel + ")",
                 "Pilihan Kualitas Video (" + qLabel + ")",
                 "Pengaturan Tampilan & Gaya Subtitle",
                 "Skala Layar / Rasio Aspek (" + getAspectLabel() + ")"
@@ -1665,15 +1735,27 @@ public class PlayerActivity extends Activity {
 
         builder.setItems(menu, (dialog, which) -> {
             if (which == 0) {
-                showQualitySelectorDialog();
+                showSubtitleSelectorDialog();
             } else if (which == 1) {
-                showSubtitleStyleDialog();
+                showQualitySelectorDialog();
             } else if (which == 2) {
+                showSubtitleStyleDialog();
+            } else if (which == 3) {
                 cycleAspectRatio();
             }
         });
 
         builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
+        builder.setOnDismissListener(dialog -> {
+            if (playerView != null) {
+                playerView.showController();
+                if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                    btnExoSettings.requestFocus();
+                } else if (btnQuality != null && btnQuality.getVisibility() == View.VISIBLE) {
+                    btnQuality.requestFocus();
+                }
+            }
+        });
         builder.show();
     }
 
