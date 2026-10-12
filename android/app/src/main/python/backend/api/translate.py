@@ -405,6 +405,27 @@ Kosakata Petualangan Fantasi Abadi & Elf (High Fantasy / Elf - e.g. Frieren):
 - "Pull yourself together!" -> "Kuatkan dirimu! / Tenangkan dirimu! / Sadarlah!" (JANGAN: "Kumpulin diri!").
 - "Echoing" (in empty hallway) -> "Bergema" (JANGAN: "Yang gema").
 
+Kosakata Dunia Sihir, Fantasi Klasik & Atelier Sihir (Magic Atelier, Witch & Sorcery - e.g. Witch Hat Atelier, Frieren, Little Witch Academia):
+- "Cast / cast a spell / cast magic" -> "Merapal sihir / menggunakan sihir / mengeluarkan mantra" (JANGAN terjemahkan kaku: "melakukan casting").
+- "Casting seal" -> "Segel sihir / segel mantra" (JANGAN: "casting seal").
+- "Conjuring ink / magic ink" -> "Tinta sihir / tinta mantra" (JANGAN: "tinta sulap").
+- "Magic stationer / magic stationer's" -> "Toko alat sihir / toko pena sihir" (JANGAN: "toko alat tulis ajaib").
+- "Wand / crack in my wand" -> "Tongkat sihir / retakan di tongkatku" (JANGAN: "celah di tongkat").
+- "Apprentice / apprentice witch" -> "Murid sihir / murid penyihir" (JANGAN: "magang / pemagang").
+- "Brimmed hat / pointed hat / witch hat" -> "Topi bertepi / topi runcing / topi penyihir".
+- "Brimhat / brimhats" -> "Penyihir bertopi / kaum penyihir bertopi".
+- "Magic circle / spell crest" -> "Lingkaran sihir / lambang mantra / pola sihir".
+- "Quill / magic quill" -> "Pena bulu / pena sihir".
+- "Consent of the Crown" -> "Ujian Mahkota / Persetujuan Mahkota".
+- "Diadem Herb / herb" -> "Herba Mahkota / tanaman obat" (JANGAN: "memilih ramuan" saat memetik tanaman).
+- "Pegasus Carriage" -> "Kereta Pegasos / kereta kuda terbang".
+- "Outsiders don't belong here" -> "Orang luar tidak pantas berada di sini / orang luar tak boleh ada di sini".
+- "They have nothing to offer the world of magic" -> "Mereka tak punya tempat di dunia sihir".
+- "Draw spells reliably" -> "Menggambar mantra dengan sangat mantap / menggambar mantra dengan lancar" (JANGAN glitched: "sangat baik andal").
+- "Sold out in no time" -> "Langsung ludes dalam sekejap / habis seketika" (JANGAN tertukar tiket: "tiketnya terjual habis").
+- "It's on me / my fault" -> "Salahku sendiri / ini salahku" (JANGAN harfiah: "aku bertanggung jawab atas berdirinya").
+- "Do you think you could fix it?" -> "Kira-kira bisa kamu perbaiki nggak? / Kamu rasa kamu bisa memperbaikinya?".
+
 Kosakata Misteri Sekolah & Klub Sastra (School Mystery / Club Anime - e.g. Hyouka):
 - "Classic Lit Club / Classic Literature Club" -> "Klub Sastra Klasik" (JANGAN biarkan "Classic Lit").
 - "Pay my respects" (kunjungan ke klub/salam kenal) -> "Memberi salam / menyapa" (JANGAN diartikan "ngelamun").
@@ -824,6 +845,36 @@ _UNIVERSAL_FANSUB_RULES = [
     (r"\bparty yang dimiliki oleh\b", "party tempat bergabungnya"),
     (r"\bpanggilanku tidak bisa digunakan untuk bertarung\b", "monster summon-ku sedang bertarung"),
     (r"\btanpa panggilan itu\b", "tanpa monster summon itu"),
+    (r"\bmelakukan casting di depan\b", "merapal sihir di depan"),
+    (r"\bmelakukan casting\b", "merapal sihir"),
+    (r"\bmelakukan cast\b", "merapal sihir"),
+    (r"\bcasting di depan orang\b", "merapal sihir di depan orang"),
+    (r"\bcasting seal\b", "segel sihir"),
+    (r"\btinta sulap\b", "tinta sihir"),
+    (r"\btoko alat tulis ajaib\b", "toko alat sihir"),
+    (r"\bcelah di tongkat\b", "retakan di tongkat"),
+    (r"\bmenjadi magang penyihir\b", "menjadi murid penyihir"),
+    (r"\bmenjadi magang\b", "menjadi murid sihir"),
+    (r"\bmemilih ramuan mahkota\b", "memetik herba mahkota"),
+    (r"\bmemilih ramuan\b", "memetik herba"),
+    (r"\bramuan mahkota\b", "herba mahkota"),
+    (r"\bpersetujuan mahkota\b", "Ujian Mahkota"),
+    (r"\bpegasus carriage\b", "kereta Pegasos"),
+    (r"\bsangat baik andal\b", "sangat mantap"),
+    (r"\btidak ada yang perlu ditakutkan of\b", "tidak ada yang perlu ditakuti"),
+    (r"\bperlu ditakutkan of\b", "perlu ditakuti"),
+    (r"\bditakutkan of\b", "ditakuti"),
+    (r"\btiketnya terjual habis dalam waktu singkat\b", "langsung ludes dalam sekejap"),
+    (r"\bterjual habis dalam waktu singkat\b", "langsung ludes dalam sekejap"),
+    (r"\bterjual habis dalam sekejap\b", "langsung ludes dalam sekejap"),
+    (r"\btak punya apa pun untuk ditawarkan di dunia sihir\b", "tak punya tempat di dunia sihir"),
+    (r"\btidak punya apa pun untuk ditawarkan di dunia sihir\b", "tidak punya tempat di dunia sihir"),
+    (r"\btidak memiliki apa pun untuk ditawarkan di dunia sihir\b", "tidak punya tempat di dunia sihir"),
+    (r"\baku bertanggung jawab atas berdirinya di dekat pintu\b", "salahku sendiri kok berdiri di dekat pintu"),
+    (r"\bbertanggung jawab atas berdirinya di dekat pintu\b", "salah sendiri kok berdiri di dekat pintu"),
+    (r"\bdi sini untuk mengambil pesanan\b", "mau ambil pesanan"),
+    (r"\banda pikir anda bisa memperbaikinya\b", "kamu rasa kamu bisa memperbaikinya"),
+    (r"\bapakah anda berpikir anda bisa\b", "apa kamu rasa kamu bisa"),
 ]
 
 # Aturan khusus adegan kasual/santai (tidak diterapkan jika konteks formal/kerajaan).
@@ -893,6 +944,13 @@ _CASUAL_FANSUB_RULES = [
     (r"\bbagus sekali\b", "hebat banget"),
     (r"\baku tidak melakukan apa pun\b", "aku nggak ngelakuin apa-apa"),
     (r"\btidak melakukan apa pun\b", "nggak ngelakuin apa-apa"),
+    (r"\bingin saya mengajari anda\b", "mau kuajari"),
+    (r"\banda perlu baju ganti\b", "kamu butuh baju ganti"),
+    (r"\bsaya tidak tahu anda ada di sana\b", "aku nggak tahu kamu ada di sana"),
+    (r"\baku tidak tahu anda ada di sana\b", "aku nggak tahu kamu ada di sana"),
+    (r"\bsaya tidak tahu kamu ada di sana\b", "aku nggak tahu kamu ada di sana"),
+    (r"\bdi sini untuk mengambil\b", "mau mengambil"),
+    (r"\banda berpikir\b", "kamu rasa"),
 ]
 
 _AIGTX_SMOOTH_RULES = [
@@ -903,6 +961,10 @@ _AIGTX_SMOOTH_RULES = [
     (r"\btersesatlah\b", "pergi sana"),
     (r"\btak perlu khawatir\b", "tenang saja"),
     (r"\bgak usah dikira\b", "tidak usah ditanya lagi"),
+    (r"\bcelah di tongkat\b", "retakan di tongkat"),
+    (r"\btinta sulap\b", "tinta sihir"),
+    (r"\bmelakukan casting\b", "merapal sihir"),
+    (r"\bcasting seal\b", "segel sihir"),
 ]
 
 _COMPILED_UNIVERSAL = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _UNIVERSAL_FANSUB_RULES]

@@ -591,7 +591,19 @@ async def episodes(slug: str):
             cached["cached"] = True
             return ok(cached)
         loop = asyncio.get_running_loop()
-        eps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
+        eps = []
+        try:
+            eps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
+        except Exception:
+            try:
+                otaku_slug = slug[len("otakudesu:"):] if slug.startswith("otakudesu:") else slug
+                otaku_eps = await loop.run_in_executor(None, lambda: otaku.get_episodes(otaku_slug))
+                if otaku_eps:
+                    eps = [{"ep": e["ep"], "ep_id": str(e["ep"])} for e in otaku_eps]
+            except Exception:
+                pass
+        if not eps:
+            return fail("Daftar episode tidak ditemukan")
         data = {"slug": slug, "episodes": eps, "total": len(eps)}
         await set_browse_cache(cache_key, data)
         data["cached"] = False
