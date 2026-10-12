@@ -461,16 +461,19 @@ async def upcoming_episodes(days: int = Query(7, ge=1, le=30)):
             if mid in seen:
                 continue
             seen.add(mid)
-            title = (m.get("title") or {}).get("english") or (m.get("title") or {}).get("romaji") or ""
-            if not title:
+            t_en = (m.get("title") or {}).get("english") or ""
+            t_ro = (m.get("title") or {}).get("romaji") or ""
+            primary_title = t_en or t_ro or ""
+            if not primary_title:
                 continue
-            pending.append((s, title))
-        # Match paralel (lihat timeline & urutan paralel di _match_slugs_batch).
-        slug_pairs = await _match_slugs_batch([t for _, t in pending])
+            alt_title = t_ro if primary_title != t_ro else ""
+            pending.append((s, primary_title, alt_title))
+        # Match paralel dengan validasi judul & season.
+        slug_pairs = await _match_slug_batch([(t, alt) for _, t, alt in pending]) if pending else []
         slug_by_title = {t: s for t, s in slug_pairs}
 
         items_out = []
-        for s, title in pending:
+        for s, title, _ in pending:
             slug = slug_by_title.get(title)
             if not slug:
                 continue
