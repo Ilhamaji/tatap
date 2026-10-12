@@ -150,8 +150,36 @@ query ($search: String) {
 """
 
 
+MEDIA_BY_ID_QUERY = """
+query ($id: Int) {
+  Media(id: $id, type: ANIME) {
+    id
+    title { romaji english }
+    format
+    seasonYear
+    status
+    coverImage { medium large }
+    relations {
+      edges {
+        relationType
+        node {
+          id
+          title { romaji english }
+          format
+          seasonYear
+          status
+          coverImage { medium large }
+        }
+      }
+    }
+  }
+}
+"""
+
+
 def anime_relations(search_query: str):
-    """Ambil relasi franchise anime (Prequel, Sequel, Parent, Side Story, dll) dari AniList."""
+    """Ambil relasi franchise anime (Prequel, Sequel, Parent, Side Story, dll) dari AniList,
+    termasuk menelusuri rantai prekuel ke belakang untuk menemukan karya awal (Season 1)."""
     if not search_query or not search_query.strip():
         return []
     try:
@@ -163,29 +191,94 @@ def anime_relations(search_query: str):
         if r.status_code != 200:
             return []
         data = r.json().get("data", {}).get("Media", {})
+        if not data or not data.get("id"):
+            return []
+
+        current_id = data.get("id")
         edges = data.get("relations", {}).get("edges", []) or []
         out = []
+        seen_ids = {current_id}
+
+        # 1. Kumpulkan relasi langsung (1-hop)
+        direct_prequel_node = None
         for edge in edges:
             rel = edge.get("relationType", "")
             node = edge.get("node", {})
+            n_id = node.get("id")
             fmt = (node.get("format") or "").upper()
             if rel in ("PREQUEL", "SEQUEL", "PARENT", "SIDE_STORY", "ALTERNATIVE", "SUMMARY") and fmt in ("TV", "MOVIE", "OVA", "ONA", "SPECIAL"):
-                t_obj = node.get("title", {}) or {}
-                t_eng = t_obj.get("english") or ""
-                t_rom = t_obj.get("romaji") or ""
-                title = t_eng if t_eng else t_rom
-                img = (node.get("coverImage") or {}).get("medium") or ""
-                out.append({
-                    "id": node.get("id"),
-                    "relation": rel,
-                    "format": fmt,
-                    "title": title,
-                    "title_romaji": t_rom,
-                    "year": node.get("seasonYear"),
-                    "status": node.get("status"),
-                    "poster": img
-                })
+                if n_id and n_id not in seen_ids:
+                    seen_ids.add(n_id)
+                    t_obj = node.get("title", {}) or {}
+                    t_eng = t_obj.get("english") or ""
+                    t_rom = t_obj.get("romaji") or ""
+                    title = t_eng if t_eng else t_rom
+                    img = (node.get("coverImage") or {}).get("medium") or ""
+                    entry = {
+                        "id": n_id,
+                        "relation": rel,
+                        "format": fmt,
+                        "title": title,
+                        "title_romaji": t_rom,
+                        "year": node.get("seasonYear"),
+                        "status": node.get("status"),
+                        "poster": img
+                    }
+                    out.append(entry)
+                    if rel in ("PREQUEL", "PARENT") and direct_prequel_node is None:
+                        direct_prequel_node = node
+
+        # 2. Telusuri rantai prekuel ke belakang (hingga 5 langkah) untuk menemukan Season 1 / Origin
+        curr_prequel = direct_prequel_node
+        deepest_prequel = None
+        for _ in range(5):
+            if not curr_prequel or not curr_prequel.get("id"):
+                break
+            # Query node prekuel ini untuk melihat prekuel sebelumnya
+            r_prev = c.post(ANILIST_URL, json={
+                "query": MEDIA_BY_ID_QUERY,
+                "variables": {"id": curr_prequel.get("id")}
+            })
+            if r_prev.status_code != 200:
+                break
+            prev_data = r_prev.json().get("data", {}).get("Media", {})
+            prev_edges = prev_data.get("relations", {}).get("edges", []) or []
+
+            next_prequel = None
+            for e in prev_edges:
+                p_rel = e.get("relationType", "")
+                p_node = e.get("node", {})
+                p_id = p_node.get("id")
+                p_fmt = (p_node.get("format") or "").upper()
+                if p_rel in ("PREQUEL", "PARENT") and p_id not in seen_ids and p_fmt in ("TV", "MOVIE", "OVA", "ONA", "SPECIAL"):
+                    seen_ids.add(p_id)
+                    p_t_obj = p_node.get("title", {}) or {}
+                    p_t_eng = p_t_obj.get("english") or ""
+                    p_t_rom = p_t_obj.get("romaji") or ""
+                    p_title = p_t_eng if p_t_eng else p_t_rom
+                    p_img = (p_node.get("coverImage") or {}).get("medium") or ""
+                    p_entry = {
+                        "id": p_id,
+                        "relation": "PREQUEL",
+                        "format": p_fmt,
+                        "title": p_title,
+                        "title_romaji": p_t_rom,
+                        "year": p_node.get("seasonYear"),
+                        "status": p_node.get("status"),
+                        "poster": p_img
+                    }
+                    out.append(p_entry)
+                    next_prequel = p_node
+                    deepest_prequel = p_entry
+                    break
+            curr_prequel = next_prequel
+
+        # Jika ditemukan prekuel paling awal (Season 1 / Origin), tandai secara eksplisit
+        if deepest_prequel:
+            deepest_prequel["is_origin"] = True
+
         return out
     except Exception:
         return []
+
 

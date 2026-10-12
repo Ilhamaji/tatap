@@ -574,19 +574,24 @@ async def anime_relations_endpoint(slug: str, title: str = Query("")):
             r_year = r.get("year")
             r_fmt = r.get("format", "TV")
             r_poster = r.get("poster", "")
+            is_origin = r.get("is_origin", False)
 
             # Cari slug HiAnime yang cocok untuk relasi ini
             matched_slug = await _match_slug_one(loop, r_title, r_romaji)
             if not matched_slug and r_romaji:
                 matched_slug = await _match_slug_one(loop, r_romaji, r_title)
 
+            # Jika sekuel belum memiliki video atau belum rilis (tidak punya slug), lewati agar tidak menyesatkan
+            if rel_type in ("SEQUEL", "ALTERNATIVE", "SUMMARY") and not matched_slug:
+                continue
+
             # Buat label yang mudah dimengerti user (misal: "Season 1", "Prekuel", "Sekuel", "Movie")
             label = "Terkait"
             season_num = _extract_season_num(r_title) or _extract_season_num(r_romaji)
-            if rel_type == "PREQUEL":
+            if is_origin or (rel_type == "PREQUEL" and season_num == 1 and "season" not in r_title.lower()):
+                label = "Season 1"
+            elif rel_type == "PREQUEL":
                 label = f"Season {season_num}" if season_num > 1 else "Prekuel"
-                if "season" not in r_title.lower() and season_num == 1:
-                    label = "Season 1"
             elif rel_type == "SEQUEL":
                 label = f"Season {season_num}" if season_num > 1 else "Sekuel"
             elif r_fmt == "MOVIE":
@@ -602,12 +607,18 @@ async def anime_relations_endpoint(slug: str, title: str = Query("")):
                 "year": r_year,
                 "format": r_fmt,
                 "poster": r_poster,
-                "slug": matched_slug
+                "slug": matched_slug,
+                "is_origin": is_origin
             })
 
-        # Urutkan: PREQUEL paling kiri (agar mudah menemukan Season 1), lalu PARENT, SEQUEL, MOVIE, dll
-        order_map = {"PREQUEL": 0, "PARENT": 1, "SEQUEL": 2, "ALTERNATIVE": 3, "SIDE_STORY": 4, "SUMMARY": 5}
-        results.sort(key=lambda x: (order_map.get(x["relation"], 9), x.get("year") or 9999))
+        # Urutkan: Season 1 / Origin paling pertama (-1), disusul PREQUEL berurutan tahun (2018 -> 2021), SEQUEL, MOVIE
+        def sort_key(x):
+            if x.get("is_origin") or x.get("label") == "Season 1":
+                return (-1, x.get("year") or 0)
+            order_map = {"PREQUEL": 0, "PARENT": 1, "SEQUEL": 2, "ALTERNATIVE": 3, "SIDE_STORY": 4, "SUMMARY": 5}
+            return (order_map.get(x["relation"], 9), x.get("year") or 9999)
+
+        results.sort(key=sort_key)
 
         data = {"current_slug": slug, "relations": results}
         await set_browse_cache(cache_key, data)
