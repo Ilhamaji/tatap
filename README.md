@@ -21,8 +21,11 @@ Pemutar anime mandiri multi-platform (Android, Windows, Linux, Web) yang ringan,
 
 ## Unduh dan Instalasi
 
-### Android
-Unduh berkas APK versi terbaru dari [GitHub Releases](https://github.com/asfaraguest/tatap/releases) dan pasang di perangkat (Android 7.0+).
+### Android & Android TV
+
+Unduh berkas APK versi terbaru dari [GitHub Releases](https://github.com/asfaraguest/tatap/releases) dan pasang di perangkat (Android 7.0+):
+- **Android TV:** `tatap-tv-release-v*.apk` (dioptimalkan untuk navigasi remote D-pad dan antarmuka Leanback).
+- **Android Ponsel / Tablet:** `tatap-release-v*.apk` (dioptimalkan untuk layar sentuh dan orientasi mobile).
 
 ### Windows
 1. Unduh arsip zip portable dari [GitHub Releases](https://github.com/asfaraguest/tatap/releases).
@@ -59,6 +62,24 @@ Buka peramban di `http://127.0.0.1:8767`. Untuk menghentikan: `./manage.sh stop`
 | `M` | Matikan suara (Mute) |
 | `C` | Aktifkan filter CRT |
 | `Esc` | Keluar layar penuh |
+
+---
+
+## Navigasi Remote (Android TV)
+
+Tatap TV dirancang khusus agar dapat dioperasikan penuh menggunakan remote kontrol D-pad:
+
+| Tombol Remote | Fungsi di Layar Utama & Daftar Anime | Fungsi Saat Pemutaran Video (Player) |
+| :--- | :--- | :--- |
+| `D-Pad Kiri / Kanan` | Berpindah antar item / kartu episode | Mundur / Maju 5 detik (Seek) |
+| `D-Pad Atas` | Berpindah ke baris atas / bar pencarian | Memunculkan menu atas (Resolusi, Subtitle, Info) |
+| `D-Pad Bawah` | Berpindah ke baris bawah / konten | Menyembunyikan menu atas / toggle kontrol player |
+| `D-Pad Tengah` / `OK` | Membuka detail / mulai memutar | Putar / Jeda (Play / Pause) |
+| `Menu` / `Info` / `Settings` | Buka menu navigasi drawer | Buka dialog pengaturan resolusi, subtitle, dan rasio |
+| `Play / Pause` | – | Putar / Jeda video secara langsung |
+| `Rewind` / `Fast Forward` | – | Mundur / Maju 5 detik |
+| `Next` / `Previous` | – | Pindah ke episode berikutnya / sebelumnya |
+| `Kembali` / `Back` | Kembali ke halaman sebelumnya / tutup dialog | Sembunyikan kontrol player / kembali ke daftar episode |
 
 ---
 
