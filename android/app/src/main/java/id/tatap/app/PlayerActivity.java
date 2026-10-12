@@ -120,6 +120,19 @@ public class PlayerActivity extends Activity {
     private String activeStreamMode = "sub"; // "sub" | "dub"
     private boolean hasAiKey = false;
     private String configuredAiModel = "gemini-3.1-flash-lite";
+    private boolean isHlsMode = false;
+    private boolean hasFallbackAttempted = false;
+
+    private boolean isHlsStream(String url) {
+        if (url == null || url.isEmpty()) return false;
+        String lower = url.toLowerCase();
+        return lower.contains(".m3u8")
+                || lower.contains("m3u8")
+                || lower.contains("/hls")
+                || lower.contains("hls?")
+                || lower.contains("format=m3u8")
+                || lower.contains("/api/hls");
+    }
 
     private final Runnable subtitleSyncRunnable = new Runnable() {
         @Override
@@ -415,10 +428,21 @@ public class PlayerActivity extends Activity {
 
             @Override
             public void onPlayerError(PlaybackException error) {
+                if (!hasFallbackAttempted && player != null && rawStreamUrl != null && !rawStreamUrl.isEmpty()) {
+                    hasFallbackAttempted = true;
+                    isHlsMode = !isHlsMode;
+                    runOnUiThread(() -> applyCurrentStream());
+                    return;
+                }
                 if (layoutBuffering != null) {
                     layoutBuffering.setVisibility(View.GONE);
                 }
-                Toast.makeText(PlayerActivity.this, "Player error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+                String msg = error.getMessage();
+                Throwable cause = error.getCause();
+                if (cause != null && cause.getMessage() != null) {
+                    msg += " (" + cause.getMessage() + ")";
+                }
+                Toast.makeText(PlayerActivity.this, "Player error: " + msg, Toast.LENGTH_LONG).show();
             }
         });
 
@@ -821,7 +845,7 @@ public class PlayerActivity extends Activity {
                     activeStreamMode = data.optString("mode", "sub");
                     String streamUrl = "";
                     String masterUrl = data.optString("master", "");
-                    if (!masterUrl.isEmpty() && (masterUrl.contains(".m3u8") || masterUrl.contains("/hls"))) {
+                    if (!masterUrl.isEmpty() && isHlsStream(masterUrl)) {
                         streamUrl = masterUrl;
                     } else if (data.has("picked")) {
                         streamUrl = data.getJSONObject("picked").optString("url");
@@ -848,6 +872,10 @@ public class PlayerActivity extends Activity {
                         pickedQ = streamVariants.get(0).optString("q", "HD");
                     }
                     activeQuality = pickedQ;
+
+                    isHlsMode = isHlsStream(masterUrl) || isHlsStream(streamUrl)
+                            || (!streamVariants.isEmpty() && isHlsStream(streamVariants.get(0).optString("url", "")));
+                    hasFallbackAttempted = false;
 
                     // Simpan subtitle tracks yang tersedia
                     JSONArray subArr = data.optJSONArray("subtitles");
@@ -951,6 +979,8 @@ public class PlayerActivity extends Activity {
         }
 
         try {
+            boolean isHls = isHlsMode || isHlsStream(rawStreamUrl) || isHlsStream(streamReferer);
+
             String proxiedVideo = "http://127.0.0.1:8767/api/player/video?url=" + Uri.encode(rawStreamUrl)
                     + "&referer=" + Uri.encode(streamReferer);
 
@@ -961,12 +991,16 @@ public class PlayerActivity extends Activity {
 
             DefaultHttpDataSource.Factory httpDataSourceFactory = new DefaultHttpDataSource.Factory()
                     .setDefaultRequestProperties(headers)
+                    .setAllowCrossProtocolRedirects(true)
+                    .setConnectTimeoutMs(15000)
+                    .setReadTimeoutMs(30000)
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0");
 
             MediaItem.Builder mib = new MediaItem.Builder().setUri(Uri.parse(proxiedVideo));
-            if (rawStreamUrl.contains(".m3u8")) {
+            if (isHls) {
                 mib.setMimeType(MimeTypes.APPLICATION_M3U8);
                 HlsMediaSource videoSource = new HlsMediaSource.Factory(httpDataSourceFactory)
+                        .setAllowChunklessPreparation(false)
                         .createMediaSource(mib.build());
                 player.setMediaSource(videoSource);
             } else {
@@ -1297,7 +1331,8 @@ public class PlayerActivity extends Activity {
         getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE)
                 .edit().putString("pref_quality", newQ).apply();
 
-        if (rawStreamUrl.contains(".m3u8") || rawStreamUrl.contains("/hls")) {
+        hasFallbackAttempted = false;
+        if (isHlsStream(rawStreamUrl) || isHlsMode) {
             Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
             if (player != null) {
                 int maxH = Integer.MAX_VALUE;
@@ -1319,6 +1354,7 @@ public class PlayerActivity extends Activity {
         boolean wasPlaying = player != null && player.isPlaying();
 
         rawStreamUrl = newUrl;
+        isHlsMode = isHlsStream(newUrl);
 
         Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
         applyCurrentStream();

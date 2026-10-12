@@ -732,15 +732,15 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
         return Response(status_code=e.status_code, content=str(e.detail).encode(),
                         media_type="text/plain")
     except Exception as e:
-        # Jika direct gagal karena blokir DPI ISP, tandai host dan gunakan TLS desync
-        err_str = str(e).lower()
-        if "reset" in err_str or "ssl" in err_str or "recv failure" in err_str:
-            _BLOCKED_DPI_HOSTS.add(host)
+        # Jika direct gagal (koneksi timeout, RST, SSL, blocked DPI), fallback ke TLS desync
+        _BLOCKED_DPI_HOSTS.add(host)
+        try:
             return _SR(_pipe_desync_video(url, referer), media_type=media_type,
                        headers={"Access-Control-Allow-Origin": "*"})
-        return Response(status_code=502,
-                        content=f"upstream error: {type(e).__name__}".encode(),
-                        media_type="text/plain")
+        except Exception as e2:
+            return Response(status_code=502,
+                            content=f"upstream error: {type(e2).__name__}".encode(),
+                            media_type="text/plain")
     return _SR(_pipe_video(url, referer), media_type=media_type,
                headers={"Access-Control-Allow-Origin": "*"})
 
