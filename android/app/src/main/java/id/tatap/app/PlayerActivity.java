@@ -107,6 +107,7 @@ public class PlayerActivity extends Activity {
 
     private String rawStreamUrl = "";
     private String streamReferer = "";
+    private String masterStreamUrl = "";
     private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
     private final List<JSONObject> streamVariants = new ArrayList<>();
     private String activeQuality = "best";
@@ -435,6 +436,14 @@ public class PlayerActivity extends Activity {
                 if (playerView != null) {
                     playerView.setResizeMode(currentResizeMode);
                     playerView.requestLayout();
+                }
+            }
+
+            @Override
+            public void onTracksChanged(androidx.media3.common.Tracks tracks) {
+                if (activeQuality != null && !activeQuality.isEmpty()
+                        && !"auto".equalsIgnoreCase(activeQuality) && !"best".equalsIgnoreCase(activeQuality)) {
+                    applyHlsTrackSelection(activeQuality);
                 }
             }
 
@@ -957,6 +966,7 @@ public class PlayerActivity extends Activity {
 
                     rawStreamUrl = streamUrl;
                     streamReferer = referer;
+                    masterStreamUrl = (!masterUrl.isEmpty() && isHlsStream(masterUrl)) ? masterUrl : "";
 
                     if (!rawStreamUrl.isEmpty()) {
                         runOnUiThread(() -> {
@@ -1303,7 +1313,8 @@ public class PlayerActivity extends Activity {
         for (int i = 0; i < streamVariants.size(); i++) {
             JSONObject v = streamVariants.get(i);
             String q = v.optString("q", "auto");
-            boolean isCurrent = (rawStreamUrl.equals(v.optString("url", "")) || q.equalsIgnoreCase(activeQuality));
+            boolean isCurrent = q.equalsIgnoreCase(activeQuality)
+                    || (rawStreamUrl.equals(v.optString("url", "")) && !rawStreamUrl.isEmpty());
             if (isCurrent) selectedIdx = i;
             options.add(q.toUpperCase() + (isCurrent ? " [Aktif]" : ""));
         }
@@ -1314,9 +1325,7 @@ public class PlayerActivity extends Activity {
                 String newQ = picked.optString("q", "auto");
                 String newUrl = picked.optString("url", "");
                 dialog.dismiss();
-                if (!newUrl.isEmpty()) {
-                    switchQuality(newQ, newUrl);
-                }
+                switchQuality(newQ, newUrl);
             }
         });
 
@@ -1335,7 +1344,7 @@ public class PlayerActivity extends Activity {
     }
 
     private void switchQuality(String newQ, String newUrl) {
-        if (newUrl.equals(rawStreamUrl)) return;
+        if (newQ == null || newQ.isEmpty()) return;
         activeQuality = newQ;
         if (btnQuality != null) {
             btnQuality.setText(newQ.toUpperCase());
@@ -1344,19 +1353,33 @@ public class PlayerActivity extends Activity {
                 .edit().putString("pref_quality", newQ).apply();
 
         hasFallbackAttempted = false;
+        Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
+
+        boolean isHls = isHlsMode || isHlsStream(rawStreamUrl) || isHlsStream(masterStreamUrl);
+
+        if (isHls && player != null) {
+            applyHlsTrackSelection(newQ);
+            if (playerView != null) {
+                playerView.setResizeMode(currentResizeMode);
+                playerView.requestLayout();
+            }
+            return;
+        }
+
+        // Jalur non-HLS (Progressive MP4 tunggal): reload stream dengan URL baru
+        if (newUrl == null || newUrl.isEmpty() || newUrl.equals(rawStreamUrl)) return;
         long resumePos = player != null ? player.getCurrentPosition() : 0;
         boolean wasPlaying = player != null && player.isPlaying();
 
         rawStreamUrl = newUrl;
         isHlsMode = isHlsStream(newUrl);
 
-        Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
         applyCurrentStream();
 
         if (player != null) {
-            // Reset constraint ukuran video lama agar decoder me-render resolusi baru secara penuh
             androidx.media3.common.TrackSelectionParameters params = player.getTrackSelectionParameters().buildUpon()
                     .clearVideoSizeConstraints()
+                    .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_VIDEO)
                     .build();
             player.setTrackSelectionParameters(params);
 
@@ -1372,6 +1395,61 @@ public class PlayerActivity extends Activity {
             playerView.setResizeMode(currentResizeMode);
             playerView.requestLayout();
         }
+    }
+
+    private void applyHlsTrackSelection(String quality) {
+        if (player == null || quality == null) return;
+        androidx.media3.common.TrackSelectionParameters.Builder builder =
+                player.getTrackSelectionParameters().buildUpon()
+                        .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_VIDEO)
+                        .clearVideoSizeConstraints();
+
+        if (!"auto".equalsIgnoreCase(quality) && !"best".equalsIgnoreCase(quality)) {
+            int targetH = 1080;
+            if (quality.contains("720")) targetH = 720;
+            else if (quality.contains("480")) targetH = 480;
+            else if (quality.contains("360")) targetH = 360;
+
+            androidx.media3.common.Tracks currentTracks = player.getCurrentTracks();
+            androidx.media3.common.TrackGroup targetGroup = null;
+            int targetIndex = -1;
+            int bestDiff = Integer.MAX_VALUE;
+
+            for (androidx.media3.common.Tracks.Group group : currentTracks.getGroups()) {
+                if (group.getType() == androidx.media3.common.C.TRACK_TYPE_VIDEO) {
+                    androidx.media3.common.TrackGroup tg = group.getMediaTrackGroup();
+                    for (int i = 0; i < tg.length; i++) {
+                        androidx.media3.common.Format format = tg.getFormat(i);
+                        int diff = Math.abs(format.height - targetH);
+                        if (diff < bestDiff) {
+                            bestDiff = diff;
+                            targetGroup = tg;
+                            targetIndex = i;
+                        }
+                    }
+                }
+            }
+
+            if (targetGroup != null && targetIndex != -1) {
+                builder.addOverride(new androidx.media3.common.TrackSelectionOverride(targetGroup, targetIndex));
+            } else {
+                int maxH = Integer.MAX_VALUE;
+                int maxW = Integer.MAX_VALUE;
+                int minH = 0;
+                int minW = 0;
+                if (quality.contains("1080")) { maxH = 1080; maxW = 1920; minH = 900; minW = 1600; }
+                else if (quality.contains("720")) { maxH = 720; maxW = 1280; minH = 600; minW = 1000; }
+                else if (quality.contains("480")) { maxH = 480; maxW = 854; minH = 400; minW = 700; }
+                else if (quality.contains("360")) { maxH = 360; maxW = 640; minH = 0; minW = 0; }
+
+                builder.setMaxVideoSize(maxW, maxH);
+                if (minW > 0 && minH > 0) {
+                    builder.setMinVideoSize(minW, minH);
+                }
+            }
+        }
+
+        player.setTrackSelectionParameters(builder.build());
     }
 
     private void showSubtitleSelectorDialog() {
