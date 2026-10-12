@@ -13,6 +13,28 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.4.2] - 2026-10-13
+
+### Ditingkatkan
+- **Kamus Idiom & Ungkapan Fansub Anime Universal:** Mengintegrasikan kamus referensi penerjemahan fansub anime yang komprehensif ke dalam mesin penerjemah `translate.py` (prompt sistem `_FANSUB_PROMPT_ID`, aturan normalisasi universal `_UNIVERSAL_FANSUB_RULES`, percakapan kasual `_CASUAL_FANSUB_RULES`, dan penghalus `_AIGTX_SMOOTH_RULES`). Mengeliminasi puluhan calque dan blunder penerjemahan mesin yang kaku:
+  - *"It can't be helped / shouganai"* -> *"Mau gimana lagi"* (bukan *"Itu tidak bisa ditolong"*).
+  - *"Give me a break"* -> *"Yang benar saja! / Ampun deh!"* (bukan *"Beri aku istirahat"*).
+  - *"Serves you right"* -> *"Rasakan itu! / Syukurin!"* (bukan *"Melayanimu dengan benar"*).
+  - *"I'll take care of this"* -> *"Biar aku yang urus ini"* (bukan *"Aku akan merawat ini"*).
+  - *"Don't let your guard down"* -> *"Jangan lengah!"* (bukan *"Jangan biarkan penjagamu turun"*).
+  - *"Stand back / Back down"* -> *"Mundur! / Menjauhlah!"* (bukan *"Berdiri kembali / Kembali ke bawah"*).
+  - *"Watch your back"* -> *"Waspadalah di belakangmu!"* (bukan *"Perhatikan punggungmu"*).
+  - *"Make up your mind"* -> *"Tentukan pilihanmu!"* (bukan *"Bentuk pikiranmu"*).
+  - *"Change of heart"* -> *"Berubah pikiran"* (bukan *"Perubahan hati"*).
+  - *"Over my dead body"* -> *"Langkahi dulu mayatku!"* (bukan *"Di atas tubuh matiku"*).
+  - *"Who is in charge?"* -> *"Siapa penanggung jawabnya?"* (bukan *"Siapa yang mengisi daya?"*).
+  - *"Piece of cake"* -> *"Gampang banget"* (bukan *"Sepotong kue"*).
+  - *"Under the weather"* -> *"Kurang enak badan"* (bukan *"Di bawah cuaca"*).
+  - *"Not on my watch"* -> *"Tidak akan kubiarkan!"* (bukan *"Bukan di jam tanganku"*).
+  - *"Take your time"* -> *"Santai saja, jangan terburu-buru"* (bukan *"Ambil waktumu"*).
+  - Serta ungkapan dan respons kultural khas anime lainnya (*mendokusai*, *sasuga*, *tsundere*, *greeting*, dan umpatan shonen).
+- **Sinkronisasi Penuh Antar-Platform:** Menyelaraskan seluruh berkas kamus dan versi di `backend/` dengan `android/app/src/main/python/backend/` guna menjamin paritas 100% pada platform Windows Portable, Linux Desktop, Android Mobile, dan Android TV.
+
 ---
 
 ## [2.4.1] - 2026-10-13

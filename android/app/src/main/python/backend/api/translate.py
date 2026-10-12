@@ -576,6 +576,68 @@ Dilarang Terjemahkan Idiom Secara Harfiah (Gunakan Padanan Fansub Alami):
 - DILARANG MEMBIARKAN KATA SIFAT INGGRIS TANPA TERJEMAHAN:
   * "Embarrassing" -> "Memalukan" / "Bikin malu" (DILARANG: "sangat embarrassing").
   * "Gross" -> "Jijik" / "Menjijikkan".
+
+Kamus Idiom & Ungkapan Khas Fansub Anime (Anti-Terjemahan Kaku):
+- "It can't be helped / shouganai / shikataganai" -> "Mau gimana lagi / Mau bagaimana lagi" (JANGAN diterjemahkan kaku: "Itu tidak bisa ditolong").
+- "Mendokusai / What a drag" -> "Merepotkan sekali / Bikin malas saja / Ribet banget" (JANGAN: "Seretan / Itu merepotkan").
+- "Sasuga / As expected" -> "Sudah kuduga / Memang bisa diandalkan / Emang paling bisa" (JANGAN: "Seperti yang diharapkan").
+- "Give me a break" -> "Yang benar saja! / Ampun deh! / Jangan bercanda!" (JANGAN: "Beri aku istirahat").
+- "Serves you right" -> "Rasakan itu! / Syukurin! / Makanya jangan macam-macam!" (JANGAN: "Melayanimu dengan benar").
+- "I'll take care of this / leave it to me" -> "Biar aku yang urus ini / Serahkan ini padaku" (JANGAN: "Aku akan merawat ini").
+- "Take care of him (combat)" -> "Habisi dia! / Bereskan dia!" (JANGAN: "Rawat dia").
+- "Don't let your guard down / stay alert" -> "Jangan lengah! / Tetap waspada!" (JANGAN: "Jangan biarkan penjagamu turun").
+- "Lower your guard" -> "Lengah / Menurunkan kewaspadaan" (JANGAN: "Menurunkan penjaga").
+- "Watch your back" -> "Hati-hati di belakangmu! / Waspadalah!" (JANGAN: "Perhatikan punggungmu").
+- "Stand back!" -> "Mundur! / Menjauhlah!" (JANGAN: "Berdiri kembali!").
+- "Back down / Back off" -> "Mundur! / Menjauh!" (JANGAN: "Kembali ke bawah").
+- "Take this! / Kurae!" -> "Rasakan ini! / Terima ini!" (JANGAN: "Ambil ini!").
+- "You bastard! / Kisama / Teme" -> "Brengsek! / Sialan kau! / Kurang ajar!".
+- "I will never forgive you!" -> "Tidak akan kumaafkan! / Takkan kuampuni!" (JANGAN: "Aku tidak pernah memaafkanmu").
+- "Are you hitting on me?" -> "Kamu lagi menggodaku ya? / Mau merayuku ya?" (JANGAN: "Apakah kamu memukulku?").
+- "Don't get cocky" -> "Jangan sombong! / Jangan besar kepala!" (JANGAN: "Jangan sombong ayam").
+- "You're blushing" -> "Mukamu merah / Kamu tersipu, ya?".
+- "Don't get the wrong idea" -> "Jangan salah paham ya! / Bukan berarti begitu ya!".
+- "I'm heading out" -> "Aku berangkat ya!".
+- "I'm home / I'm back" -> "Aku pulang!".
+- "Welcome home" -> "Selamat datang kembali / Selamat pulang".
+- "Good grief / Yare yare" -> "Ya ampun... / Ampun deh... / Astaga...".
+- "Make up your mind" -> "Tentukan pilihanmu! / Cepat putuskan!" (JANGAN: "Bentuk pikiranmu").
+- "Change of heart" -> "Berubah pikiran" (JANGAN: "Perubahan hati").
+- "I can't take it anymore" -> "Aku sudah tidak tahan lagi!" (JANGAN: "Aku tidak bisa mengambilnya lagi").
+- "Crossed my mind" -> "Terlintas di pikiranku" (JANGAN: "Menyeberangi pikiranku").
+- "Keep it to yourself" -> "Jangan bilang siapa-siapa / Rahasiakan ini" (JANGAN: "Simpan untuk dirimu sendiri").
+- "Over my dead body" -> "Langkahi dulu mayatku!" (JANGAN: "Di atas tubuh matiku").
+- "Who is in charge?" -> "Siapa penanggung jawabnya? / Siapa yang memimpin?" (JANGAN: "Siapa yang mengisi daya?").
+- "Bite your tongue" -> "Jaga ucapanmu!" (JANGAN: "Gigit lidahmu").
+- "Turn a blind eye" -> "Tutup mata / Pura-pura tidak tahu" (JANGAN: "Putar mata buta").
+- "Cold feet" -> "Ragu-ragu / Ciut nyali" (JANGAN: "Kaki dingin").
+- "On the house" -> "Gratis / Traktiran kedai" (JANGAN: "Di atas rumah").
+- "Rule of thumb" -> "Pedoman umum / Patokan dasarnya" (JANGAN: "Aturan jempol").
+- "Take for granted" -> "Menganggap remeh / Menyia-nyiakan" (JANGAN: "Ambil untuk diberikan").
+- "Piece of cake" -> "Gampang banget / Sangat mudah" (JANGAN: "Sepotong kue").
+- "Lost in thought" -> "Melamun / Tenggelam dalam pikiran" (JANGAN: "Hilang dalam pikiran").
+- "Spill the beans / tea" -> "Bocorkan rahasianya / Ceritakan semuanya" (JANGAN: "Tumpahkan kacang / teh").
+- "Under the weather" -> "Kurang enak badan / Sedang sakit" (JANGAN: "Di bawah cuaca").
+- "Face the music" -> "Menanggung akibatnya" (JANGAN: "Menghadapi musik").
+- "Bite the bullet" -> "Tabahkan dirimu / Pasrah menelan pil pahit" (JANGAN: "Gigit peluru").
+- "Speak of the devil" -> "Panjang umur, baru saja diomongin" (JANGAN: "Bicara tentang iblis").
+- "Hit the nail on the head" -> "Tepat sasaran" (JANGAN: "Pukul paku di kepala").
+- "Beat around the bush" -> "Berbelit-belit" (JANGAN: "Memukul semak-semak").
+- "Hang in there!" -> "Bertahanlah! / Semangat!" (JANGAN: "Gantung di sana").
+- "Under your nose" -> "Tepat di depan matamu" (JANGAN: "Di bawah hidungmu").
+- "Take it easy" -> "Santai saja / Tenang saja" (JANGAN: "Ambil dengan mudah").
+- "Count me in / out" -> "Aku ikut! / Aku nggak ikut" (JANGAN: "Hitung aku masuk/keluar").
+- "Not on my watch" -> "Tidak akan kubiarkan!" (JANGAN: "Bukan di jam tanganku").
+- "Get a grip" -> "Sadarlah! / Tenangkan dirimu!" (JANGAN: "Dapatkan pegangan").
+- "Keep your head down" -> "Tiarap! / Jaga sikap" (JANGAN: "Tundukkan kepalamu").
+- "No offense / None taken" -> "Tanpa mengurangi rasa hormat / Nggak apa-apa kok" (JANGAN: "Tidak ada pelanggaran / Tidak diambil").
+- "Have my back" -> "Lindungi punggungku / Selalu mendukungku" (JANGAN: "Miliki punggungku").
+- "Cross the line" -> "Melampaui batas / Kelewatan" (JANGAN: "Menyeberangi garis").
+- "Don't flatter yourself" -> "Jangan kepedean / Jangan terlalu percaya diri" (JANGAN: "Jangan menyanjung dirimu").
+- "None of your business" -> "Bukan urusanmu!" (JANGAN: "Bukan bisnis Anda").
+- "Take your time" -> "Santai saja, jangan terburu-buru" (JANGAN: "Ambil waktumu").
+- "Right away" -> "Sekarang juga / Segera" (JANGAN: "Tepat pergi").
+- "All of a sudden" -> "Tiba-tiba / Sekonyong-konyong" (JANGAN: "Semua tiba-tiba").
 - Pertahankan nama orang, tempat, honorifik Jepang (-san, -kun, -chan, -sama, Senpai, Sensei), gagap & interjeksi emosi ("A-Apa?!", "Tch", "Hmph").
 - Pertahankan token <br> untuk ganti baris dalam 1 cue.
 
@@ -875,6 +937,82 @@ _UNIVERSAL_FANSUB_RULES = [
     (r"\bdi sini untuk mengambil pesanan\b", "mau ambil pesanan"),
     (r"\banda pikir anda bisa memperbaikinya\b", "kamu rasa kamu bisa memperbaikinya"),
     (r"\bapakah anda berpikir anda bisa\b", "apa kamu rasa kamu bisa"),
+    # Kamus Idiom & Ungkapan Fansub Anime Universal
+    (r"\bberi aku istirahat\b", "yang benar saja"),
+    (r"\bitu melayanimu dengan benar\b", "rasakan itu"),
+    (r"\bitu melayanimu dengan pas\b", "rasakan itu"),
+    (r"\bmelayanimu dengan benar\b", "rasakan itu"),
+    (r"\bmelayanimu dengan pas\b", "rasakan itu"),
+    (r"\bitu melayanimu\b", "rasakan itu"),
+    (r"\bitu tidak bisa ditolong\b", "mau bagaimana lagi"),
+    (r"\btak bisa ditolong\b", "mau bagaimana lagi"),
+    (r"\baku akan merawat ini\b", "biar aku yang urus ini"),
+    (r"\baku akan merawatnya\b", "biar aku yang urus"),
+    (r"\bmerawat ini\b", "mengurus ini"),
+    (r"\bjangan biarkan penjagamu turun\b", "jangan lengah"),
+    (r"\bmenurunkan penjagamu\b", "lengah"),
+    (r"\bmenurunkan penjaga\b", "lengah"),
+    (r"\bperhatikan punggungmu\b", "waspadalah di belakangmu"),
+    (r"\bberdiri kembali\b", "mundur"),
+    (r"\bkembali ke bawah\b", "mundur"),
+    (r"\bkamu lagi memukulku\b", "kamu lagi merayuku ya"),
+    (r"\blagi memukulku\b", "lagi menggodaku"),
+    (r"\bjangan sombong ayam\b", "jangan besar kepala"),
+    (r"\bbentuk pikiranmu\b", "tentukan pilihanmu"),
+    (r"\bperubahan hati\b", "berubah pikiran"),
+    (r"\baku tidak bisa mengambilnya lagi\b", "aku sudah tidak tahan lagi"),
+    (r"\bmenyeberangi pikiranku\b", "terlintas di pikiranku"),
+    (r"\bsimpan untuk dirimu sendiri\b", "rahasiakan ini"),
+    (r"\bdi atas tubuh matiku\b", "langkahi dulu mayatku"),
+    (r"\bsiapa yang mengisi daya\b", "siapa penanggung jawabnya"),
+    (r"\bgigit lidahmu\b", "jaga ucapanmu"),
+    (r"\bputar mata buta\b", "tutup mata"),
+    (r"\bkaki dingin\b", "ciut nyali"),
+    (r"\bdi atas rumah\b", "gratis dari kedai"),
+    (r"\baturan jempol\b", "pedoman umum"),
+    (r"\bambil untuk diberikan\b", "menganggap remeh"),
+    (r"\bpotong itu\b", "hentikan itu"),
+    (r"\bsepotong kue\b", "gampang banget"),
+    (r"\bhilang dalam pikiran\b", "melamun"),
+    (r"\btumpahkan kacang\b", "bocorkan rahasianya"),
+    (r"\btumpahkan teh\b", "ceritakan gosipnya"),
+    (r"\bdi air panas\b", "dalam masalah besar"),
+    (r"\bdi bawah cuaca\b", "kurang enak badan"),
+    (r"\bmenghadapi musik\b", "menanggung akibatnya"),
+    (r"\bgigit peluru\b", "tabahkan dirimu"),
+    (r"\bbicara tentang iblis\b", "panjang umur, baru diomongin"),
+    (r"\bpukul paku di kepala\b", "tepat sasaran"),
+    (r"\bmemukul semak-semak\b", "berbelit-belit"),
+    (r"\bpatahkan kaki\b", "semoga sukses"),
+    (r"\bbiaya lengan dan kaki\b", "harganya selangit"),
+    (r"\bkeluar dari tangan\b", "lepas kendali"),
+    (r"\bgantung di sana\b", "bertahanlah"),
+    (r"\btarik kaki\b", "mengerjai"),
+    (r"\bdi bawah hidungmu\b", "tepat di depan matamu"),
+    (r"\bkehilangan kesejukan\b", "hilang kesabaran"),
+    (r"\bambil dengan mudah\b", "santai saja"),
+    (r"\bhitung aku masuk\b", "aku ikut"),
+    (r"\bhitung aku keluar\b", "aku nggak ikut"),
+    (r"\bbukan di jam tanganku\b", "tidak akan kubiarkan"),
+    (r"\bdapatkan pegangan\b", "sadarlah"),
+    (r"\btundukkan kepalamu\b", "tiarap"),
+    (r"\btanpa pelanggaran\b", "tanpa mengurangi rasa hormat"),
+    (r"\btidak ada pelanggaran\b", "tanpa mengurangi rasa hormat"),
+    (r"\btidak diambil\b", "santai saja"),
+    (r"\bmiliki punggungku\b", "lindungi punggungku"),
+    (r"\bmenyeberangi garis\b", "melampaui batas"),
+    (r"\bjangan menyanjung dirimu\b", "jangan kepedean"),
+    (r"\bbukan bisnis anda\b", "bukan urusanmu"),
+    (r"\bbukan bisnis kamu\b", "bukan urusanmu"),
+    (r"\burus bisnismu sendiri\b", "urus urusanmu sendiri"),
+    (r"\bambil waktumu\b", "santai saja, jangan terburu-buru"),
+    (r"\bmaju ke depan\b", "silakan"),
+    (r"\btepat pergi\b", "sekarang juga"),
+    (r"\bsemua tiba-tiba\b", "tiba-tiba"),
+    (r"\bpada akhirnya panjang\b", "setelah penantian panjang"),
+    (r"\bhal pertama di pagi hari\b", "pagi-pagi buta"),
+    (r"\btidur di atasnya\b", "pikirkan matang-matang besok"),
+    (r"\bkembali ke kotak satu\b", "mulai dari awal lagi"),
 ]
 
 # Aturan khusus adegan kasual/santai (tidak diterapkan jika konteks formal/kerajaan).
@@ -951,6 +1089,17 @@ _CASUAL_FANSUB_RULES = [
     (r"\bsaya tidak tahu kamu ada di sana\b", "aku nggak tahu kamu ada di sana"),
     (r"\bdi sini untuk mengambil\b", "mau mengambil"),
     (r"\banda berpikir\b", "kamu rasa"),
+    (r"\bmau bagaimana lagi\b", "mau gimana lagi"),
+    (r"\bmau tak mau\b", "mau nggak mau"),
+    (r"\bapa yang terjadi\b", "ada apa sih"),
+    (r"\bkamu tahu\b", "tahu nggak"),
+    (r"\bapakah kamu serius\b", "kamu serius"),
+    (r"\bapakah kamu bercanda\b", "kamu bercanda ya"),
+    (r"\bbukan urusanmu\b", "bukan urusanmu kok"),
+    (r"\btidak akan kumaafkan\b", "nggak bakal kumaafkan"),
+    (r"\btak akan kumaafkan\b", "nggak bakal kumaafkan"),
+    (r"\bsungguh merepotkan\b", "merepotkan banget"),
+    (r"\bsudah kuduga\b", "emang udah kuduga"),
 ]
 
 _AIGTX_SMOOTH_RULES = [
@@ -965,6 +1114,17 @@ _AIGTX_SMOOTH_RULES = [
     (r"\btinta sulap\b", "tinta sihir"),
     (r"\bmelakukan casting\b", "merapal sihir"),
     (r"\bcasting seal\b", "segel sihir"),
+    (r"\bberi aku istirahat\b", "yang benar saja"),
+    (r"\bmelayanimu dengan benar\b", "rasakan itu"),
+    (r"\bitu tidak bisa ditolong\b", "mau bagaimana lagi"),
+    (r"\bsepotong kue\b", "sangat mudah"),
+    (r"\bdi bawah cuaca\b", "kurang enak badan"),
+    (r"\bbukan di jam tanganku\b", "tidak akan kubiarkan"),
+    (r"\bambil dengan mudah\b", "santai saja"),
+    (r"\bdi atas rumah\b", "gratis dari kedai"),
+    (r"\bdi atas tubuh matiku\b", "langkahi dulu mayatku"),
+    (r"\bjangan biarkan penjagamu turun\b", "jangan lengah"),
+    (r"\bperhatikan punggungmu\b", "waspadalah di belakangmu"),
 ]
 
 _COMPILED_UNIVERSAL = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _UNIVERSAL_FANSUB_RULES]
