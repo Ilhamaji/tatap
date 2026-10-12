@@ -66,7 +66,6 @@ public class PlayerActivity extends Activity {
     private TextView tvOsdIcon, tvOsdVal, tvRippleLeft, tvRippleRight;
     private ProgressBar pbOsdBar;
     private TextView tvPlayerTitle, tvSubStatus;
-    private Button btnSubSelector, btnSubStyle;
     private ImageButton btnPlayerBack;
     private View layoutTopBar;
     private View layoutBuffering;
@@ -80,6 +79,9 @@ public class PlayerActivity extends Activity {
     private List<Integer> episodeList = new ArrayList<>();
     private View btnExoNext;
     private View btnExoPrev;
+    private View btnExoSub;
+    private View btnExoSettings;
+    private View btnExoFullscreen;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
 
@@ -101,8 +103,6 @@ public class PlayerActivity extends Activity {
 
     private String rawStreamUrl = "";
     private String streamReferer = "";
-    private Button btnQuality;
-    private Button btnAspect;
     private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
     private final List<JSONObject> streamVariants = new ArrayList<>();
     private String activeQuality = "best";
@@ -190,7 +190,6 @@ public class PlayerActivity extends Activity {
         layoutTopBar = findViewById(R.id.layout_top_bar);
         tvPlayerTitle = findViewById(R.id.tv_player_title);
         tvSubStatus = findViewById(R.id.tv_sub_status);
-        btnSubSelector = findViewById(R.id.btn_sub_selector);
         btnPlayerBack = findViewById(R.id.btn_player_back);
 
         layoutBuffering = findViewById(R.id.layout_buffering);
@@ -207,45 +206,23 @@ public class PlayerActivity extends Activity {
             btnPlayerBack.setOnClickListener(v -> finish());
         }
 
-        setupExoEpisodeButtons();
+        setupExoNativeControls();
 
-        // Aspect Ratio & Fullscreen Mode Setup
         try {
-            btnAspect = findViewById(R.id.btn_aspect);
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
             currentResizeMode = sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
             activeEngine = sp.getString("pref_sub_engine", "gtx");
             activeSubLang = sp.getString("pref_sub_lang", "id");
             subEnabled = sp.getBoolean("pref_sub_enabled", true);
-            updateAspectButtonLabel();
             if (playerView != null) {
                 playerView.setResizeMode(currentResizeMode);
             }
-            if (btnAspect != null) {
-                btnAspect.setOnClickListener(v -> cycleAspectRatio());
-            }
         } catch (Throwable ignored) {}
-
-        btnQuality = findViewById(R.id.btn_quality);
-        if (btnQuality != null) {
-            btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
-        }
-        if (btnSubSelector != null) {
-            btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
-        }
-        btnSubStyle = findViewById(R.id.btn_sub_style);
-        if (btnSubStyle != null) {
-            btnSubStyle.setOnClickListener(v -> showSubtitleStyleDialog());
-        }
 
         applySubtitleStyle();
 
-        // Pasang respon fokus D-Pad TV pada tombol kontrol player
+        // Pasang respon fokus D-Pad TV pada tombol back
         TvFocusHelper.attachFocusScale(btnPlayerBack, 1.15f, 6f);
-        TvFocusHelper.attachFocusScale(btnAspect, 1.08f, 6f);
-        TvFocusHelper.attachFocusScale(btnQuality, 1.08f, 6f);
-        TvFocusHelper.attachFocusScale(btnSubSelector, 1.08f, 6f);
-        TvFocusHelper.attachFocusScale(btnSubStyle, 1.08f, 6f);
 
         try {
             audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
@@ -255,19 +232,6 @@ public class PlayerActivity extends Activity {
         initExoPlayer();
         setupGestureControls();
         resolveAndPlayStream();
-    }
-
-    private void updateAspectButtonLabel() {
-        try {
-            if (btnAspect == null) return;
-            if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
-                btnAspect.setText("Zoom");
-            } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
-                btnAspect.setText("Fill");
-            } else {
-                btnAspect.setText("Fit");
-            }
-        } catch (Throwable ignored) {}
     }
 
     private void cycleAspectRatio() {
@@ -283,7 +247,6 @@ public class PlayerActivity extends Activity {
                 currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
                 Toast.makeText(this, "Mode Layar: FIT (Skala Asli)", Toast.LENGTH_SHORT).show();
             }
-            updateAspectButtonLabel();
             playerView.setResizeMode(currentResizeMode);
             getSharedPreferences("tatap_player_prefs", MODE_PRIVATE)
                     .edit().putInt("aspect_mode", currentResizeMode).apply();
@@ -411,6 +374,18 @@ public class PlayerActivity extends Activity {
                     layoutBuffering.setVisibility(View.GONE);
                 }
                 Toast.makeText(PlayerActivity.this, "Player error: " + error.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        });
+
+        playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
+            if (layoutTopBar != null) {
+                layoutTopBar.setVisibility(visibility);
+            }
+            if (visibility == View.VISIBLE) {
+                handler.removeCallbacks(hideTopBarRunnable);
+                handler.postDelayed(hideTopBarRunnable, 4000);
+            } else {
+                hideSystemUi();
             }
         });
     }
@@ -556,14 +531,7 @@ public class PlayerActivity extends Activity {
                 case KeyEvent.KEYCODE_MENU:
                 case KeyEvent.KEYCODE_SETTINGS:
                 case KeyEvent.KEYCODE_INFO:
-                    if (isTopBarActive) {
-                        hideTopBar();
-                    } else {
-                        showTopBarBriefly();
-                        if (btnSubSelector != null) {
-                            btnSubSelector.requestFocus();
-                        }
-                    }
+                    showPlayerUnifiedSettingsDialog();
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_CENTER:
@@ -668,12 +636,12 @@ public class PlayerActivity extends Activity {
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_UP:
-                    if (!isTopBarActive || !hasFocusOnTopBar) {
-                        showTopBarBriefly();
-                        if (btnSubSelector != null) {
-                            btnSubSelector.requestFocus();
+                    if (playerView != null) {
+                        playerView.showController();
+                        if (btnExoSub != null && btnExoSub.getVisibility() == View.VISIBLE) {
+                            btnExoSub.requestFocus();
+                            return true;
                         }
-                        return true;
                     }
                     showTopBarBriefly();
                     break;
@@ -824,13 +792,7 @@ public class PlayerActivity extends Activity {
                     } else if (!streamVariants.isEmpty()) {
                         pickedQ = streamVariants.get(0).optString("q", "HD");
                     }
-                    final String labelQ = pickedQ.toUpperCase();
-                    runOnUiThread(() -> {
-                        if (btnQuality != null) {
-                            btnQuality.setText(labelQ);
-                            btnQuality.setVisibility(streamVariants.isEmpty() ? View.GONE : View.VISIBLE);
-                        }
-                    });
+                    activeQuality = pickedQ;
 
                     // Simpan subtitle tracks yang tersedia
                     JSONArray subArr = data.optJSONArray("subtitles");
@@ -1255,8 +1217,11 @@ public class PlayerActivity extends Activity {
 
         builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
         builder.setOnDismissListener(dialog -> {
-            if (btnQuality != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
-                btnQuality.requestFocus();
+            if (playerView != null) {
+                playerView.showController();
+                if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                    btnExoSettings.requestFocus();
+                }
             }
         });
         builder.show();
@@ -1272,9 +1237,6 @@ public class PlayerActivity extends Activity {
         boolean wasPlaying = player != null && player.isPlaying();
 
         rawStreamUrl = newUrl;
-        if (btnQuality != null) {
-            btnQuality.setText(newQ.toUpperCase());
-        }
 
         Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
         applyCurrentStream();
@@ -1405,8 +1367,11 @@ public class PlayerActivity extends Activity {
 
         builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
         builder.setOnDismissListener(dialog -> {
-            if (btnSubSelector != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
-                btnSubSelector.requestFocus();
+            if (playerView != null) {
+                playerView.showController();
+                if (btnExoSub != null && btnExoSub.getVisibility() == View.VISIBLE) {
+                    btnExoSub.requestFocus();
+                }
             }
         });
         builder.show();
@@ -1492,8 +1457,11 @@ public class PlayerActivity extends Activity {
 
         builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
         builder.setOnDismissListener(dialog -> {
-            if (btnSubStyle != null && layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE) {
-                btnSubStyle.requestFocus();
+            if (playerView != null) {
+                playerView.showController();
+                if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                    btnExoSettings.requestFocus();
+                }
             }
         });
         builder.show();
@@ -1593,11 +1561,14 @@ public class PlayerActivity extends Activity {
         }
     }
 
-    private void setupExoEpisodeButtons() {
+    private void setupExoNativeControls() {
         if (playerView == null) return;
         playerView.post(() -> {
             btnExoNext = playerView.findViewById(androidx.media3.ui.R.id.exo_next);
             btnExoPrev = playerView.findViewById(androidx.media3.ui.R.id.exo_prev);
+            btnExoSub = playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
+            btnExoSettings = playerView.findViewById(androidx.media3.ui.R.id.exo_settings);
+            btnExoFullscreen = playerView.findViewById(androidx.media3.ui.R.id.exo_fullscreen);
 
             if (btnExoNext != null) {
                 btnExoNext.setOnClickListener(v -> {
@@ -1615,6 +1586,24 @@ public class PlayerActivity extends Activity {
                     }
                 });
                 TvFocusHelper.attachFocusScale(btnExoPrev, 1.15f, 6f);
+            }
+
+            if (btnExoSub != null) {
+                btnExoSub.setVisibility(View.VISIBLE);
+                btnExoSub.setOnClickListener(v -> showSubtitleSelectorDialog());
+                TvFocusHelper.attachFocusScale(btnExoSub, 1.15f, 6f);
+            }
+
+            if (btnExoSettings != null) {
+                btnExoSettings.setVisibility(View.VISIBLE);
+                btnExoSettings.setOnClickListener(v -> showPlayerUnifiedSettingsDialog());
+                TvFocusHelper.attachFocusScale(btnExoSettings, 1.15f, 6f);
+            }
+
+            if (btnExoFullscreen != null) {
+                btnExoFullscreen.setVisibility(View.VISIBLE);
+                btnExoFullscreen.setOnClickListener(v -> cycleAspectRatio());
+                TvFocusHelper.attachFocusScale(btnExoFullscreen, 1.15f, 6f);
             }
 
             updateExoButtonStates();
@@ -1636,7 +1625,45 @@ public class PlayerActivity extends Activity {
                 btnExoPrev.setFocusable(hasPrev);
                 btnExoPrev.setAlpha(hasPrev ? 1.0f : 0.35f);
             }
+            if (btnExoSub != null) {
+                btnExoSub.setAlpha(subEnabled ? 1.0f : 0.45f);
+            }
         });
+    }
+
+    private void showPlayerUnifiedSettingsDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        builder.setTitle("Pengaturan Pemutar");
+
+        String qLabel = activeQuality != null && !activeQuality.isEmpty() ? activeQuality.toUpperCase() : "AUTO";
+        String[] menu = new String[]{
+                "Pilihan Kualitas Video (" + qLabel + ")",
+                "Pengaturan Tampilan & Gaya Subtitle",
+                "Skala Layar / Rasio Aspek (" + getAspectLabel() + ")"
+        };
+
+        builder.setItems(menu, (dialog, which) -> {
+            if (which == 0) {
+                showQualitySelectorDialog();
+            } else if (which == 1) {
+                showSubtitleStyleDialog();
+            } else if (which == 2) {
+                cycleAspectRatio();
+            }
+        });
+
+        builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private String getAspectLabel() {
+        if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
+            return "Zoom";
+        } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FILL) {
+            return "Fill";
+        } else {
+            return "Fit";
+        }
     }
 
     private boolean hasNextEpisode() {
