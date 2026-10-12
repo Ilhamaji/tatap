@@ -110,7 +110,8 @@ function openPlayer(ep, resumeTime){
     if(cur.activeSub){
       prefetchSubtitleTrack(cur.activeSub, r.data.referer);
     }
-    playUrl(picked.url,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
+    var streamUrl = (r.data.master && (r.data.master.indexOf(".m3u8") >= 0 || r.data.master.indexOf("/hls") >= 0)) ? r.data.master : (picked ? picked.url : "");
+    playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
     window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode}).then(function(){renderContinue();});
   }).catch(function(err){
     $("pm-spinner").classList.add("hidden");
@@ -956,8 +957,33 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
     window._hls=h;
     h.on(Hls.Events.AUDIO_TRACKS_UPDATED,function(ev,data){
       if(data&&data.audioTracks&&data.audioTracks.length){
-        if(h.audioTrack===-1||h.audioTrack===undefined){
-          h.audioTrack=0;
+        var isDub = (cur.mode === "dub");
+        var selectedIdx = -1;
+        if(isDub){
+          for(var ai=0;ai<data.audioTracks.length;ai++){
+            var t = data.audioTracks[ai];
+            var lang = (t.lang || "").toLowerCase();
+            var name = (t.name || "").toLowerCase();
+            if(lang === "en" || name.indexOf("english") >= 0 || name.indexOf("dub") >= 0){
+              selectedIdx = ai;
+              break;
+            }
+          }
+        } else {
+          for(var ai=0;ai<data.audioTracks.length;ai++){
+            var t = data.audioTracks[ai];
+            var lang = (t.lang || "").toLowerCase();
+            var name = (t.name || "").toLowerCase();
+            if(lang === "ja" || lang === "jpn" || name.indexOf("japan") >= 0 || t.default){
+              selectedIdx = ai;
+              break;
+            }
+          }
+        }
+        if(selectedIdx !== -1){
+          h.audioTrack = selectedIdx;
+        } else if(h.audioTrack === -1 || h.audioTrack === undefined){
+          h.audioTrack = 0;
         }
       }
     });
@@ -989,6 +1015,18 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
         cur.res = cur.res || {};
         cur.res.hlsLevels = hlsVars;
         renderVariants();
+        // Terapkan kualitas yang cocok jika user memilih kualitas tertentu
+        if(cur.quality && cur.quality.toLowerCase() !== "auto" && cur.quality.toLowerCase() !== "best"){
+          var targetQ = cur.quality.toLowerCase();
+          for(var qk=0; qk<hlsVars.length; qk++){
+            if(hlsVars[qk].q.toLowerCase().indexOf(targetQ) >= 0 || targetQ.indexOf(hlsVars[qk].q.toLowerCase()) >= 0){
+              if(hlsVars[qk].levelIdx !== -1){
+                h.currentLevel = hlsVars[qk].levelIdx;
+                break;
+              }
+            }
+          }
+        }
       }
     });
     h.on(Hls.Events.LEVEL_SWITCHED,function(ev,data){
@@ -1046,7 +1084,13 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
   }else{
     v.src=isHls?prox:url;
   }
-  v.play().catch(function(){$("pm-spinner").classList.add("hidden");});
+  v.play().catch(function(err){
+    $("pm-spinner").classList.add("hidden");
+    if(err && err.name === "NotAllowedError"){
+      v.muted = true;
+      v.play().catch(function(){});
+    }
+  });
   armAutohide();
 }
 function switchQ(q){

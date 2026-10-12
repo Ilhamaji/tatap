@@ -710,6 +710,8 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             referer = "https://megacloud.blog/"
         elif any(h in url for h in ("puterin.biz", "putarin.xyz", "stream121.space")):
             referer = "https://puterin.biz/"
+        elif any(h in url for h in ("phantomharbor", "nexabloom", "megaplay", "vidtube", "vidplay")):
+            referer = "https://megaplay.buzz/"
 
     # Jika host terdeteksi diblokir DPI ISP, gunakan TLS desync murni (aman dari Sangfor)
     from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
@@ -754,10 +756,13 @@ def _rewrite_m3u8_content(txt: str, base_url: str, referer: str) -> str:
         if not s:
             out.append(ln)
             continue
-        # Jika master playlist menyertakan STREAM-INF tanpa CODECS, injeksikan CODECS
+        # Jika master playlist menyertakan STREAM-INF, pastikan audio codec (mp4a) ada di CODECS
         # agar browser/Hls.js tahu ada stream audio AAC dan menyiapkan audio SourceBuffer
-        if s.startswith("#EXT-X-STREAM-INF:") and "CODECS=" not in s:
-            s += ',CODECS="avc1.64001f,mp4a.40.2"'
+        if s.startswith("#EXT-X-STREAM-INF:"):
+            if "CODECS=" not in s:
+                s += ',CODECS="avc1.64001f,mp4a.40.2"'
+            elif not any(ac in s.lower() for ac in ("mp4a", "aac", "opus", "mp3")):
+                s = _re.sub(r'CODECS="([^"]+)"', r'CODECS="\1,mp4a.40.2"', s)
 
         if s.startswith("#"):
             # Rewrite URI="..." di dalam tag seperti #EXT-X-MEDIA (audio/subtitles), #EXT-X-MAP, #EXT-X-KEY
@@ -1287,7 +1292,9 @@ async def play_mpv(body: dict = None):
             maps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
             got = await loop.run_in_executor(None, lambda: hi.hianime_m3u8(maps, ep, mode, slug))
         picked = hi.select_quality(got["variants"], quality)
-        cmd = [mpv_bin, f"--referer={got.get('referer','')}", picked["url"]]
+        m_url = got.get("master", "")
+        stream_target = m_url if (m_url and (".m3u8" in m_url or "/hls" in m_url)) else picked["url"]
+        cmd = [mpv_bin, f"--referer={got.get('referer','')}", stream_target]
         # Kumpulkan subtitle files. Prioritas:
         #   1) preferred_sub_url (kalau client pilih spesifik), atau default 'sub'
         #   2) SELURUH subtitles[] dari cache/result, agar semua track terpasang

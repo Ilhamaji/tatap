@@ -768,7 +768,10 @@ public class PlayerActivity extends Activity {
                     JSONObject data = res.getJSONObject("data");
                     activeStreamMode = data.optString("mode", "sub");
                     String streamUrl = "";
-                    if (data.has("picked")) {
+                    String masterUrl = data.optString("master", "");
+                    if (!masterUrl.isEmpty() && (masterUrl.contains(".m3u8") || masterUrl.contains("/hls"))) {
+                        streamUrl = masterUrl;
+                    } else if (data.has("picked")) {
                         streamUrl = data.getJSONObject("picked").optString("url");
                     } else if (data.has("variants")) {
                         JSONArray vars = data.getJSONArray("variants");
@@ -1232,6 +1235,24 @@ public class PlayerActivity extends Activity {
         activeQuality = newQ;
         getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE)
                 .edit().putString("pref_quality", newQ).apply();
+
+        if (rawStreamUrl.contains(".m3u8") || rawStreamUrl.contains("/hls")) {
+            Toast.makeText(this, "Mengubah resolusi ke " + newQ.toUpperCase(), Toast.LENGTH_SHORT).show();
+            if (player != null) {
+                int maxH = Integer.MAX_VALUE;
+                int maxW = Integer.MAX_VALUE;
+                if (newQ.contains("1080")) { maxH = 1080; maxW = 1920; }
+                else if (newQ.contains("720")) { maxH = 720; maxW = 1280; }
+                else if (newQ.contains("480")) { maxH = 480; maxW = 854; }
+                else if (newQ.contains("360")) { maxH = 360; maxW = 640; }
+
+                androidx.media3.common.TrackSelectionParameters params = player.getTrackSelectionParameters().buildUpon()
+                        .setMaxVideoSize(maxW, maxH)
+                        .build();
+                player.setTrackSelectionParameters(params);
+            }
+            return;
+        }
 
         long resumePos = player != null ? player.getCurrentPosition() : 0;
         boolean wasPlaying = player != null && player.isPlaying();
