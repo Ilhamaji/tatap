@@ -109,20 +109,58 @@ query ($now: Int, $end: Int, $perPage: Int) {
 
 
 
+SCHEDULE_PAGED_QUERY = """
+query GetSchedule($page: Int, $now: Int, $end: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { hasNextPage currentPage }
+    airingSchedules(airingAt_greater: $now, airingAt_lesser: $end, sort: TIME) {
+      id airingAt episode
+      media {
+        id title { romaji english }
+        season seasonYear format
+        genres averageScore
+        coverImage { large medium }
+      }
+    }
+  }
+}
+"""
+
 def anilist_schedules(now_ts, end_ts, per_page=50):
     """Episode yang tayang antara now_ts..end_ts (unix detik). Return list schedule.
     Longgar: anime apapun, tidak difilter by season. Caller yang filter matched."""
     try:
-        with httpx.Client(timeout=20) as c:
-            r = c.post(ANILIST_URL, json={
-                "query": SCHEDULE_QUERY,
-                "variables": {"now": now_ts, "end": end_ts, "perPage": per_page}
-            }, headers={"Content-Type": "application/json", "User-Agent": UA})
-            if r.status_code != 200:
-                return []
-            return r.json().get("data", {}).get("Page", {}).get("airingSchedules", []) or []
+        c = _get_al_client()
+        r = c.post(ANILIST_URL, json={
+            "query": SCHEDULE_QUERY,
+            "variables": {"now": now_ts, "end": end_ts, "perPage": per_page}
+        })
+        if r.status_code != 200:
+            return []
+        return r.json().get("data", {}).get("Page", {}).get("airingSchedules", []) or []
     except Exception:
         return []
+
+def anilist_schedules_range(start_ts: int, end_ts: int, max_pages: int = 3):
+    """Episode yang tayang dalam rentang waktu (start_ts..end_ts) dengan pagination."""
+    all_schedules = []
+    c = _get_al_client()
+    for page in range(1, max_pages + 1):
+        try:
+            r = c.post(ANILIST_URL, json={
+                "query": SCHEDULE_PAGED_QUERY,
+                "variables": {"page": page, "now": start_ts, "end": end_ts, "perPage": 50}
+            })
+            if r.status_code != 200:
+                break
+            d = r.json().get("data", {}).get("Page", {})
+            schedules = d.get("airingSchedules") or []
+            all_schedules.extend(schedules)
+            if not d.get("pageInfo", {}).get("hasNextPage"):
+                break
+        except Exception:
+            break
+    return all_schedules
 
 
 RELATIONS_QUERY = """

@@ -14,7 +14,8 @@ catalog:function(p){return jget("/api/catalog?page="+(p||1));},
 seasonNow:function(p){return jget("/api/seasonal?which=now&page="+(p||1));},
 stillAiring:function(p){return jget("/api/seasonal?which=prev&page="+(p||1));},
 seasonBy:function(name,year){return jget("/api/seasonal?season="+encodeURIComponent(name)+"&year="+(year||0)+"&page=1");},
-upcoming:function(days){return jget("/api/upcoming-episodes?days="+(days||7));},
+upcoming:function(days,day){return jget("/api/upcoming-episodes?days="+(days||7)+"&day="+(day||"today"));},
+schedule:function(day){return jget("/api/schedule?day="+(day||"today"));},
 filters:function(){return jget("/api/filters");},
 browse:function(params,page){
   var qs = "";

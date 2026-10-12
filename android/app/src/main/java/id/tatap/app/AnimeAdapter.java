@@ -86,8 +86,14 @@ public class AnimeAdapter extends RecyclerView.Adapter<AnimeAdapter.AnimeViewHol
 
         // Format Meta Info
         StringBuilder metaStr = new StringBuilder();
+        String scheduleTime = item.optString("time", "");
         if (!playedAt.isEmpty()) {
             metaStr.append("Diputar: ").append(playedAt.length() >= 16 ? playedAt.substring(5, 16) : playedAt);
+        } else if (!scheduleTime.isEmpty()) {
+            metaStr.append(scheduleTime);
+            if (!type.isEmpty()) {
+                metaStr.append(" · ").append(type);
+            }
         } else {
             if (!eps.isEmpty() && !eps.equals("0")) {
                 metaStr.append(eps).append(" Ep");

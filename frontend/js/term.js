@@ -33,6 +33,14 @@ var Tui = (function () {
     S.page=1;loadView();
   }
 
+  S.scheduleDay = S.scheduleDay || "today";
+
+  function updateScheduleChips(){
+    document.querySelectorAll("#schedule-days-bar button").forEach(function(b){
+      b.classList.toggle("active", b.getAttribute("data-day") === (S.scheduleDay || "today"));
+    });
+  }
+
   function setView(v){
     S.view=v;S.page=1;S.sel=-1;S.items=[];clearLog();
     $("empty-state").style.display="none";
@@ -40,13 +48,20 @@ var Tui = (function () {
     $("pager").classList.add("hidden");
     $("lane-season-sec").classList.toggle("hidden",v!=="musim");
     $("lane-still-sec").classList.toggle("hidden",v!=="lanjutan");
+    var sBar = $("schedule-days-bar");
+    if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
+    if(v === "terbaru") updateScheduleChips();
     $("continue-sec").classList.add("hidden");
     switch(v){
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
       case "lanjutan":$("results-title").textContent="Masih tayang (lanjut)";break;
       case "katalog":$("results-title").textContent="Katalog";break;
-      case "terbaru":$("results-title").textContent="Sedang rilis · episode terbaru";break;
+      case "terbaru":{
+        var lblDay = S.scheduleDay === "yesterday" ? "kemarin" : (S.scheduleDay === "tomorrow" ? "besok" : "hari ini");
+        $("results-title").textContent="Jadwal rilis (" + lblDay + ")";
+        break;
+      }
       case "season-custom":{
         var sf=S.seasonFilter||{season:"",year:""};
         $("results-title").textContent="Season: "+(sf.season||"?")+" "+sf.year;
@@ -62,7 +77,7 @@ var Tui = (function () {
       case "musim":return window.Tatap.seasonNow(S.page);
       case "lanjutan":return window.Tatap.stillAiring(S.page);
       case "katalog":return window.Tatap.browse(S.filter,S.page);
-      case "terbaru":return window.Tatap.upcoming(7);
+      case "terbaru":return window.Tatap.schedule(S.scheduleDay || "today");
       case "season-custom":{
         if(!S.seasonFilter)return null;
         return window.Tatap.seasonBy(S.seasonFilter.season, S.seasonFilter.year);
@@ -129,7 +144,7 @@ var Tui = (function () {
             if(aheadSec>0&&aheadSec<86400) cls+=" today";
             else if(aheadSec>=86400&&aheadSec<172800) cls+=" tomorrow";
             d.className=cls;
-            var when=(a.weekday||"")+" "+(a.date||"")+" · "+(a.time||"");
+            var when=(a.date?a.date+" · ":"")+(a.time||"");
             // Fallback: gunakan textContent kalau ada masalah template; build spans manual.
             var spanDay=document.createElement("span");spanDay.className="tr-day";spanDay.textContent=when;
             var spanEp=document.createElement("span");spanEp.className="tr-ep";spanEp.textContent="ep "+(a.episode==null||a.episode==undefined?"?":a.episode);
@@ -707,6 +722,14 @@ var Tui = (function () {
     $("clear-hist").addEventListener("click",async function(){
       try{await fetch("/api/history",{method:"DELETE"});}catch(e){}
       App.renderContinue();log("riwayat dihapus","ok");
+    });
+    document.querySelectorAll("#schedule-days-bar button").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        var d = btn.getAttribute("data-day");
+        S.scheduleDay = d;
+        updateScheduleChips();
+        setView("terbaru");
+      });
     });
     $("sb-view").textContent="view: "+S.view;
     renderRecents();

@@ -1,4 +1,4 @@
-import sys, os, re
+import sys, os, re, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asyncio, subprocess, tempfile
 from fastapi import FastAPI, Query, HTTPException
@@ -417,94 +417,136 @@ async def _match_slug_batch(items):
     return pairs
 
 
-@app.get("/api/upcoming-episodes")
-async def upcoming_episodes(days: int = Query(7, ge=1, le=30)):
-    """Episode yang rilis dalam N hari ke depan (default 7), dari Page.airingSchedules.
-    Filter musim akurat: hanya anime yang season-nya cocok dengan bulan rilis (atau
-    masih ongoing = season=null). Lalu matched ke hianime. Cache 1 jam."""
+@app.get("/api/schedule")
+async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|tomorrow|all)$")):
+    """Jadwal rilis anime 3 hari (kemarin, hari ini, besok) waktu WIB.
+    HANYA menampilkan anime yang tersedia di aplikasi Tatap (memiliki slug valid).
+    Anime yang tidak ada di aplikasi Tatap otomatis di-remove."""
     try:
         import datetime as _dt
-        now = int(_dt.datetime.utcnow().timestamp())
-        # Tentukan season release-window yang relevan.
-        cur_year, cur_season = al.current_season()
-        order = ["winter", "spring", "summer", "fall"]
-        idx = order.index(cur_season)
-        prev_season = order[(idx - 1) % 4]
-        prev_year = cur_year if idx > 0 else cur_year - 1
-        end = now + days * 86400
-        key = f"upcoming|days={days}"
-        hit = await get_browse_cache(key, ttl=3600)
-        if hit:
-            hit["cached"] = True
-            return ok(hit)
-
         loop = asyncio.get_running_loop()
-        # perPage 100 — AniList 50-100 item 7 hari tetap manageable (max 4 req / hari
-        # dari cache 1 jam, ~16 episode/matched). Filter musim di Python.
-        schedules = await loop.run_in_executor(None, lambda: al.anilist_schedules(now, end, 100))
+        tz_offset = 7 * 3600  # WIB (UTC+7)
+        now_utc = int(time.time())
+        now_wib = now_utc + tz_offset
+        today_midnight_wib = (now_wib // 86400) * 86400
+        today_midnight_utc = today_midnight_wib - tz_offset
 
-        # Filter musim & kumpulkan judul yang lolos untuk match slug paralel.
-        cur_season_up = cur_season.upper()
-        prev_season_up = prev_season.upper()
-        pending = []
-        seen = set()
-        for s in schedules:
-            m = s.get("media") or {}
-            sy = m.get("seasonYear")
-            se = m.get("season")
-            if se is not None:
-                if sy != cur_year and sy != prev_year:
+        y_start_utc = today_midnight_utc - 86400
+        t_start_utc = today_midnight_utc
+        tm_start_utc = today_midnight_utc + 86400
+        tm_end_utc = today_midnight_utc + (2 * 86400) - 1
+
+        cache_key = "schedule_3days_v3"
+        cached_data = await get_browse_cache(cache_key, ttl=3600 * 3)
+
+        if not cached_data:
+            schedules = await loop.run_in_executor(
+                None, lambda: al.anilist_schedules_range(y_start_utc, tm_end_utc, max_pages=3)
+            )
+
+            pending = []
+            seen_ids = set()
+            for s in schedules:
+                m = s.get("media") or {}
+                mid = m.get("id")
+                if not mid or mid in seen_ids:
                     continue
-                if se not in (cur_season_up, prev_season_up):
+                seen_ids.add(mid)
+                t_en = (m.get("title") or {}).get("english") or ""
+                t_ro = (m.get("title") or {}).get("romaji") or ""
+                primary_title = t_en or t_ro or ""
+                if not primary_title:
                     continue
-            mid = m.get("id")
-            if mid in seen:
-                continue
-            seen.add(mid)
-            t_en = (m.get("title") or {}).get("english") or ""
-            t_ro = (m.get("title") or {}).get("romaji") or ""
-            primary_title = t_en or t_ro or ""
-            if not primary_title:
-                continue
-            alt_title = t_ro if primary_title != t_ro else ""
-            pending.append((s, primary_title, alt_title))
-        # Match paralel dengan validasi judul & season.
-        slug_pairs = await _match_slug_batch([(t, alt) for _, t, alt in pending]) if pending else []
-        slug_by_title = {t: s for t, s in slug_pairs}
+                alt_title = t_ro if primary_title != t_ro else ""
+                pending.append((s, primary_title, alt_title))
 
-        items_out = []
-        for s, title, _ in pending:
-            slug = slug_by_title.get(title)
-            if not slug:
-                continue
+            slug_pairs = await _match_slug_batch([(t, alt) for _, t, alt in pending]) if pending else []
+            slug_by_title = {t: sl for t, sl in slug_pairs}
 
-            airing_dt = _dt.datetime.fromtimestamp(s["airingAt"])
-            cover = (s.get("media") or {}).get("coverImage", {})
-            items_out.append({
-                "id": slug,
-                "title": title,
-                "anilist_id": s.get("media", {}).get("id"),
-                "poster": cover.get("large") or cover.get("medium") or "",
-                "episode": s.get("episode"),
-                "airing_at": int(s["airingAt"]),
-                "airing_at_iso": airing_dt.isoformat() + "Z",
-                "weekday": airing_dt.strftime("%a"),
-                "date": airing_dt.strftime("%d %b"),
-                "time": airing_dt.strftime("%H:%M"),
-                "matched": True,
+            buckets = {"yesterday": [], "today": [], "tomorrow": []}
+
+            for s, title, _ in pending:
+                slug = slug_by_title.get(title)
+                # FILTER KETAT: Yang tidak ada di dalam app Tatap di-REMOVE dari jadwal
+                if not slug:
+                    continue
+
+                airing_at = int(s["airingAt"])
+                dt_wib = _dt.datetime.fromtimestamp(airing_at, _dt.timezone(_dt.timedelta(hours=7)))
+                time_str = dt_wib.strftime("%H:%M WIB")
+                date_str = dt_wib.strftime("%d %b")
+
+                if airing_at < t_start_utc:
+                    day_cat = "yesterday"
+                elif airing_at < tm_start_utc:
+                    day_cat = "today"
+                else:
+                    day_cat = "tomorrow"
+
+                cover = (s.get("media") or {}).get("coverImage", {})
+                fmt = (s.get("media") or {}).get("format") or "TV"
+                score = (s.get("media") or {}).get("averageScore") or 0
+
+                item = {
+                    "id": slug,
+                    "title": title,
+                    "episode": s.get("episode") or 0,
+                    "airing_at": airing_at,
+                    "time": time_str,
+                    "date": date_str,
+                    "day": day_cat,
+                    "poster": cover.get("large") or cover.get("medium") or "",
+                    "type": _format_to_type(fmt),
+                    "score": round(score / 10.0, 1) if score else 0.0,
+                    "matched": True,
+                }
+                buckets[day_cat].append(item)
+
+            for k in buckets:
+                buckets[k].sort(key=lambda x: x["airing_at"])
+
+            cached_data = {
+                "yesterday": buckets["yesterday"],
+                "today": buckets["today"],
+                "tomorrow": buckets["tomorrow"],
+                "total": sum(len(v) for v in buckets.values()),
+                "cached": False,
+            }
+            await set_browse_cache(cache_key, cached_data)
+
+        if day == "all":
+            return ok(cached_data)
+
+        target_items = cached_data.get(day, [])
+        return ok({
+            "items": target_items,
+            "day": day,
+            "total": len(target_items),
+            "counts": {
+                "yesterday": len(cached_data.get("yesterday", [])),
+                "today": len(cached_data.get("today", [])),
+                "tomorrow": len(cached_data.get("tomorrow", [])),
+            },
+            "cached": cached_data.get("cached", True),
+        })
+    except Exception as e:
+        return fail(str(e))
+
+@app.get("/api/upcoming-episodes")
+async def upcoming_episodes(days: int = Query(7, ge=1, le=30), day: str = Query("today")):
+    """Penyempurnaan upcoming-episodes yang disinkronkan dengan endpoint schedule 3 hari."""
+    try:
+        sch_res = await anime_schedule(day=day if day in ("today", "yesterday", "tomorrow") else "today")
+        data = sch_res.get("data") if isinstance(sch_res, dict) else None
+        if data and "items" in data:
+            return ok({
+                "items": data["items"],
+                "day": data.get("day", "today"),
+                "total": data.get("total", len(data["items"])),
+                "counts": data.get("counts", {}),
+                "cached": data.get("cached", False),
             })
-
-        result = {
-            "items": items_out,
-            "days": days,
-            "total": len(items_out),
-            "current_season": cur_season,
-            "previous_season": prev_season,
-            "current_year": cur_year,
-            "cached": False,
-        }
-        await set_browse_cache(key, result)
-        return ok(result)
+        return sch_res
     except Exception as e:
         return fail(str(e))
 

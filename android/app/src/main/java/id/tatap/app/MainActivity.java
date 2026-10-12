@@ -69,6 +69,10 @@ public class MainActivity extends Activity {
 
     // Segmented Tabs & Pagination
     private TextView btnTabMusim, btnTabAiring, btnTabKatalog;
+    private TextView btnTabJadwal;
+    private View layoutScheduleDays;
+    private TextView btnDayYesterday, btnDayToday, btnDayTomorrow;
+    private String currentScheduleDay = "today"; // "yesterday" | "today" | "tomorrow"
     private TextView btnPrevPage, btnNextPage;
     private View layoutPagination;
 
@@ -127,6 +131,20 @@ public class MainActivity extends Activity {
         btnTabMusim = findViewById(R.id.btn_tab_musim);
         btnTabAiring = findViewById(R.id.btn_tab_airing);
         btnTabKatalog = findViewById(R.id.btn_tab_katalog);
+        btnTabJadwal = findViewById(R.id.btn_tab_jadwal);
+        layoutScheduleDays = findViewById(R.id.layout_schedule_days);
+        btnDayYesterday = findViewById(R.id.btn_day_yesterday);
+        btnDayToday = findViewById(R.id.btn_day_today);
+        btnDayTomorrow = findViewById(R.id.btn_day_tomorrow);
+
+        // Tab Jadwal HANYA untuk APK Mobile (!TvFocusHelper.isTv)
+        if (!TvFocusHelper.isTv(this)) {
+            if (btnTabJadwal != null) btnTabJadwal.setVisibility(View.VISIBLE);
+        } else {
+            if (btnTabJadwal != null) btnTabJadwal.setVisibility(View.GONE);
+            if (layoutScheduleDays != null) layoutScheduleDays.setVisibility(View.GONE);
+        }
+
         btnPrevPage = findViewById(R.id.btn_prev_page);
         btnNextPage = findViewById(R.id.btn_next_page);
         layoutPagination = findViewById(R.id.layout_pagination);
@@ -212,6 +230,22 @@ public class MainActivity extends Activity {
         btnTabKatalog.setOnClickListener(v -> {
             resetFiltersToTab("katalog");
         });
+
+        if (btnTabJadwal != null) {
+            btnTabJadwal.setOnClickListener(v -> {
+                resetFiltersToTab("jadwal");
+            });
+        }
+
+        if (btnDayYesterday != null) {
+            btnDayYesterday.setOnClickListener(v -> switchScheduleDay("yesterday"));
+        }
+        if (btnDayToday != null) {
+            btnDayToday.setOnClickListener(v -> switchScheduleDay("today"));
+        }
+        if (btnDayTomorrow != null) {
+            btnDayTomorrow.setOnClickListener(v -> switchScheduleDay("tomorrow"));
+        }
 
         btnPrevPage.setOnClickListener(v -> {
             if (currentPage > 1) {
@@ -461,6 +495,24 @@ public class MainActivity extends Activity {
             case "katalog":
             case "catalog":
                 resetFiltersToTab("katalog");
+                break;
+
+            case "jadwal":
+            case "schedule":
+                if (!TvFocusHelper.isTv(this)) {
+                    if (!args.isEmpty()) {
+                        if (args.equalsIgnoreCase("kemarin") || args.equalsIgnoreCase("yesterday")) {
+                            currentScheduleDay = "yesterday";
+                        } else if (args.equalsIgnoreCase("besok") || args.equalsIgnoreCase("tomorrow")) {
+                            currentScheduleDay = "tomorrow";
+                        } else {
+                            currentScheduleDay = "today";
+                        }
+                    }
+                    resetFiltersToTab("jadwal");
+                } else {
+                    showCommandOutput("> tatap$ Fitur Jadwal hanya tersedia di versi Mobile.", true);
+                }
                 break;
 
             case "genre":
@@ -1293,6 +1345,7 @@ public class MainActivity extends Activity {
         boolean isMusim = "musim".equals(currentView);
         boolean isAiring = "airing".equals(currentView);
         boolean isKatalog = "katalog".equals(currentView);
+        boolean isJadwal = "jadwal".equals(currentView);
         boolean isRiwayat = "riwayat".equals(currentView);
 
         btnTabMusim.setBackgroundResource(isMusim ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
@@ -1304,9 +1357,43 @@ public class MainActivity extends Activity {
         btnTabKatalog.setBackgroundResource(isKatalog ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
         btnTabKatalog.setTextColor(isKatalog ? 0xFFFFFFFF : 0xFF8892B0);
 
+        if (btnTabJadwal != null && !TvFocusHelper.isTv(this)) {
+            btnTabJadwal.setBackgroundResource(isJadwal ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
+            btnTabJadwal.setTextColor(isJadwal ? 0xFFFFFFFF : 0xFF8892B0);
+        }
+
+        if (layoutScheduleDays != null) {
+            layoutScheduleDays.setVisibility(isJadwal && !TvFocusHelper.isTv(this) ? View.VISIBLE : View.GONE);
+            if (isJadwal) {
+                updateScheduleDayButtons();
+            }
+        }
+
         if (btnHeaderHistory != null) {
             btnHeaderHistory.setTextColor(isRiwayat ? 0xFF38BDF8 : 0xFF94A3B8);
         }
+    }
+
+    private void switchScheduleDay(String day) {
+        currentScheduleDay = day;
+        updateScheduleDayButtons();
+        fetchData();
+    }
+
+    private void updateScheduleDayButtons() {
+        if (btnDayYesterday == null || btnDayToday == null || btnDayTomorrow == null) return;
+        boolean isYesterday = "yesterday".equals(currentScheduleDay);
+        boolean isToday = "today".equals(currentScheduleDay);
+        boolean isTomorrow = "tomorrow".equals(currentScheduleDay);
+
+        btnDayYesterday.setBackgroundResource(isYesterday ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
+        btnDayYesterday.setTextColor(isYesterday ? 0xFFFFFFFF : 0xFF8892B0);
+
+        btnDayToday.setBackgroundResource(isToday ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
+        btnDayToday.setTextColor(isToday ? 0xFFFFFFFF : 0xFF8892B0);
+
+        btnDayTomorrow.setBackgroundResource(isTomorrow ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
+        btnDayTomorrow.setTextColor(isTomorrow ? 0xFFFFFFFF : 0xFF8892B0);
     }
 
     private void hideKeyboard() {
@@ -1407,6 +1494,12 @@ public class MainActivity extends Activity {
         } else if ("katalog".equals(currentView)) {
             title = "Katalog Populer (Hal " + currentPage + ")";
             endpoint = "/api/catalog?page=" + currentPage;
+        } else if ("jadwal".equals(currentView)) {
+            String dayLabel = "Hari Ini";
+            if ("yesterday".equals(currentScheduleDay)) dayLabel = "Kemarin";
+            else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "Besok";
+            title = "Jadwal Rilis (" + dayLabel + ")";
+            endpoint = "/api/schedule?day=" + currentScheduleDay;
         } else if ("genre".equals(currentView)) {
             title = "Genre: " + currentGenre.toUpperCase().replace("-", " ") + " (Hal " + currentPage + ")";
             endpoint = "/api/browse?genre=" + URLEncoder.encode(currentGenre) + "&page=" + currentPage;
@@ -1423,7 +1516,7 @@ public class MainActivity extends Activity {
 
         tvSectionTitle.setText(title);
         if (layoutPagination != null) {
-            layoutPagination.setVisibility("riwayat".equals(currentView) ? View.GONE : View.VISIBLE);
+            layoutPagination.setVisibility("riwayat".equals(currentView) || "jadwal".equals(currentView) ? View.GONE : View.VISIBLE);
         }
 
         new Thread(() -> {
@@ -1470,6 +1563,12 @@ public class MainActivity extends Activity {
                                 if ("riwayat".equals(currentView)) {
                                     tvEmptyTitle.setText("Belum Ada Riwayat Tontonan");
                                     tvEmptyDesc.setText("Anime yang Anda tonton akan otomatis tercatat di sini.");
+                                } else if ("jadwal".equals(currentView)) {
+                                    String dayLabel = "hari ini";
+                                    if ("yesterday".equals(currentScheduleDay)) dayLabel = "kemarin";
+                                    else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "besok";
+                                    tvEmptyTitle.setText("Tidak Ada Jadwal Rilis");
+                                    tvEmptyDesc.setText("Tidak ada rilis anime untuk " + dayLabel + " yang tersedia di aplikasi.");
                                 } else {
                                     tvEmptyTitle.setText("Tidak Ada Anime Ditemukan");
                                     tvEmptyDesc.setText("Tidak ada judul anime yang cocok dengan filter atau pencarian ini.");
