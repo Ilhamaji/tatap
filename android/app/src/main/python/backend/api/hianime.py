@@ -65,7 +65,7 @@ def _host_from(url):
     return m.group(1).lower() if m else ""
 
 
-_BLOCKED_DPI_HOSTS = {"hls.dramahot.top", "puterin.biz", "putarin.xyz", "stream121.space"}
+_BLOCKED_DPI_HOSTS = {"hls.dramahot.top", "drama1.cfd", "hls1.drama1.cfd", "puterin.biz", "putarin.xyz", "stream121.space"}
 
 
 def _probe_master(master_url, referer):

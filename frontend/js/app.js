@@ -932,7 +932,9 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
     }
   };
   v.addEventListener("canplay",onCan,{once:true});
-  var isHls = (url.indexOf(".m3u8") >= 0) || (url.indexOf("/hls") >= 0) || (url.indexOf("hls?") >= 0) || (url.indexOf("format=m3u8") >= 0);
+  var cleanPath = (url || "").split("?")[0].toLowerCase();
+  var isSeg = cleanPath.endsWith(".ts") || cleanPath.endsWith(".ts.jpg") || cleanPath.endsWith(".mp4") || cleanPath.endsWith(".aac");
+  var isHls = !isSeg && ((url.indexOf(".m3u8") >= 0) || (url.indexOf("format=m3u8") >= 0) || (url.indexOf("/api/hls") >= 0) || (url.indexOf("/hls/playlist") >= 0));
   if(window.Hls&&window.Hls.isSupported()&&isHls){
     if(window._hls){try{window._hls.destroy();}catch(e){}}
     var h=new Hls({

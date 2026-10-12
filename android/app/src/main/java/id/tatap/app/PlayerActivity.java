@@ -126,12 +126,16 @@ public class PlayerActivity extends Activity {
     private boolean isHlsStream(String url) {
         if (url == null || url.isEmpty()) return false;
         String lower = url.toLowerCase();
+        int qIdx = lower.indexOf('?');
+        String path = (qIdx >= 0) ? lower.substring(0, qIdx) : lower;
+        if (path.endsWith(".m3u8") || path.endsWith("/m3u8")) return true;
+        if (path.endsWith(".ts") || path.endsWith(".ts.jpg") || path.endsWith(".jpg")
+                || path.endsWith(".mp4") || path.endsWith(".m4s") || path.endsWith(".aac")) return false;
         return lower.contains(".m3u8")
-                || lower.contains("m3u8")
-                || lower.contains("/hls")
-                || lower.contains("hls?")
                 || lower.contains("format=m3u8")
-                || lower.contains("/api/hls");
+                || lower.contains("output=m3u8")
+                || lower.contains("/api/hls")
+                || lower.contains("/hls/playlist");
     }
 
     private final Runnable subtitleSyncRunnable = new Runnable() {

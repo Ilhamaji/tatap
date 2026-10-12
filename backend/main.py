@@ -667,6 +667,20 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
     except Exception as e:
         return fail(str(e))
 
+def _is_m3u8_url(url: str, ctype: str = "") -> bool:
+    """Deteksi akurat apakah URL adalah playlist m3u8 atau segmen video/audio."""
+    if "mpegurl" in (ctype or "").lower():
+        return True
+    path = url.split("?", 1)[0].lower()
+    if path.endswith(".m3u8") or path.endswith("/m3u8"):
+        return True
+    if any(path.endswith(ext) for ext in (".ts", ".ts.jpg", ".jpg", ".jpeg", ".png", ".mp4", ".m4s", ".aac", ".mp3", ".vtt")):
+        return False
+    if any(p in url.lower() for p in ("/hls/playlist", "/api/hls", "format=m3u8", "output=m3u8", ".m3u8?")):
+        return True
+    return False
+
+
 @app.get("/api/player/video")
 async def proxy_video(url: str = Query(""), referer: str = Query("")):
     # Proxy cepat: koneksi dipakai ulang, segmen di-stream (tanpa buffer penuh),
@@ -675,10 +689,6 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
     from fastapi.responses import StreamingResponse as _SR
     if not url.startswith("http"):
         return Response(status_code=400)
-    # Catatan: dramahot.top dulu diblokir karena TLS-RST dari region kita.
-    # Per Oct 2026 host sudah bisa dijangkau (TLS handshake sukses) sehingga
-    # blokir di-hapus; kalau mati lagi, _mark_dead() di hianime.py akan masukkan
-    # ke negative cache dan smart-fallback skip server ZokoAnime secara otomatis.
     from api.hianime import SEG_RE, SEG_KEY, SEG_IV, STRIP_BYTES, STRIP_RE
     import re as _re
     m = SEG_RE.search(url)
@@ -696,11 +706,8 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             url = real if real.startswith("http") else url
         except Exception:
             pass
-    # Probe status cepat sebelum StreamingResponse — kalau 4xx/5xx, return
-    # langsung 502 agar HLS.js deteksi fragLoadError. (StreamingResponse swallows
-    # HTTPException dari dalam generator, jadi probe wajib sebelum spawn _SR.)
-    # Deteksi MIME type yang sesuai agar Hls.js menginisialisasi audio decoder
-    is_m3u8 = (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
+
+    is_m3u8 = _is_m3u8_url(url)
     media_type = "application/vnd.apple.mpegurl" if is_m3u8 else "video/mp2t"
 
     if not referer:
@@ -768,7 +775,7 @@ async def _pipe_desync_video(url: str, referer: str):
     loop = asyncio.get_running_loop()
     
     # Playlist m3u8: baca penuh dan rewrite URL agar segmen tetap lewat proxy Tatap
-    if (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url):
+    if _is_m3u8_url(url):
         body = await loop.run_in_executor(None, lambda: tls_desync_request(url, headers=headers))
         try:
             txt = body.decode("utf-8", errors="strict")
@@ -818,7 +825,7 @@ async def _pipe_video(url: str, referer: str):
                 if r.status_code >= 400:
                     raise HTTPException(status_code=502, detail=f"upstream {r.status_code}")
                 ctype = r.headers.get("content-type", "")
-                is_playlist = ("mpegurl" in ctype) or (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
+                is_playlist = _is_m3u8_url(url, ctype)
                 if is_playlist:
                     body = await r.aread()
                     try:
