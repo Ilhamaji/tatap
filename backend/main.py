@@ -700,7 +700,7 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
     # langsung 502 agar HLS.js deteksi fragLoadError. (StreamingResponse swallows
     # HTTPException dari dalam generator, jadi probe wajib sebelum spawn _SR.)
     # Deteksi MIME type yang sesuai agar Hls.js menginisialisasi audio decoder
-    is_m3u8 = ".m3u8" in url
+    is_m3u8 = (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
     media_type = "application/vnd.apple.mpegurl" if is_m3u8 else "video/mp2t"
 
     if not referer:
@@ -708,6 +708,8 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             referer = "https://zokoanime.video/"
         elif any(h in url for h in ("megacloud", "rapid-cloud")):
             referer = "https://megacloud.blog/"
+        elif any(h in url for h in ("puterin.biz", "putarin.xyz", "stream121.space")):
+            referer = "https://puterin.biz/"
 
     # Jika host terdeteksi diblokir DPI ISP, gunakan TLS desync murni (aman dari Sangfor)
     from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
@@ -782,7 +784,7 @@ async def _pipe_desync_video(url: str, referer: str):
     loop = asyncio.get_running_loop()
     
     # Playlist m3u8: baca penuh dan rewrite URL agar segmen tetap lewat proxy Tatap
-    if ".m3u8" in url:
+    if (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url):
         body = await loop.run_in_executor(None, lambda: tls_desync_request(url, headers=headers))
         try:
             txt = body.decode("utf-8", errors="strict")
@@ -829,7 +831,8 @@ async def _pipe_video(url: str, referer: str):
             if upstream_status >= 400:
                 raise HTTPException(status_code=502, detail=f"upstream {upstream_status}")
             # playlist kecil: baca penuh + tulis ulang agar segmen tetap lewat proxy
-            if "mpegurl" in ctype or url.endswith(".m3u8"):
+            is_playlist = ("mpegurl" in ctype) or (".m3u8" in url) or ("/hls" in url) or ("hls?" in url) or ("format=m3u8" in url)
+            if is_playlist:
                 body = await r.aread()
                 try:
                     txt = body.decode("utf-8", errors="strict")

@@ -214,30 +214,47 @@ def resolve_stream(title_or_slug: str, ep: int = 1) -> dict:
     if "otakudesu" in title_or_slug and "/anime/" in title_or_slug:
         episodes = get_episodes(title_or_slug)
     else:
-        # Bersihkan slug atau judul (cth: "attack-on-titan-season-3-866" -> "attack on titan season 3")
-        clean_title = re.sub(r'-\d+$', '', title_or_slug).replace("-", " ").strip()
-        search_res = search(clean_title)
-        if not search_res:
-            # Coba cari tanpa embel-embel nomor season/part jika pencarian awal kosong
-            simplified = re.sub(r'\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+)\b', '', clean_title, flags=re.I).strip()
-            if simplified and simplified != clean_title:
-                search_res = search(simplified)
+        # Coba ambil langsung jika title_or_slug merupakan slug anime otakudesu yang valid
+        if "-" in title_or_slug and not " " in title_or_slug:
+            try:
+                direct_url = f"{OTAKU_BASE}/anime/{title_or_slug.strip('/')}/"
+                direct_eps = get_episodes(direct_url)
+                if direct_eps:
+                    episodes = direct_eps
+            except Exception:
+                pass
 
-        if not search_res:
-            raise RuntimeError(f"Anime '{title_or_slug}' tidak ditemukan di Otakudesu")
+        if not episodes:
+            # Bersihkan hash suffix (cth: "steel-ball-run-jojo-no-kimyou-na-bouken-jtgn9fq" -> "steel ball run...")
+            # dan angka suffix ID hianime (cth: "attack-on-titan-season-3-866")
+            clean_str = re.sub(r'-[a-z0-9]{5,10}$', '', title_or_slug)
+            clean_title = re.sub(r'-\d+$', '', clean_str).replace("-", " ").strip()
+            search_res = search(clean_title)
+            if not search_res and clean_title != title_or_slug:
+                raw_title = re.sub(r'-\d+$', '', title_or_slug).replace("-", " ").strip()
+                search_res = search(raw_title)
 
-        # Validasi kecocokan judul: wajib lolos verifikasi, jangan pernah fallback buta ke res[0]
-        matched_item = None
-        for cand in search_res:
-            if _is_title_match(clean_title, cand.get("title", "")):
-                matched_item = cand
-                break
+            if not search_res:
+                # Coba cari tanpa embel-embel nomor season/part jika pencarian awal kosong
+                simplified = re.sub(r'\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+)\b', '', clean_title, flags=re.I).strip()
+                if simplified and simplified != clean_title:
+                    search_res = search(simplified)
 
-        if not matched_item:
-            raise RuntimeError(f"Anime '{title_or_slug}' tidak memiliki judul yang cocok di Otakudesu")
+            if not search_res:
+                raise RuntimeError(f"Anime '{title_or_slug}' tidak ditemukan di Otakudesu")
 
-        # Ambil episode dari hasil pencarian yang terverifikasi cocok
-        episodes = get_episodes(matched_item["url"])
+            # Validasi kecocokan judul: wajib lolos verifikasi, jangan pernah fallback buta ke res[0]
+            matched_item = None
+            for cand in search_res:
+                if _is_title_match(clean_title, cand.get("title", "")):
+                    matched_item = cand
+                    break
+
+            if not matched_item:
+                raise RuntimeError(f"Anime '{title_or_slug}' tidak memiliki judul yang cocok di Otakudesu")
+
+            # Ambil episode dari hasil pencarian yang terverifikasi cocok
+            episodes = get_episodes(matched_item["url"])
 
     if not episodes:
         raise RuntimeError("Tidak ada daftar episode di Otakudesu")

@@ -418,6 +418,7 @@ function syncFullscreenSubtitles(){
       t.mode=isVidFs?"showing":"hidden";
     }
   }
+  paintCue();
 }
 function syncNativeTextTrack(vttText, cues, langCode){
   var v=$("vid");
@@ -930,8 +931,8 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
     }
   };
   v.addEventListener("canplay",onCan,{once:true});
-  setTimeout(function(){$("pm-spinner").classList.add("hidden");},15000);
-  if(window.Hls&&window.Hls.isSupported()&&url.indexOf(".m3u8")>=0){
+  var isHls = (url.indexOf(".m3u8") >= 0) || (url.indexOf("/hls") >= 0) || (url.indexOf("hls?") >= 0) || (url.indexOf("format=m3u8") >= 0);
+  if(window.Hls&&window.Hls.isSupported()&&isHls){
     if(window._hls){try{window._hls.destroy();}catch(e){}}
     var h=new Hls({
       maxBufferLength:30,
@@ -1043,7 +1044,7 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
       }
     });
   }else{
-    v.src=url.indexOf(".m3u8")>=0?prox:url;
+    v.src=isHls?prox:url;
   }
   v.play().catch(function(){$("pm-spinner").classList.add("hidden");});
   armAutohide();

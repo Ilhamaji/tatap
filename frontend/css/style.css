@@ -252,15 +252,15 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 .gesture-osd .osd-val{font-size:12px;font-weight:600;min-width:38px;text-align:right;color:var(--txt)}
 
 /* Overlay subtitle milik app: posisi di atas video, pointer tembus.
-   Style tetap milik Tatap, tidak mengikuti setting caption Windows. */
-.subs-overlay{position:absolute;left:0;right:0;bottom:6%;z-index:4;display:flex;justify-content:center;pointer-events:none;padding:0 8%}
-.subs-overlay span{display:inline-block;max-width:100%;text-align:center;color:#fff;background:rgba(0,0,0,.7);
-  padding:.15em .5em;border-radius:3px;line-height:1.45;font-weight:600;
-  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;font-family:inherit}
+   Harmonis dan konsisten antara mode windowed dan fullscreen. */
+.subs-overlay{position:absolute;left:0;right:0;bottom:7%;z-index:4;display:flex;justify-content:center;pointer-events:none;padding:0 6%;transition:bottom .2s ease}
+.subs-overlay span{display:inline-block;max-width:100%;text-align:center;color:#fff;background:rgba(0,0,0,.72);
+  padding:.2em .6em;border-radius:4px;line-height:1.45;font-weight:600;
+  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 4px rgba(0,0,0,.8);font-family:inherit}
 .subs-overlay span:empty{display:none;padding:0;background:transparent}
-.subs-overlay.sz-s span{font-size:clamp(12px,.6vw + .55rem,14px)}
-.subs-overlay.sz-m span{font-size:clamp(15px,.9vw + .7rem,20px)}
-.subs-overlay.sz-l span{font-size:clamp(18px,1.3vw + .9rem,26px)}
+.subs-overlay.sz-s span{font-size:clamp(13px,1.1vw + .55rem,18px)}
+.subs-overlay.sz-m span{font-size:clamp(16px,1.5vw + .65rem,24px)}
+.subs-overlay.sz-l span{font-size:clamp(20px,2.0vw + .75rem,30px)}
 
 /* Fullscreen styles for ambient-stage container */
 .ambient-stage:fullscreen {
@@ -285,19 +285,19 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 }
 .ambient-stage:fullscreen .subs-overlay,
 .ambient-stage:-webkit-full-screen .subs-overlay {
-  bottom:8%;padding:0 6%;
+  bottom:7%;padding:0 6%;
 }
 .ambient-stage:fullscreen .subs-overlay.sz-s span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-s span {
-  font-size:clamp(15px,1.3vw + .7rem,22px);
+  font-size:clamp(14px,1.2vw + .6rem,20px);
 }
 .ambient-stage:fullscreen .subs-overlay.sz-m span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-m span {
-  font-size:clamp(19px,1.7vw + .9rem,30px);
+  font-size:clamp(18px,1.6vw + .7rem,26px);
 }
 .ambient-stage:fullscreen .subs-overlay.sz-l span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-l span {
-  font-size:clamp(23px,2.1vw + 1.1rem,38px);
+  font-size:clamp(22px,2.1vw + .85rem,34px);
 }
 
 /* Native video cues (rendered when browser fullscreens the <video> directly) */
