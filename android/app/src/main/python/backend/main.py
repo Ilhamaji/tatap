@@ -121,19 +121,37 @@ async def health():
     return ok({"hianime": HI_BASE, "reachable": reachable})
 
 @app.get("/api/search")
-async def search(q: str = Query(""), limit: int = 15):
+async def search(q: str = Query(""), limit: int = 15, source: str = Query("")):
     q = q.strip()
     if not q:
         return fail("missing q")
     if q.lower() == "hentai" or "hentai" in q.lower().split():
         return ok({"results": [], "cached": False})
+    
+    src = (source or "").strip().lower()
+    cache_key = f"{src}|{q.lower()}" if src else q.lower()
     try:
-        hit = await get_search_cache(q.lower())
+        hit = await get_search_cache(cache_key)
         if hit and any(bool(x.get("poster")) for x in hit):
             return ok({"results": hit, "cached": True})
         loop = asyncio.get_running_loop()
-        res = await loop.run_in_executor(None, lambda: hi.hianime_search(q, limit))
-        await set_search_cache(q.lower(), res)
+        res = []
+        if src == "otakudesu":
+            from api import otakudesu as ot
+            res = await loop.run_in_executor(None, lambda: ot.search(q, limit))
+        else:
+            try:
+                res = await loop.run_in_executor(None, lambda: hi.hianime_search(q, limit))
+            except Exception:
+                res = []
+            if not res:
+                try:
+                    from api import otakudesu as ot
+                    res = await loop.run_in_executor(None, lambda: ot.search(q, limit))
+                except Exception:
+                    pass
+        if res:
+            await set_search_cache(cache_key, res)
         return ok({"results": res, "cached": False})
     except Exception as e:
         return fail(str(e))

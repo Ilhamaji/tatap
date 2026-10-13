@@ -350,7 +350,8 @@ var Tui = (function () {
       return;
     }
     try{
-      var r=await window.Tatap.search(q);
+      var src = (window.cur && window.cur.source) || "";
+      var r = await window.Tatap.search(q, src);
       if(!r||!r.success){log("search error: "+(r&&r.error||"??"),"err");return;}
       S.items=r.data.results||[];S.sel=-1;S.total=1;
       $("results-title").textContent=S.items.length?"Hasil untuk \""+q+"\"":"Tidak ketemu \""+q+"\"";
@@ -809,7 +810,6 @@ var Tui = (function () {
       else if(e.key==="ArrowUp"&&!S.items.length){e.preventDefault();cmdHistory(-1);}
       else if(e.key==="ArrowDown"&&!S.items.length){e.preventDefault();cmdHistory(1);}
       else if(e.key==="Tab"){e.preventDefault();cycleView();}
-      else if(e.key==="/"){e.preventDefault();}
     });
     inp.addEventListener("focus",onPromptFocus);
     inp.addEventListener("blur",onPromptBlur);
