@@ -11,6 +11,7 @@
 >    Jika terdapat berkas mentah (`app-release.apk`, `app-debug.apk`), agent WAJIB segera menghapusnya (`gh release delete-asset`).
 > 3. **WORKFLOW PATEN SEMVER 2.0.0 & DOKUMENTASI CHANGELOG.md:** Setiap patch/fitur/rilis WAJIB mengikuti SemVer 2.0.0 atomik melalui `python3 tools/bump_version.py <patch|minor|major>` dan lulus seluruh test suite `pytest tests/test_semver.py`. **SETIAP ADA PERUBAHAN** (penambahan fitur, perbaikan bug, maupun refaktor), agent **MUTLAK WAJIB** mencatatkannya ke dalam berkas `CHANGELOG.md` sesuai format *Keep a Changelog* beserta penjelasan alasan kenaikan nomor versinya (`PATCH`, `MINOR`, atau `MAJOR`).
 > 4. **ZERO-TOLERANCE BLACKLIST HENTAI:** Dilarang membypass filter hentai di semua level backend, scraper, maupun UI.
+> 5. **URUTAN BACAAN WAJIB SEBELUM PLANNING/ITERASI (AGENTS.MD LALU PROJECT_MAP.MD):** Sebelum memulai perencanaan (*planning*), investigasi, maupun iterasi perubahan kode/fitur/bugfix apa pun, setiap AI Agent **MUTLAK WAJIB** membaca `AGENTS.md` terlebih dahulu, lalu membaca `PROJECT_MAP.md` untuk memahami topologi berkas, aturan paritas Chaquopy Android, indeks simbol fungsi, dan matriks keputusan teknis (*zero search overhead*).
 
 ---
 
@@ -226,7 +227,7 @@ Saat menangani issue dari pengguna/komunitas di GitHub:
 
 ## 8. Prinsip Rekayasa Agen AI (Agent Guardrails)
 
-- **Kepatuhan Mutlak Terhadap Dokumen Ini (`AGENT.md`):** Setiap agen AI yang beroperasi pada repositori ini WAJIB membaca dan menaati seluruh instruksi di `agent.md` tanpa pengecualian.
+- **Kepatuhan Mutlak Terhadap Dokumen Ini (`AGENTS.md`) & Peta Proyek (`PROJECT_MAP.md`):** Setiap agen AI yang beroperasi pada repositori ini WAJIB membaca dan menaati seluruh instruksi di `AGENTS.md` lalu membaca `PROJECT_MAP.md` sebelum memulai pekerjaan. Dilarang menebak atau mencari-cari berkas secara acak sebelum memahami topologi dan matriks aksi pada `PROJECT_MAP.md`.
 - **Kepatuhan Mutlak SemVer 2.0.0 & Wajib Dokumentasi CHANGELOG.md:** Setiap bugfix, patch, fitur baru, dan rilis publik WAJIB 100% mengikuti kaidah Semantic Versioning 2.0.0 (`v<MAJOR>.<MINOR>.<PATCH>`). Gunakan selalu `python3 tools/bump_version.py <patch|minor|major>` untuk sinkronisasi atomik, verifikasi audit via `python3 tools/bump_version.py --check`, dan pastikan test suite `pytest tests/test_semver.py` lulus sebelum commit & tag. Dilarang menggunakan tag arbitrer atau melompati kaidah SemVer. **Setiap ada perubahan kode, perbaikan bug, atau penambahan fitur, agent WAJIB mencatatkannya ke dalam berkas `CHANGELOG.md`** secara rapi (format Keep a Changelog) lengkap dengan alasan dan justifikasi penomoran versinya. Dilarang melakukan commit/release tanpa memperbarui `CHANGELOG.md`.
 - **Aturan Rilis Publik GitHub (Zero Raw APK / Strict 4 Official Assets):** Dilarang keras mengunggah atau membiarkan `app-release.apk` atau `app-debug.apk` berada di rilis GitHub. Release HANYA boleh berisi:
   1. `tatap-release-v<VERSION>.apk` (Signed resmi mobile via keystore `release.jks`)
