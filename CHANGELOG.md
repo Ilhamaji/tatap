@@ -13,30 +13,6 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
-## [2.4.2] - 2026-10-13
-
-### Ditingkatkan
-- **Kamus Idiom & Ungkapan Fansub Anime Universal:** Mengintegrasikan kamus referensi penerjemahan fansub anime yang komprehensif ke dalam mesin penerjemah `translate.py` (prompt sistem `_FANSUB_PROMPT_ID`, aturan normalisasi universal `_UNIVERSAL_FANSUB_RULES`, percakapan kasual `_CASUAL_FANSUB_RULES`, dan penghalus `_AIGTX_SMOOTH_RULES`). Mengeliminasi puluhan calque dan blunder penerjemahan mesin yang kaku:
-  - *"It can't be helped / shouganai"* -> *"Mau gimana lagi"* (bukan *"Itu tidak bisa ditolong"*).
-  - *"Give me a break"* -> *"Yang benar saja! / Ampun deh!"* (bukan *"Beri aku istirahat"*).
-  - *"Serves you right"* -> *"Rasakan itu! / Syukurin!"* (bukan *"Melayanimu dengan benar"*).
-  - *"I'll take care of this"* -> *"Biar aku yang urus ini"* (bukan *"Aku akan merawat ini"*).
-  - *"Don't let your guard down"* -> *"Jangan lengah!"* (bukan *"Jangan biarkan penjagamu turun"*).
-  - *"Stand back / Back down"* -> *"Mundur! / Menjauhlah!"* (bukan *"Berdiri kembali / Kembali ke bawah"*).
-  - *"Watch your back"* -> *"Waspadalah di belakangmu!"* (bukan *"Perhatikan punggungmu"*).
-  - *"Make up your mind"* -> *"Tentukan pilihanmu!"* (bukan *"Bentuk pikiranmu"*).
-  - *"Change of heart"* -> *"Berubah pikiran"* (bukan *"Perubahan hati"*).
-  - *"Over my dead body"* -> *"Langkahi dulu mayatku!"* (bukan *"Di atas tubuh matiku"*).
-  - *"Who is in charge?"* -> *"Siapa penanggung jawabnya?"* (bukan *"Siapa yang mengisi daya?"*).
-  - *"Piece of cake"* -> *"Gampang banget"* (bukan *"Sepotong kue"*).
-  - *"Under the weather"* -> *"Kurang enak badan"* (bukan *"Di bawah cuaca"*).
-  - *"Not on my watch"* -> *"Tidak akan kubiarkan!"* (bukan *"Bukan di jam tanganku"*).
-  - *"Take your time"* -> *"Santai saja, jangan terburu-buru"* (bukan *"Ambil waktumu"*).
-  - Serta ungkapan dan respons kultural khas anime lainnya (*mendokusai*, *sasuga*, *tsundere*, *greeting*, dan umpatan shonen).
-- **Sinkronisasi Penuh Antar-Platform:** Menyelaraskan seluruh berkas kamus dan versi di `backend/` dengan `android/app/src/main/python/backend/` guna menjamin paritas 100% pada platform Windows Portable, Linux Desktop, Android Mobile, dan Android TV.
-
----
-
 ## [2.4.1] - 2026-10-13
 
 ### Diperbaiki
@@ -52,6 +28,7 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **Fallback Otakudesu pada Daftar Episode:** Memperbaiki endpoint `/api/anime/{slug}/episodes` agar secara otomatis beralih ke parser Otakudesu jika scraper HiAnime gagal atau anime berasal dari domain Otakudesu.
 
 ### Ditingkatkan
+- **Kamus Idiom & Ungkapan Fansub Anime Universal:** Mengintegrasikan kamus referensi penerjemahan fansub anime yang komprehensif ke dalam mesin penerjemah `translate.py` (prompt sistem `_FANSUB_PROMPT_ID`, aturan normalisasi universal `_UNIVERSAL_FANSUB_RULES`, percakapan kasual `_CASUAL_FANSUB_RULES`, dan penghalus `_AIGTX_SMOOTH_RULES`). Mengeliminasi puluhan calque dan blunder penerjemahan mesin yang kaku (*"It can't be helped"* -> *"Mau gimana lagi"*, *"Give me a break"* -> *"Yang benar saja!"*, *"Serves you right"* -> *"Rasakan itu!"*, *"I'll take care of this"* -> *"Biar aku yang urus ini"*, *"Don't let your guard down"* -> *"Jangan lengah!"*, *"Stand back"* -> *"Mundur!"*, *"Over my dead body"* -> *"Langkahi dulu mayatku!"*, *"Piece of cake"* -> *"Gampang banget"*, *"Under the weather"* -> *"Kurang enak badan"*, *"Mendokusai"* -> *"Merepotkan sekali"*, *"Sasuga"* -> *"Sudah kuduga / Memang bisa diandalkan"*, serta ungkapan santai khas anime lainnya).
 - **Sinkronisasi Penuh Aturan Translate Antar-Platform (Windows & Android):** Menyelaraskan seluruh modul dan berkas kamus penerjemah di `android/app/src/main/python/backend/` dengan repositori induk `backend/`. Memastikan runtime tersemat Chaquopy pada platform Android Mobile maupun Android TV memiliki 100% paritas aturan translasi, kamus kosakata atelier, dan penanganan fallback yang persis sama dengan platform Windows Portable dan Linux Desktop.
 - **Kamus Referensi Fansub Fantasi & Atelier Sihir (Sampling Witch Hat Atelier):** Mengintegrasikan hasil audit dan sampling subtitle 13 episode *Witch Hat Atelier* ke dalam mesin penerjemah. Menambahkan kamus kosakata dunia sihir dan perapal mantra (*cast magic*, *conjuring ink*, *casting seal*, *magic stationer*, *witch apprentice*, *diadem herb*, *consent of the crown*) pada `_FANSUB_PROMPT_ID`, serta memperkaya filter penormalisasi `_UNIVERSAL_FANSUB_RULES`, `_CASUAL_FANSUB_RULES`, dan `_AIGTX_SMOOTH_RULES` guna mengeliminasi terjemahan kaku atau rancu (misal: "melakukan casting" menjadi "merapal sihir", "tinta sulap" menjadi "tinta sihir", "celah di tongkat" menjadi "retakan di tongkat", "toko alat tulis ajaib" menjadi "toko alat sihir", "memilih ramuan" menjadi "memetik herba", "sangat baik andal" menjadi "sangat mantap", "tiketnya terjual habis" menjadi "langsung ludes dalam sekejap", dan merapikan campuran kata ganti formal-santai). Perbaikan ini meningkatkan keluwesan tata bahasa untuk anime fantasi, atelier, petualangan, dan percakapan anime lainnya secara menyeluruh.
 - **Menu Refresh / Terjemahkan Ulang Subtitle:** Menambahkan opsi aksi `[Refresh] Terjemahkan Ulang Subtitle (Hapus Cache)` pada dialog pemilih subtitle Android untuk membersihkan cache episode secara instan dan mengulang translasi dari awal.
