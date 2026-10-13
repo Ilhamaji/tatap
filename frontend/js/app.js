@@ -1706,6 +1706,8 @@ function init(){
   // Listener Drawer Navigation & Update Modal
   var btnDrawer = $("btn-drawer");
   if(btnDrawer) btnDrawer.addEventListener("click", openDrawer);
+  var btnDrawerHead = $("btn-drawer-head");
+  if(btnDrawerHead) btnDrawerHead.addEventListener("click", openDrawer);
   var btnDrawerClose = $("drawer-close");
   if(btnDrawerClose) btnDrawerClose.addEventListener("click", closeDrawer);
   var drawerBackdrop = $("drawer-backdrop");

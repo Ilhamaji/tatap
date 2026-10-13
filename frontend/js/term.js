@@ -116,6 +116,8 @@ var Tui = (function () {
   function renderRecents(){
     S.items=[];S.sel=-1;var r=loadRecents();
     var box=$("results");box.innerHTML="";
+    var sBar = $("schedule-days-bar");
+    if(sBar) sBar.classList.add("hidden");
     if(!r.length){$("empty-state").style.display="";$("results-title").textContent="siap";$("results-meta").textContent="";$("pager").classList.add("hidden");return;}
     $("empty-state").style.display="none";
     $("results-title").textContent="saran pencarian";$("results-meta").textContent=r.length+" recent";
@@ -131,6 +133,8 @@ var Tui = (function () {
 
   function renderResults(){
     var box=$("results");box.innerHTML="";
+    var sBar = $("schedule-days-bar");
+    if(sBar) sBar.classList.toggle("hidden", S.view !== "terbaru");
     var isTxt = S.view==="cari" || S.view==="terbaru";
     if(!S.items.length){box.innerHTML="<p class='dim'>Kosong.</p>";return;}
     if(isTxt){
@@ -140,24 +144,128 @@ var Tui = (function () {
           if(S.view==="terbaru"){
             var d=document.createElement("div");
             var aheadSec=(a.airing_at||0)-nowTs;
-            var cls="trow trow-up"+(idx===S.sel?" sel":"");
+            var cls="trow trow-up trow-media"+(idx===S.sel?" sel":"");
             if(aheadSec>0&&aheadSec<86400) cls+=" today";
             else if(aheadSec>=86400&&aheadSec<172800) cls+=" tomorrow";
             d.className=cls;
+
+            // Thumbnail poster
+            var thumbWrap=document.createElement("div");
+            thumbWrap.className="tr-thumb-wrap";
+            if(a.poster){
+              var img=document.createElement("img");
+              img.className="tr-thumb";
+              img.loading="lazy";
+              img.alt=a.title||"";
+              img.src=a.poster;
+              img.onerror=function(){
+                this.style.display="none";
+                thumbWrap.classList.add("no-img");
+                var ph=document.createElement("span");
+                ph.className="tr-thumb-ph";
+                ph.textContent="▶";
+                thumbWrap.appendChild(ph);
+              };
+              thumbWrap.appendChild(img);
+            } else {
+              thumbWrap.classList.add("no-img");
+              var ph=document.createElement("span");
+              ph.className="tr-thumb-ph";
+              ph.textContent="▶";
+              thumbWrap.appendChild(ph);
+            }
+            d.appendChild(thumbWrap);
+
+            var metaCol=document.createElement("div");
+            metaCol.className="tr-badge-col";
             var when=(a.date?a.date+" · ":"")+(a.time||"");
-            // Fallback: gunakan textContent kalau ada masalah template; build spans manual.
-            var spanDay=document.createElement("span");spanDay.className="tr-day";spanDay.textContent=when;
-            var spanEp=document.createElement("span");spanEp.className="tr-ep";spanEp.textContent="ep "+(a.episode==null||a.episode==undefined?"?":a.episode);
-            var spanTitle=document.createElement("span");spanTitle.className="tr-title";spanTitle.textContent=a.title||"";
-            d.appendChild(spanDay);d.appendChild(spanEp);d.appendChild(spanTitle);
+            var spanDay=document.createElement("span");
+            spanDay.className="tr-day";
+            spanDay.textContent=when;
+            var spanEp=document.createElement("span");
+            spanEp.className="tr-ep";
+            spanEp.textContent="ep "+(a.episode==null||a.episode==undefined?"?":a.episode);
+            metaCol.appendChild(spanDay);
+            metaCol.appendChild(spanEp);
+            d.appendChild(metaCol);
+
+            var infoCol=document.createElement("div");
+            infoCol.className="tr-info";
+            var spanTitle=document.createElement("span");
+            spanTitle.className="tr-title";
+            spanTitle.textContent=a.title||"";
+            infoCol.appendChild(spanTitle);
+
+            if(a.type || a.score){
+              var subMeta=document.createElement("div");
+              subMeta.className="tr-meta";
+              var sm=[];
+              if(a.type) sm.push(a.type);
+              if(a.score) sm.push("★ "+a.score);
+              subMeta.textContent=sm.join(" · ");
+              infoCol.appendChild(subMeta);
+            }
+            d.appendChild(infoCol);
+
             d.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
               App.openTitle(a.id,a.title);
             });
             box.appendChild(d);
           } else {
-            var d2=document.createElement("div");d2.className="trow"+(idx===S.sel?" sel":"");
-            d2.innerHTML='<span class="tr-num">'+(idx+1)+'</span><span class="tr-title">'+esc(a.title)+'</span><span class="tr-slug">'+esc(a.id)+'</span>';
+            var d2=document.createElement("div");
+            d2.className="trow trow-media"+(idx===S.sel?" sel":"");
+
+            var spanNum=document.createElement("span");
+            spanNum.className="tr-num";
+            spanNum.textContent=idx+1;
+            d2.appendChild(spanNum);
+
+            var thumbWrap2=document.createElement("div");
+            thumbWrap2.className="tr-thumb-wrap";
+            if(a.poster){
+              var img2=document.createElement("img");
+              img2.className="tr-thumb";
+              img2.loading="lazy";
+              img2.alt=a.title||"";
+              img2.src=a.poster;
+              img2.onerror=function(){
+                this.style.display="none";
+                thumbWrap2.classList.add("no-img");
+                var ph2=document.createElement("span");
+                ph2.className="tr-thumb-ph";
+                ph2.textContent="▶";
+                thumbWrap2.appendChild(ph2);
+              };
+              thumbWrap2.appendChild(img2);
+            } else {
+              thumbWrap2.classList.add("no-img");
+              var ph2=document.createElement("span");
+              ph2.className="tr-thumb-ph";
+              ph2.textContent="▶";
+              thumbWrap2.appendChild(ph2);
+            }
+            d2.appendChild(thumbWrap2);
+
+            var infoCol2=document.createElement("div");
+            infoCol2.className="tr-info";
+            var spanTitle2=document.createElement("span");
+            spanTitle2.className="tr-title";
+            spanTitle2.textContent=a.title||"";
+            infoCol2.appendChild(spanTitle2);
+
+            var subMeta2=document.createElement("div");
+            subMeta2.className="tr-meta";
+            var sm2=[];
+            if(a.type) sm2.push(a.type);
+            if(a.sub) sm2.push("SUB "+a.sub);
+            if(a.dub) sm2.push("DUB "+a.dub);
+            if(a.eps) sm2.push(a.eps+" ep");
+            if(a.id) sm2.push(a.id);
+            subMeta2.textContent=sm2.join(" · ");
+            infoCol2.appendChild(subMeta2);
+            d2.appendChild(infoCol2);
+
             d2.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
               App.openTitle(a.id,a.title);
@@ -257,6 +365,8 @@ var Tui = (function () {
     $("continue-sec").classList.add("hidden");
     $("lane-season-sec").classList.add("hidden");
     $("lane-still-sec").classList.add("hidden");
+    var sBar = $("schedule-days-bar");
+    if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
   }
 
   // ==== :genre ====

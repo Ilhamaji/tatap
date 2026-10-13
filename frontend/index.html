@@ -17,6 +17,11 @@
     <span class="brand-name">TATAP</span>
     <span class="brand-ver" id="brand-ver">v2.4.2</span>
   </div>
+  <div class="head-actions">
+    <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
+      <span class="drawer-btn-icon">☰</span>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -38,13 +43,15 @@
   <section id="search-sec">
     <div id="log" class="log hidden"></div>
     <div class="sec-head">
-      <h2 id="results-title">siap</h2>
-      <span id="results-meta" class="dim small"></span>
-    </div>
-    <div id="schedule-days-bar" class="ep-ranges hidden" style="margin-bottom:10px;">
-      <button class="ep-range-chip" data-day="yesterday">Kemarin</button>
-      <button class="ep-range-chip active" data-day="today">Hari Ini</button>
-      <button class="ep-range-chip" data-day="tomorrow">Besok</button>
+      <div class="sec-title-wrap">
+        <h2 id="results-title">siap</h2>
+        <span id="results-meta" class="dim small"></span>
+      </div>
+      <div id="schedule-days-bar" class="seg schedule-days-bar hidden" role="group" aria-label="Filter Hari Rilis">
+        <button class="ep-range-chip" data-day="yesterday">Kemarin</button>
+        <button class="ep-range-chip active" data-day="today">Hari Ini</button>
+        <button class="ep-range-chip" data-day="tomorrow">Besok</button>
+      </div>
     </div>
     <div id="results"></div>
     <div id="pager" class="pager hidden">
