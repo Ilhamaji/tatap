@@ -122,13 +122,13 @@ async def health():
 
 @app.get("/api/search")
 async def search(q: str = Query(""), limit: int = 15, source: str = Query("")):
-    q = q.strip()
+    q = (q if isinstance(q, str) else "").strip()
     if not q:
         return fail("missing q")
     if q.lower() == "hentai" or "hentai" in q.lower().split():
         return ok({"results": [], "cached": False})
     
-    src = (source or "").strip().lower()
+    src = (source if isinstance(source, str) else "").strip().lower()
     cache_key = f"{src}|{q.lower()}" if src else q.lower()
     try:
         hit = await get_search_cache(cache_key)
