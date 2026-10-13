@@ -121,7 +121,7 @@ public class PlayerActivity extends Activity {
     private String idNativeSubUrl = "";
     private String activeSubUrl = "";
     private String activeSubLang = "id"; // Default Indonesian
-    private String activeEngine = "gtx"; // "gtx" | "aigtx" | "ai" | "raw"
+    private String activeEngine = "gtx"; // "gtx" | "gtx+" | "aigtx" | "ai" | "raw"
     private boolean subEnabled = true;
     private String activeStreamMode = "sub"; // "sub" | "dub"
     private boolean hasAiKey = false;
@@ -261,6 +261,7 @@ public class PlayerActivity extends Activity {
                     ? AspectRatioFrameLayout.RESIZE_MODE_FIT
                     : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
             activeEngine = sp.getString("pref_sub_engine", "gtx");
+            if ("aigtx".equals(activeEngine)) activeEngine = "gtx+";
             activeSubLang = sp.getString("pref_sub_lang", "id");
             subEnabled = sp.getBoolean("pref_sub_enabled", true);
             if (playerView != null) {
@@ -1283,7 +1284,7 @@ public class PlayerActivity extends Activity {
             return;
         }
         String engineLabel = "Google GTX (Cepat)";
-        if ("aigtx".equals(activeEngine)) engineLabel = "AIGTX (Smart Lexicon)";
+        if ("gtx+".equals(activeEngine) || "aigtx".equals(activeEngine)) engineLabel = "GTX+ (Smart Fansub & Scene Detection)";
         else if ("ai".equals(activeEngine)) engineLabel = "AI Fansub (" + configuredAiModel + ")";
         else if ("raw".equals(activeEngine)) {
             if ("en".equals(activeSubLang)) engineLabel = "Source English";
@@ -1611,13 +1612,13 @@ public class PlayerActivity extends Activity {
                 activeSubUrl = enSourceSubUrl;
             });
 
-            // 2. AIGTX (Prioritas Kedua / GTX + Kamus Anime)
-            boolean isAigtxSelected = subEnabled && "id".equals(activeSubLang) && "aigtx".equals(activeEngine);
-            options.add("[ID] Bahasa Indonesia (AIGTX - Smart Lexicon)" + (isAigtxSelected ? " [Aktif]" : ""));
+            // 2. GTX+ (Prioritas Kedua / GTX + Smart Fansub & Scene Detection)
+            boolean isGtxPlusSelected = subEnabled && "id".equals(activeSubLang) && ("gtx+".equals(activeEngine) || "aigtx".equals(activeEngine));
+            options.add("[ID] Bahasa Indonesia (GTX+ - Smart Fansub & Scene Detection)" + (isGtxPlusSelected ? " [Aktif]" : ""));
             actions.add(() -> {
                 subEnabled = true;
                 activeSubLang = "id";
-                activeEngine = "aigtx";
+                activeEngine = "gtx+";
                 activeSubUrl = enSourceSubUrl;
             });
 
@@ -1734,11 +1735,13 @@ public class PlayerActivity extends Activity {
     private void applySubtitleStyle() {
         if (tvSubtitles == null) return;
         SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+        boolean isTv = TvFocusHelper.isTv(this);
         String pos = sp.getString("sub_pos", "low");
         String bg = sp.getString("sub_bg", "subtle");
-        String size = sp.getString("sub_size", "medium");
+        String defaultSize = isTv ? "large" : "medium";
+        String size = sp.getString("sub_size", defaultSize);
 
-        // 1. Margin Bawah (Posisi - mengatasi komplain posisi terlalu tinggi)
+        // 1. Margin Bawah (Posisi)
         int marginDp = 22; // Default 22dp: Rendah & pas di batas bawah layar
         if ("mid".equals(pos)) marginDp = 36;
         else if ("high".equals(pos)) marginDp = 54;
@@ -1750,28 +1753,47 @@ public class PlayerActivity extends Activity {
             tvSubtitles.setLayoutParams(lp);
         }
 
-        // 2. Ukuran Font
-        float sizeSp = 17f;
-        if ("small".equals(size)) sizeSp = 14f;
-        else if ("large".equals(size)) sizeSp = 21f;
+        // 2. Ukuran Font & Spasi Baris Dinamis (Adaptif Android TV vs Mobile)
+        float sizeSp;
+        if (isTv) {
+            if ("small".equals(size)) sizeSp = 18f;
+            else if ("medium".equals(size)) sizeSp = 22f;
+            else if ("large".equals(size)) sizeSp = 26f; // Standar TV
+            else if ("xlarge".equals(size)) sizeSp = 30f;
+            else if ("xxlarge".equals(size)) sizeSp = 34f; // Jarak Jauh
+            else if ("jumbo".equals(size)) sizeSp = 38f;  // Layar Besar
+            else if ("max".equals(size)) sizeSp = 42f;    // Maksimal
+            else sizeSp = 26f;
+        } else {
+            if ("small".equals(size)) sizeSp = 14f;
+            else if ("medium".equals(size)) sizeSp = 17f; // Standar HP
+            else if ("large".equals(size)) sizeSp = 21f;
+            else if ("xlarge".equals(size)) sizeSp = 25f;
+            else if ("xxlarge".equals(size)) sizeSp = 29f;
+            else if ("jumbo".equals(size)) sizeSp = 33f;
+            else if ("max".equals(size)) sizeSp = 36f;
+            else sizeSp = 17f;
+        }
         tvSubtitles.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp);
+        // Spasi baris proporsional agar kalimat multi-baris berukuran besar tidak tumpang tindih
+        tvSubtitles.setLineSpacing(0f, isTv ? 1.25f : 1.15f);
 
-        // 3. Latar Belakang & Shadow (mengatasi komplain background terlalu pekat)
+        // 3. Latar Belakang & Shadow
         GradientDrawable gd = new GradientDrawable();
-        int cornerPx = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 6, getResources().getDisplayMetrics());
+        int cornerPx = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, isTv ? 8 : 6, getResources().getDisplayMetrics());
         gd.setCornerRadius(cornerPx);
 
         if ("transparent".equals(bg)) {
             // Tanpa box background sama sekali, teks tebal dengan shadow tajam (gaya fansub modern)
             tvSubtitles.setBackground(null);
-            tvSubtitles.setShadowLayer(6f, 2f, 2f, 0xFF000000);
+            tvSubtitles.setShadowLayer(isTv ? 8f : 6f, 2f, 2f, 0xFF000000);
         } else {
             int bgColor = 0x4D000000; // 30% alpha (samar & lembut, tidak pekat)
             if ("medium".equals(bg)) bgColor = 0x8C000000; // 55%
             else if ("dark".equals(bg)) bgColor = 0xCC000000; // 80% pekat
             gd.setColor(bgColor);
             tvSubtitles.setBackground(gd);
-            tvSubtitles.setShadowLayer(4f, 1.5f, 1.5f, 0xFF000000);
+            tvSubtitles.setShadowLayer(isTv ? 6f : 4f, 1.5f, 1.5f, 0xFF000000);
         }
     }
 
@@ -1780,13 +1802,35 @@ public class PlayerActivity extends Activity {
         builder.setTitle("Pengaturan Tampilan Subtitle");
 
         SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+        boolean isTv = TvFocusHelper.isTv(this);
         String curPos = sp.getString("sub_pos", "low");
         String curBg = sp.getString("sub_bg", "subtle");
-        String curSize = sp.getString("sub_size", "medium");
+        String defaultSize = isTv ? "large" : "medium";
+        String curSize = sp.getString("sub_size", defaultSize);
 
         String posLabel = "low".equals(curPos) ? "Bawah (22dp) [Pas]" : ("mid".equals(curPos) ? "Sedang (36dp)" : "Tinggi (54dp)");
         String bgLabel = "transparent".equals(curBg) ? "Transparan (Tanpa Box)" : ("subtle".equals(curBg) ? "Samar / Lembut (30%)" : ("medium".equals(curBg) ? "Sedang (55%)" : "Pekat (80%)"));
-        String sizeLabel = "small".equals(curSize) ? "Kecil (14sp)" : ("large".equals(curSize) ? "Besar (21sp)" : "Sedang (17sp)");
+
+        String sizeLabel;
+        if (isTv) {
+            if ("small".equals(curSize)) sizeLabel = "Kecil (18sp)";
+            else if ("medium".equals(curSize)) sizeLabel = "Sedang (22sp)";
+            else if ("large".equals(curSize)) sizeLabel = "Besar (26sp) [Standar TV]";
+            else if ("xlarge".equals(curSize)) sizeLabel = "Sangat Besar (30sp)";
+            else if ("xxlarge".equals(curSize)) sizeLabel = "Ekstra Besar (34sp) [Jarak Jauh]";
+            else if ("jumbo".equals(curSize)) sizeLabel = "Jumbo (38sp) [Layar Besar]";
+            else if ("max".equals(curSize)) sizeLabel = "Maksimal (42sp)";
+            else sizeLabel = "Besar (26sp)";
+        } else {
+            if ("small".equals(curSize)) sizeLabel = "Kecil (14sp)";
+            else if ("medium".equals(curSize)) sizeLabel = "Sedang (17sp) [Standar HP]";
+            else if ("large".equals(curSize)) sizeLabel = "Besar (21sp)";
+            else if ("xlarge".equals(curSize)) sizeLabel = "Sangat Besar (25sp)";
+            else if ("xxlarge".equals(curSize)) sizeLabel = "Ekstra Besar (29sp)";
+            else if ("jumbo".equals(curSize)) sizeLabel = "Jumbo (33sp)";
+            else if ("max".equals(curSize)) sizeLabel = "Maksimal (36sp)";
+            else sizeLabel = "Sedang (17sp)";
+        }
 
         String[] menu = new String[]{
                 "Posisi Subtitle: " + posLabel,
@@ -1803,7 +1847,7 @@ public class PlayerActivity extends Activity {
             } else if (which == 2) {
                 showSizePicker(sp);
             } else if (which == 3) {
-                sp.edit().putString("sub_pos", "low").putString("sub_bg", "subtle").putString("sub_size", "medium").apply();
+                sp.edit().putString("sub_pos", "low").putString("sub_bg", "subtle").putString("sub_size", defaultSize).apply();
                 applySubtitleStyle();
                 Toast.makeText(this, "Tampilan subtitle direset ke default", Toast.LENGTH_SHORT).show();
             }
@@ -1869,18 +1913,51 @@ public class PlayerActivity extends Activity {
     }
 
     private void showSizePicker(SharedPreferences sp) {
-        String[] options = new String[]{
-                "Kecil (14sp)",
-                "Sedang (17sp) [Direkomendasikan]",
-                "Besar (21sp)"
-        };
-        String cur = sp.getString("sub_size", "medium");
-        int checked = "small".equals(cur) ? 0 : ("large".equals(cur) ? 2 : 1);
+        boolean isTv = TvFocusHelper.isTv(this);
+        String defaultSize = isTv ? "large" : "medium";
+        String cur = sp.getString("sub_size", defaultSize);
 
+        String[] options;
+        String[] values;
+
+        if (isTv) {
+            options = new String[]{
+                    "Kecil (18sp)",
+                    "Sedang (22sp)",
+                    "Besar (26sp) [Standar TV]",
+                    "Sangat Besar (30sp)",
+                    "Ekstra Besar (34sp) [Jarak Jauh 3.5m+]",
+                    "Jumbo (38sp) [Layar Besar 55\"-75\"]",
+                    "Maksimal (42sp) [Visibilitas Tinggi]"
+            };
+            values = new String[]{"small", "medium", "large", "xlarge", "xxlarge", "jumbo", "max"};
+        } else {
+            options = new String[]{
+                    "Kecil (14sp)",
+                    "Sedang (17sp) [Standar HP]",
+                    "Besar (21sp)",
+                    "Sangat Besar (25sp)",
+                    "Ekstra Besar (29sp)",
+                    "Jumbo (33sp)",
+                    "Maksimal (36sp)"
+            };
+            values = new String[]{"small", "medium", "large", "xlarge", "xxlarge", "jumbo", "max"};
+        }
+
+        int checked = 2; // Default "large" di TV
+        if (!isTv) checked = 1; // Default "medium" di HP
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(cur)) {
+                checked = i;
+                break;
+            }
+        }
+
+        final String[] finalValues = values;
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle("Pilih Ukuran Huruf Subtitle")
                 .setSingleChoiceItems(options, checked, (dialog, which) -> {
-                    String val = which == 0 ? "small" : (which == 2 ? "large" : "medium");
+                    String val = (which >= 0 && which < finalValues.length) ? finalValues[which] : defaultSize;
                     sp.edit().putString("sub_size", val).apply();
                     applySubtitleStyle();
                     dialog.dismiss();

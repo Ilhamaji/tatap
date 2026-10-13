@@ -1109,6 +1109,7 @@ async def _prewarm_sub_translation(url: str, referer: str, src: str = "en", lang
     job_key = f"{base_hash}|{lang}"
     fut = _SUB_INFLIGHT.get(job_key)
     if fut is None:
+        key_gtxplus = "sub2|gtx+|" + base_hash
         key_aigtx = "sub2|aigtx|" + base_hash
         key_llm = "sub2|llm|" + base_hash
         try:
@@ -1116,7 +1117,7 @@ async def _prewarm_sub_translation(url: str, referer: str, src: str = "en", lang
             log_translate(f"Prefetch subtitle [{lang}] dimulai di background...")
         except Exception:
             pass
-        fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, _fetch_sub_text, key_gtx=key_gtx, requested_mode="gtx"))
+        fut = asyncio.ensure_future(_translate_sub_job(url, referer, src, lang, key_llm, key_gtxplus, _fetch_sub_text, key_gtx=key_gtx, requested_mode="gtx"))
         _SUB_INFLIGHT[job_key] = fut
         fut.add_done_callback(lambda _f, k=job_key: _SUB_INFLIGHT.pop(k, None))
 
@@ -1135,7 +1136,7 @@ async def proxy_sub(url: str = Query(""),
                    referer: str = Query(""),
                    lang: str = Query("", pattern="^(en|id|ja|es|fr|de|pt|ko|zh)$|^$"),
                    src: str = Query("en", pattern="^(en|ja|es|fr|de|pt|ko|zh)$"),
-                   mode: str = Query("", pattern="^(gtx|aigtx|ai|)$"),
+                   mode: str = Query("", pattern="^(gtx|gtx\\+|aigtx|ai|)$"),
                    refresh: bool = Query(False)):
     """Proxy subtitle VTT. Menjalankan translasi multi-tier dengan deduplikasi inflight
     dan proteksi cache poisoning."""
@@ -1154,18 +1155,19 @@ async def proxy_sub(url: str = Query(""),
     base_hash = hashlib.sha1(
         (url + "|" + (referer or "") + "|" + lang).encode("utf-8")
     ).hexdigest()
+    key_gtxplus = "sub2|gtx+|" + base_hash
     key_aigtx = "sub2|aigtx|" + base_hash
     key_gtx = "sub2|gtx|" + base_hash
     key_llm = "sub2|llm|" + base_hash
 
     if refresh:
-        for k in (key_gtx, key_aigtx, key_llm, "sub2|mt|" + base_hash):
+        for k in (key_gtx, key_gtxplus, key_aigtx, key_llm, "sub2|mt|" + base_hash):
             try:
                 await delete_subtitle_cache(k)
             except Exception:
                 pass
 
-    req_mode = mode or "gtx"
+    req_mode = "gtx+" if mode in ("gtx+", "aigtx") else (mode or "gtx")
 
     # Periksa cache lokal jika tidak dalam mode refresh
     if not refresh:
@@ -1175,13 +1177,15 @@ async def proxy_sub(url: str = Query(""),
                 resp = Response(content=hit, media_type="text/vtt")
                 resp.headers["X-Translate-Tier"] = "cached-gtx"
                 return resp
-        elif req_mode == "aigtx":
-            hit = await _get_validated_subtitle_cache(key_aigtx, lang=lang)
+        elif req_mode in ("gtx+", "aigtx"):
+            hit = await _get_validated_subtitle_cache(key_gtxplus, lang=lang)
+            if not hit:
+                hit = await _get_validated_subtitle_cache(key_aigtx, lang=lang)
             if not hit:
                 hit = await _get_validated_subtitle_cache("sub2|mt|" + base_hash, lang=lang)
             if hit:
                 resp = Response(content=hit, media_type="text/vtt")
-                resp.headers["X-Translate-Tier"] = "cached-aigtx"
+                resp.headers["X-Translate-Tier"] = "cached-gtx+"
                 return resp
         elif req_mode == "ai":
             hit = await _get_validated_subtitle_cache(key_llm, lang=lang)
@@ -1190,7 +1194,7 @@ async def proxy_sub(url: str = Query(""),
                 resp.headers["X-Translate-Tier"] = "cached-llm"
                 return resp
         else:
-            for k, label in ((key_gtx, "cached-gtx"), (key_aigtx, "cached-aigtx"), (key_llm, "cached-llm")):
+            for k, label in ((key_gtx, "cached-gtx"), (key_gtxplus, "cached-gtx+"), (key_aigtx, "cached-gtx+"), (key_llm, "cached-llm")):
                 hit = await _get_validated_subtitle_cache(k, lang=lang)
                 if hit:
                     resp = Response(content=hit, media_type="text/vtt")
@@ -1202,7 +1206,7 @@ async def proxy_sub(url: str = Query(""),
     fut = _SUB_INFLIGHT.get(job_key)
     if fut is None:
         fut = asyncio.ensure_future(
-            _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, _fetch_sub_text, key_gtx=key_gtx, requested_mode=req_mode)
+            _translate_sub_job(url, referer, src, lang, key_llm, key_gtxplus, _fetch_sub_text, key_gtx=key_gtx, requested_mode=req_mode)
         )
         _SUB_INFLIGHT[job_key] = fut
         fut.add_done_callback(lambda _f, k=job_key: _SUB_INFLIGHT.pop(k, None))
@@ -1242,7 +1246,7 @@ async def _llm_enabled():
     return bool(apikey) or is_local_llm(apiurl)
 
 
-async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetcher, key_gtx=None, requested_mode="gtx"):
+async def _translate_sub_job(url, referer, src, lang, key_llm, key_gtxplus, fetcher, key_gtx=None, requested_mode="gtx"):
     """Fetch + translate + cache. Return (vtt_text, tier_dict)."""
     if not key_gtx:
         import hashlib
@@ -1268,14 +1272,14 @@ async def _translate_sub_job(url, referer, src, lang, key_llm, key_aigtx, fetche
         if (lang or "").lower() != "id" or _is_valid_id_subtitle(new_text):
             if lvl in ("tier1", "gtx"):
                 await set_subtitle_cache(key_gtx, new_text)
-            elif lvl in ("tier2", "aigtx"):
-                await set_subtitle_cache(key_aigtx, new_text)
+            elif lvl in ("tier2", "gtx+", "aigtx"):
+                await set_subtitle_cache(key_gtxplus, new_text)
             elif lvl in ("tier3", "ai"):
                 total = max(1, tier.get("total") or len(cues))
                 if tier.get("llm_lines", 0) / total >= 0.8:
                     await set_subtitle_cache(key_llm, new_text)
                 else:
-                    await set_subtitle_cache(key_aigtx, new_text)
+                    await set_subtitle_cache(key_gtxplus, new_text)
     return new_text, tier
 
 
@@ -1283,15 +1287,15 @@ async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
     """Multi-tier translate dengan penanganan prioritas sesuai mode yang diminta:
     Mode AI:
       1. AI Fansub LLM (jika aktif)
-      2. Fallback: Google Translate AIGTX (Smart Lexicon)
+      2. Fallback: Google Translate GTX+ (Smart Fansub & Scene Detection)
       3. Fallback: Google Translate GTX murni
-    Mode AIGTX:
-      1. Google Translate AIGTX (Smart Lexicon)
+    Mode GTX+ / AIGTX:
+      1. Google Translate GTX+ (Smart Fansub & Scene Detection)
       2. Fallback: AI Fansub LLM (jika aktif)
       3. Fallback: Google Translate GTX murni
     Mode GTX:
       1. Google Translate GTX murni
-      2. Fallback: Google Translate AIGTX
+      2. Fallback: Google Translate GTX+
       3. Fallback: AI Fansub LLM (jika aktif)
     Safety net: source original
     """
@@ -1314,13 +1318,13 @@ async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
             last_err = "AI LLM belum disetel (masukkan API key di pengaturan)"
             print(f"[TRANSLATE AI LLM] {last_err}")
 
-        # Fallback ke Google AIGTX
+        # Fallback ke Google GTX+
         try:
-            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
-            return {"cues": translated, "level": "tier2", "engine": "aigtx", "error": last_err}
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx+")
+            return {"cues": translated, "level": "tier2", "engine": "gtx+", "error": last_err}
         except Exception as e:
-            last_err = f"{last_err} | AIGTX error: {e}"
-            print(f"[TRANSLATE AIGTX ERROR] {e}")
+            last_err = f"{last_err} | GTX+ error: {e}"
+            print(f"[TRANSLATE GTX+ ERROR] {e}")
 
         # Fallback ke Google GTX
         try:
@@ -1330,14 +1334,14 @@ async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
             last_err = f"{last_err} | GTX error: {e}"
             print(f"[TRANSLATE GTX ERROR] {e}")
 
-    elif requested_mode == "aigtx":
-        # 1. Coba Google AIGTX (Smart Lexicon)
+    elif requested_mode in ("gtx+", "aigtx"):
+        # 1. Coba Google GTX+ (Smart Fansub & Scene Detection)
         try:
-            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
-            return {"cues": translated, "level": "tier2", "engine": "aigtx"}
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx+")
+            return {"cues": translated, "level": "tier2", "engine": "gtx+"}
         except Exception as e:
-            last_err = f"AIGTX error: {e}"
-            print(f"[TRANSLATE AIGTX ERROR] {e}")
+            last_err = f"GTX+ error: {e}"
+            print(f"[TRANSLATE GTX+ ERROR] {e}")
 
         # 2. Coba AI jika aktif
         if await _llm_enabled():
@@ -1368,13 +1372,13 @@ async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
             last_err = f"Google Translate error: {e}"
             print(f"[TRANSLATE GOOGLE GTX ERROR] {e}")
 
-        # 2. Fallback ke Google AIGTX
+        # 2. Fallback ke Google GTX+
         try:
-            translated = await call_gtx_translate(cues, src, tgt, mode="aigtx")
-            return {"cues": translated, "level": "tier2", "engine": "aigtx", "error": last_err}
+            translated = await call_gtx_translate(cues, src, tgt, mode="gtx+")
+            return {"cues": translated, "level": "tier2", "engine": "gtx+", "error": last_err}
         except Exception as e:
-            last_err = f"{last_err} | AIGTX error: {e}"
-            print(f"[TRANSLATE AIGTX ERROR] {e}")
+            last_err = f"{last_err} | GTX+ error: {e}"
+            print(f"[TRANSLATE GTX+ ERROR] {e}")
 
         # 3. Coba AI jika aktif
         if await _llm_enabled():

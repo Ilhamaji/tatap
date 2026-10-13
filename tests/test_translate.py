@@ -173,52 +173,55 @@ def test_sanitize_fansub_id():
     assert T._sanitize_fansub_id(raw_formal3) == "Letnan, kami tidak akan membiarkan musuh menembus garis pertahanan markas besar."
 
 
-def test_sanitize_aigtx_id():
-    # 1. Istilah Anime & Blunder Diperbaiki, tapi gaya baku/alami GTX tetap utuh (tidak diubah jadi slang gaul)
+def test_sanitize_gtxplus_id():
+    # 1. Istilah Anime & Blunder Diperbaiki dengan gaya luwes casual fansub
     raw1 = "Rouge Ninja dari Desa Daun Tersembunyi sudah pergi ke Jujutsu Tech."
-    assert T._sanitize_aigtx_id(raw1) == "Ninja Pelarian dari Desa Konoha sudah pergi ke SMK Jujutsu."
+    assert T._sanitize_gtxplus_id(raw1) == "Ninja Pelarian dari Desa Konoha udah pergi ke SMK Jujutsu."
 
     raw2 = "Layar Stevenson dan pendeta yang korup itu terbaring di kolam darah."
-    assert T._sanitize_aigtx_id(raw2) == "Kotak Stevenson dan pendeta bejat itu terbaring bersimbah darah."
+    assert T._sanitize_gtxplus_id(raw2) == "Kotak Stevenson dan pendeta bejat itu terbaring bersimbah darah."
 
-    # 2. Kata sehari-hari tidak diubah jadi slang lebay (misal "sudah" TIDAK jadi "udah", "lelaki itu" TIDAK jadi "cowok itu")
+    # 2. Kalimat santai non-formal menerapkan kamus casual fansub (sudah -> udah, lelaki -> cowok)
     raw3 = "Lelaki itu sudah pergi ke serikat petualang di penjara bawah tanah."
-    assert T._sanitize_aigtx_id(raw3) == "Lelaki itu sudah pergi ke guild petualang di dungeon."
+    assert T._sanitize_gtxplus_id(raw3) == "Cowok itu udah pergi ke guild petualang di dungeon."
 
-    # 3. Adegan Formal / Kerajaan dipertahankan 100% baku
+    # 3. Adegan Formal / Kerajaan dipertahankan 100% baku & sopan
     raw_formal = "Yang Mulia, hamba tidak dapat menyetujui keputusan ini."
-    assert T._sanitize_aigtx_id(raw_formal) == "Yang Mulia, hamba tidak dapat menyetujui keputusan ini."
+    assert T._sanitize_gtxplus_id(raw_formal) == "Yang Mulia, hamba tidak dapat menyetujui keputusan ini."
 
     # 4. Idiom game / isekai (Hell Mode)
     raw4 = "Dia bisa membuat guru kita kabur demi uangnya."
-    assert T._sanitize_aigtx_id(raw4) == "Dia bisa memberikan perlawanan sengit kepada guru kita."
+    assert T._sanitize_gtxplus_id(raw4) == "Dia bisa memberikan perlawanan sengit kepada guru kita."
 
     raw5 = "Ini memulihkan 1% HP-nya setiap kedua saat melawan Iblis Tuhan."
-    assert T._sanitize_aigtx_id(raw5) == "Ini memulihkan 1% HP-nya setiap detik saat melawan Raja Iblis."
+    assert T._sanitize_gtxplus_id(raw5) == "Ini memulihkan 1% HP-nya setiap detik saat melawan Raja Iblis."
 
     raw6 = "Berikan mereka neraka!"
-    assert T._sanitize_aigtx_id(raw6) == "Hajar mereka!"
+    assert T._sanitize_gtxplus_id(raw6) == "Hajar mereka!"
 
     # 5. Kontekstual "Ruang Bawah Tanah" vs "Dungeon" vs "Basement"
     raw_dungeon1 = "Panggilanku sedang bertarung di ruang bawah tanah peringkat A."
-    assert T._sanitize_aigtx_id(raw_dungeon1) == "Panggilanku sedang bertarung di dungeon peringkat A."
+    assert T._sanitize_gtxplus_id(raw_dungeon1) == "Panggilanku sedang bertarung di dungeon peringkat A."
 
     raw_dungeon2 = "Kamu akan terus menjelajahi ruang bawah tanah dan menaklukkan tiga ruang bawah tanah?"
-    assert T._sanitize_aigtx_id(raw_dungeon2) == "Kamu akan terus menjelajahi dungeon dan menaklukkan tiga dungeon?"
+    assert T._sanitize_gtxplus_id(raw_dungeon2) == "Kamu akan terus menjelajahi dungeon dan menaklukkan tiga dungeon?"
 
     # Kasus arsitektur / rumah biasa (basement) -> tetap aman tidak diubah
     raw_basement = "Kunci ruang bawah tanah rumah Dr. Yeager ada di laci meja."
-    assert T._sanitize_aigtx_id(raw_basement) == "Kunci ruang bawah tanah rumah Dr. Yeager ada di laci meja."
+    assert T._sanitize_gtxplus_id(raw_basement) == "Kunci ruang bawah tanah rumah Dr. Yeager ada di laci meja."
 
     # 6. Blunder calque mesin lainnya
     raw_party = "Mungkin kita harus merekrut pengintai untuk pesta itu."
-    assert T._sanitize_aigtx_id(raw_party) == "Mungkin kita harus merekrut pengintai untuk party."
+    assert T._sanitize_gtxplus_id(raw_party) == "Mungkin kita harus merekrut pengintai untuk party."
 
     raw_charge = "Aduh. Apakah sedang mengisi daya?!"
-    assert T._sanitize_aigtx_id(raw_charge) == "Aduh. Apakah dia sedang mengumpulkan kekuatan?!"
+    assert T._sanitize_gtxplus_id(raw_charge) == "Aduh. Apakah dia sedang mengumpulkan kekuatan?!"
 
     raw_repeat = "Rencana hari ini adalah mengulangi perintah itu. dungeon dan tantang kemunculan monster bos."
-    assert T._sanitize_aigtx_id(raw_repeat) == "Rencana hari ini adalah mengulang dungeon dan tantang kemunculan monster bos."
+    assert T._sanitize_gtxplus_id(raw_repeat) == "Rencana hari ini adalah mengulang dungeon dan tantang kemunculan monster bos."
+
+    # 7. Backward compatibility alias _sanitize_aigtx_id
+    assert T._sanitize_aigtx_id(raw3) == T._sanitize_gtxplus_id(raw3)
 
 
 def test_call_gtx_translate_modes(monkeypatch):
@@ -241,7 +244,11 @@ def test_call_gtx_translate_modes(monkeypatch):
     res_pure = loop.run_until_complete(T.call_gtx_translate(cues, mode="gtx"))
     assert res_pure[0]["text"] == "Rouge Ninja di Desa Daun"
 
-    # Mode aigtx: menerapkan kamus istilah anime
+    # Mode gtx+ (default): menerapkan kamus anime & casual rules
+    res_gtxplus = loop.run_until_complete(T.call_gtx_translate(cues, mode="gtx+"))
+    assert res_gtxplus[0]["text"] == "Ninja Pelarian di Desa Konoha"
+
+    # Mode aigtx (backward compatibility alias): menerapkan hasil yang sama
     res_aigtx = loop.run_until_complete(T.call_gtx_translate(cues, mode="aigtx"))
     assert res_aigtx[0]["text"] == "Ninja Pelarian di Desa Konoha"
 

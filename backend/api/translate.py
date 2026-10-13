@@ -1100,6 +1100,23 @@ _CASUAL_FANSUB_RULES = [
     (r"\btak akan kumaafkan\b", "nggak bakal kumaafkan"),
     (r"\bsungguh merepotkan\b", "merepotkan banget"),
     (r"\bsudah kuduga\b", "emang udah kuduga"),
+    (r"\bapa yang kamu maksud\b", "maksudmu apa"),
+    (r"\bapa maksudmu\b", "maksudmu apa"),
+    (r"\bmana aku tahu\b", "mana kutahu"),
+    (r"\bbagaimana aku bisa tahu\b", "mana kutahu"),
+    (r"\bapakah itu benar\b", "beneran nih"),
+    (r"\bpantas saja\b", "pantesan"),
+    (r"\bjangan konyol\b", "yang bener aja"),
+    (r"\bjangan bercanda\b", "jangan bercanda deh"),
+    (r"\btentu saja\b", "tentu saja"),
+    (r"\bsama sekali tidak\b", "sama sekali nggak"),
+    (r"\bsama sekali tak\b", "sama sekali nggak"),
+    (r"\bbiar aku yang urus ini\b", "biar aku yang urus"),
+    (r"\bbiar aku yang menangani ini\b", "biar aku yang urus"),
+    (r"\bgampang sekali\b", "gampang banget"),
+    (r"\bmudah sekali\b", "gampang banget"),
+    (r"\bapa-apaan ini\b", "ada apa-apaan nih"),
+    (r"\bsedikit pun\b", "dikit pun"),
 ]
 
 _AIGTX_SMOOTH_RULES = [
@@ -1126,10 +1143,12 @@ _AIGTX_SMOOTH_RULES = [
     (r"\bjangan biarkan penjagamu turun\b", "jangan lengah"),
     (r"\bperhatikan punggungmu\b", "waspadalah di belakangmu"),
 ]
+_GTXPLUS_SMOOTH_RULES = _AIGTX_SMOOTH_RULES
 
 _COMPILED_UNIVERSAL = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _UNIVERSAL_FANSUB_RULES]
 _COMPILED_CASUAL = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _CASUAL_FANSUB_RULES]
 _COMPILED_AIGTX_SMOOTH = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _AIGTX_SMOOTH_RULES]
+_COMPILED_GTXPLUS_SMOOTH = _COMPILED_AIGTX_SMOOTH
 
 
 def _sanitize_fansub_id(text: str) -> str:
@@ -1160,10 +1179,13 @@ def _sanitize_fansub_id(text: str) -> str:
     return result
 
 
-def _sanitize_aigtx_id(text: str) -> str:
-    """AIGTX Sanitizer: Menjaga gaya bahasa alami Google GTX tanpa merombaknya
-    menjadi slang gaul berlebihan, namun menerapkan kamus istilah anime (Konoha,
-    SMK Jujutsu, Nukenin, dll) dan scene detector presisi."""
+def _sanitize_gtxplus_id(text: str) -> str:
+    """GTX+ Sanitizer: Menggabungkan deteksi adegan (Scene Detection) adaptif
+    dan kamus fansub percakapan santai (casual conversation) secara otomatis.
+    Jika adegan santai/sekolah/komedi/isekai: terapkan leksikon anime universal,
+    diksi lisan alami (aku/kamu, nggak, udah, cuma, banget, dll), dan perbaikan idiom.
+    Jika adegan formal/kerajaan/militer: pertahankan kesantunan baku (Saya/Anda,
+    Yang Mulia, Paduka) tanpa partikel santai gaul."""
     if not text:
         return text
 
@@ -1181,14 +1203,18 @@ def _sanitize_aigtx_id(text: str) -> str:
     for rx, repl in _COMPILED_UNIVERSAL:
         result = rx.sub(lambda m, r=repl: _replace_match(m, r), result)
 
-    # 2. Scene detector: Jika formal/militer/bangsawan, pertahankan 100% gaya baku GTX.
-    # Jika dialog santai sehari-hari, haluskan hanya frasa kaku yang janggal tanpa mengubah ke slang gaul.
+    # 2. Scene detector: formal vs casual
     is_formal = bool(_FORMAL_INDICATORS_RE.search(result))
     if not is_formal:
-        for rx, repl in _COMPILED_AIGTX_SMOOTH:
+        for rx, repl in _COMPILED_CASUAL:
+            result = rx.sub(lambda m, r=repl: _replace_match(m, r), result)
+        for rx, repl in _COMPILED_GTXPLUS_SMOOTH:
             result = rx.sub(lambda m, r=repl: _replace_match(m, r), result)
 
     return result
+
+
+_sanitize_aigtx_id = _sanitize_gtxplus_id
 
 
 
@@ -1437,7 +1463,7 @@ def is_valid_translation(original_cues, translated_cues, tgt="id"):
     return bool(marker_match)
 
 
-async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx"):
+async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="gtx+"):
     """Translate via Google Translate Web RPC (Unmetered, Zero-Key, Super Cepat).
     Menggunakan HTTP POST form-encoded dengan HTML preservation (<p id="i">...</p>)
     dan multi-client pool failover (gtx, dict-chrome-ex, tw-ob).
@@ -1614,8 +1640,8 @@ async def call_gtx_translate(cues, src="en", tgt="id", timeout=20.0, mode="aigtx
                 pass
             elif mode == "fansub":
                 tr_text = _sanitize_fansub_id(tr_text)
-            else:  # "aigtx" default
-                tr_text = _sanitize_aigtx_id(tr_text)
+            else:  # "gtx+", "aigtx", default
+                tr_text = _sanitize_gtxplus_id(tr_text)
         out.append({"start": c["start"], "end": c["end"], "text": tr_text})
     return out
 
