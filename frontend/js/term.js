@@ -206,7 +206,7 @@ var Tui = (function () {
     if(sBar) sBar.classList.toggle("hidden", S.view !== "terbaru");
     var isTxt = S.view==="cari" || S.view==="terbaru";
     if(!S.items.length){
-      var emptyMsg = S.view==="favorit" ? "Belum ada anime favorit tersimpan. Ketuk tombol ⭐ + FAVORIT pada detail anime untuk menyimpannya ke sini." : "Kosong.";
+      var emptyMsg = S.view==="favorit" ? "Belum ada anime favorit tersimpan. Ketuk tombol + FAVORIT pada detail anime untuk menyimpannya ke sini." : "Kosong.";
       box.innerHTML="<p class='dim'>"+emptyMsg+"</p>";
       return;
     }
@@ -398,13 +398,23 @@ var Tui = (function () {
   }
 
   function renderPager(){
-    var show=S.view!=="cari";
-    $("pager").classList.toggle("hidden",!show);
-    if(!show)return;
+    var hasPagination = false;
+    if(S.view === "terbaru"){
+      hasPagination = !!(SCHEDULE_DAYS && SCHEDULE_DAYS.length > 1);
+    } else if(S.view === "cari"){
+      hasPagination = false;
+    } else {
+      hasPagination = (S.total > 1);
+    }
 
-    var prevBtn=$("pg-prev");
-    var nextBtn=$("pg-next");
-    var info=$("pg-info");
+    var pagerEl = $("pager");
+    if(!pagerEl) return;
+    pagerEl.classList.toggle("hidden", !hasPagination);
+    if(!hasPagination) return;
+
+    var prevBtn = $("pg-prev");
+    var nextBtn = $("pg-next");
+    var info = $("pg-info");
 
     if(S.view === "terbaru"){
       var curIdx = SCHEDULE_DAYS.indexOf(S.scheduleDay || "");
@@ -416,10 +426,10 @@ var Tui = (function () {
       return;
     }
 
-    if(prevBtn) prevBtn.disabled=(S.page<=1);
-    if(nextBtn) nextBtn.disabled=(S.page>=S.total);
+    if(prevBtn) prevBtn.disabled = (S.page <= 1);
+    if(nextBtn) nextBtn.disabled = (S.page >= S.total);
     if(info){
-      info.textContent=S.total>1?("Halaman "+S.page+" / "+S.total+" · ["+"]"): (S.items.length+" item");
+      info.textContent = "Halaman " + S.page + " / " + S.total + " · [ ]";
     }
   }
 
@@ -579,7 +589,6 @@ var Tui = (function () {
     setViewSilent("katalog");
     $("results-title").textContent="Genre: "+slug;
     $("empty-state").style.display="none";
-    $("pager").classList.remove("hidden");
     loadView();
   }
   async function cmdGenre(parts){
@@ -622,7 +631,6 @@ var Tui = (function () {
     setViewSilent("season-custom");
     $("results-title").textContent = "Season: "+name[0].toUpperCase()+name.slice(1)+" "+year;
     $("empty-state").style.display = "none";
-    $("pager").classList.remove("hidden");
     loadView();
   }
   function cmdSeason(rawArgs){
@@ -830,10 +838,10 @@ var Tui = (function () {
         if(!args){log("usage: crt on|off|toggle","err");break;}
         var v1=args==="on"?"on":args==="off"?"off":null;
         if(v1===null&&args!=="toggle"){log("usage: crt on|off|toggle","err");break;}
-        var cur=localStorage.getItem("tatap_crt")||"on";
+        var cur=localStorage.getItem("tatap_crt")||"off";
         var nxt=v1||(cur==="on"?"off":"on");
         try{localStorage.setItem("tatap_crt",nxt);}catch(e){}
-        document.body.classList.toggle("no-crt",nxt==="off");
+        document.body.classList.toggle("no-crt",nxt!=="on");
         log("crt "+(nxt==="on"?"ON":"OFF"),"ok");break;
       case "ambient":
         if(!args){log("usage: ambient on|off|toggle","err");break;}

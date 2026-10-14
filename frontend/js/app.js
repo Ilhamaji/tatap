@@ -16,8 +16,14 @@ function toast(msg,ms){
 }
 function loadPrefs(){
   try{
-    if(localStorage.getItem("tatap_crt")==="off"){document.body.classList.add("no-crt");}
-    if(localStorage.getItem("tatap_ambient")==="off"){document.body.classList.add("no-ambient");}
+    if(localStorage.getItem("tatap_crt") === "on"){
+      document.body.classList.remove("no-crt");
+    } else {
+      document.body.classList.add("no-crt");
+    }
+    if(localStorage.getItem("tatap_ambient") === "off"){
+      document.body.classList.add("no-ambient");
+    }
   }catch(e){}
 }
 
@@ -25,7 +31,8 @@ function updateBookmarkBtn(isBookmarked){
   var btn = $("tm-bookmark-btn");
   if(!btn) return;
   btn.classList.toggle("bookmarked", !!isBookmarked);
-  btn.innerHTML = isBookmarked ? "★ TERSIMPAN" : "⭐ + FAVORIT";
+  var starSvg = isBookmarked ? '<svg class="ui-icon"><use href="#icon-star-filled"/></svg>' : '<svg class="ui-icon"><use href="#icon-star"/></svg>';
+  btn.innerHTML = starSvg + " " + (isBookmarked ? "TERSIMPAN" : "+ FAVORIT");
   btn.title = isBookmarked ? "Klik untuk menghapus dari favorit" : "Klik untuk menyimpan ke favorit";
 }
 
@@ -103,10 +110,10 @@ function loadRelations(){
         count++;
         var b=document.createElement("button");
         var cls="season-chip";
-        var icon="📺";
-        if(rel.relation==="PREQUEL"){cls+=" prequel";icon="⏮";}
-        else if(rel.relation==="SEQUEL"){cls+=" sequel";icon="⏭";}
-        else if(rel.format==="MOVIE"){cls+=" movie";icon="🎬";}
+        var icon='<svg class="ui-icon"><use href="#icon-tv"/></svg>';
+        if(rel.relation==="PREQUEL"){cls+=" prequel";icon='<svg class="ui-icon"><use href="#icon-step-prev"/></svg>';}
+        else if(rel.relation==="SEQUEL"){cls+=" sequel";icon='<svg class="ui-icon"><use href="#icon-step-next"/></svg>';}
+        else if(rel.format==="MOVIE"){cls+=" movie";icon='<svg class="ui-icon"><use href="#icon-film"/></svg>';}
         b.className=cls;
         b.title=rel.title+(rel.year?" ("+rel.year+")":"");
         b.innerHTML="<span>"+icon+"</span> <b>"+rel.label+"</b>: "+esc(rel.title);
@@ -1005,7 +1012,12 @@ var TouchGestures = {
   showOSD: function(icon, pct, text){
     var el = $("pm-gesture-osd");
     if(!el) return;
-    $("pm-osd-icon").textContent = icon;
+    var iconEl = $("pm-osd-icon");
+    if(icon && (icon.indexOf("<svg") >= 0 || icon.indexOf("<") >= 0)){
+      iconEl.innerHTML = icon;
+    } else {
+      iconEl.textContent = icon;
+    }
     $("pm-osd-bar").style.width = Math.max(0, Math.min(100, pct)) + "%";
     $("pm-osd-val").textContent = text != null ? text : Math.round(pct) + "%";
     el.classList.remove("hidden");
@@ -1078,14 +1090,14 @@ var TouchGestures = {
         var min = Math.floor(target / 60);
         var sec = Math.floor(target % 60);
         var timeStr = min + ":" + (sec < 10 ? "0" : "") + sec;
-        self.showOSD("⏩", (target / dur) * 100, timeStr + " (" + sign + diff + "s)");
+        self.showOSD('<svg class="ui-icon"><use href="#icon-forward"/></svg>', (target / dur) * 100, timeStr + " (" + sign + diff + "s)");
         self._targetSeek = target;
       } else if(self.mode === "volume"){
         var deltaV = (-dy / rect.height) * 1.5;
         var nv = Math.max(0, Math.min(1, self.initVol + deltaV));
         v.volume = nv;
         v.muted = (nv === 0);
-        var ic = nv === 0 ? "🔇" : (nv < 0.5 ? "🔉" : "🔊");
+        var ic = nv === 0 ? '<svg class="ui-icon"><use href="#icon-volume-mute"/></svg>' : (nv < 0.5 ? '<svg class="ui-icon"><use href="#icon-volume-mid"/></svg>' : '<svg class="ui-icon"><use href="#icon-volume-high"/></svg>');
         self.showOSD(ic, nv * 100);
       } else if(self.mode === "brightness"){
         var deltaB = (-dy / rect.height) * 120;
@@ -1095,7 +1107,7 @@ var TouchGestures = {
         if(window.TatapNative && window.TatapNative.setBrightness){
           window.TatapNative.setBrightness(nb / 100);
         }
-        self.showOSD("☀️", (nb / 150) * 100, Math.round(nb) + "%");
+        self.showOSD('<svg class="ui-icon"><use href="#icon-sun"/></svg>', (nb / 150) * 100, Math.round(nb) + "%");
       }
     }, {passive: true});
 
