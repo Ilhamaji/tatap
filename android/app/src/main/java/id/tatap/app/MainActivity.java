@@ -52,19 +52,36 @@ public class MainActivity extends Activity {
     private EditText etSearch;
     private TextView btnClearSearch;
     private ProgressBar pbLoading;
+    private View layoutLoadingState;
     private TextView tvSectionTitle, tvItemCount, tvStatusBadge, tvPageIndicator;
     private RecyclerView rvGrid;
     private AnimeAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
 
-    // Header & Unified Search Bar
+    // Header & Unified Fluid Search Bar
     private ViewGroup layoutHeaderRoot;
-    private View layoutHeaderNormal;
     private View layoutSearchBox;
-    private TextView btnHeaderSearchToggle, btnSearchBack;
     private TextView btnToggleMenu;
-    private boolean isSearchOpen = false;
-    private boolean isFoldedMenuOpen = false;
+
+    // In-memory tab cache untuk peralihan instan (<1ms) & race condition tokenization
+    private static class TabCacheEntry {
+        final List<JSONObject> items;
+        final int count;
+        final long timestamp;
+
+        TabCacheEntry(List<JSONObject> items, int count) {
+            this.items = items;
+            this.count = count;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        boolean isExpired() {
+            return (System.currentTimeMillis() - timestamp) > 180000L; // TTL 3 menit
+        }
+    }
+
+    private final java.util.Map<String, TabCacheEntry> tabDataCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicInteger currentFetchToken = new java.util.concurrent.atomic.AtomicInteger(0);
 
     // Header Quick Actions (Retained for backward safety)
     private TextView btnHeaderAi, btnHeaderGenre, btnHeaderHelp, btnHeaderHistory;
@@ -109,15 +126,13 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         layoutHeaderRoot = findViewById(R.id.layout_header_root);
-        layoutHeaderNormal = findViewById(R.id.layout_header_normal);
         layoutSearchBox = findViewById(R.id.layout_search_box);
-        btnHeaderSearchToggle = findViewById(R.id.btn_header_search_toggle);
-        btnSearchBack = findViewById(R.id.btn_search_back);
         btnToggleMenu = findViewById(R.id.btn_toggle_menu);
 
         etSearch = findViewById(R.id.et_search);
         btnClearSearch = findViewById(R.id.btn_clear_search);
         pbLoading = findViewById(R.id.pb_loading);
+        layoutLoadingState = findViewById(R.id.layout_loading_state);
         tvSectionTitle = findViewById(R.id.tv_section_title);
         tvItemCount = findViewById(R.id.tv_item_count);
         tvStatusBadge = findViewById(R.id.tv_status_badge);
@@ -246,12 +261,6 @@ public class MainActivity extends Activity {
     }
 
     private void setupTabsAndListeners() {
-        if (btnHeaderSearchToggle != null) {
-            btnHeaderSearchToggle.setOnClickListener(v -> setSearchMode(true));
-        }
-        if (btnSearchBack != null) {
-            btnSearchBack.setOnClickListener(v -> setSearchMode(false));
-        }
         if (btnToggleMenu != null) {
             btnToggleMenu.setOnClickListener(v -> showCommandHelpDialog());
         }
@@ -346,28 +355,24 @@ public class MainActivity extends Activity {
 
         if (btnHeaderAi != null) {
             btnHeaderAi.setOnClickListener(v -> {
-                setFoldedMenuOpen(false);
                 showAiSettingsDialog();
             });
         }
 
         if (btnHeaderGenre != null) {
             btnHeaderGenre.setOnClickListener(v -> {
-                setFoldedMenuOpen(false);
                 showGenreSelectorDialog();
             });
         }
 
         if (btnHeaderHelp != null) {
             btnHeaderHelp.setOnClickListener(v -> {
-                setFoldedMenuOpen(false);
                 showCommandHelpDialog();
             });
         }
 
         if (btnHeaderHistory != null) {
             btnHeaderHistory.setOnClickListener(v -> {
-                setFoldedMenuOpen(false);
                 switchView("riwayat");
             });
         }
@@ -394,9 +399,6 @@ public class MainActivity extends Activity {
                 if (btnClearSearch != null) {
                     btnClearSearch.setVisibility(s != null && s.length() > 0 ? View.VISIBLE : View.GONE);
                 }
-                if (s != null && s.length() > 0 && isFoldedMenuOpen) {
-                    setFoldedMenuOpen(false);
-                }
             }
 
             @Override
@@ -406,24 +408,29 @@ public class MainActivity extends Activity {
         if (swipeRefreshLayout != null) {
             swipeRefreshLayout.setColorSchemeColors(0xFF00DBEB, 0xFF0E7490);
             swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF0E121C);
-            swipeRefreshLayout.setOnRefreshListener(this::fetchData);
+            swipeRefreshLayout.setOnRefreshListener(() -> {
+                tabDataCache.clear();
+                fetchData();
+            });
         }
 
         if (btnEmptyRetry != null) {
-            btnEmptyRetry.setOnClickListener(v -> fetchData());
+            btnEmptyRetry.setOnClickListener(v -> {
+                tabDataCache.clear();
+                fetchData();
+            });
         }
 
         if (tvStatusBadge != null) {
             tvStatusBadge.setOnClickListener(v -> {
-                setFoldedMenuOpen(false);
                 checkBackendStatus();
             });
         }
 
         // Pasang respon fokus D-Pad TV pada seluruh elemen interaktif
         TvFocusHelper.attachFocusScale(btnToggleMenu, 1.1f, 6f);
-        if (btnHeaderSearchToggle != null) TvFocusHelper.attachFocusScale(btnHeaderSearchToggle, 1.1f, 6f);
-        if (btnSearchBack != null) TvFocusHelper.attachFocusScale(btnSearchBack, 1.1f, 6f);
+        if (tvStatusBadge != null) TvFocusHelper.attachFocusScale(tvStatusBadge, 1.15f, 6f);
+        if (layoutSearchBox != null) TvFocusHelper.attachFocusScale(layoutSearchBox, 1.03f, 4f);
         TvFocusHelper.attachFocusScale(btnTabMusim, 1.06f, 6f);
         TvFocusHelper.attachFocusScale(btnTabAiring, 1.06f, 6f);
         if (btnTabFavorit != null) TvFocusHelper.attachFocusScale(btnTabFavorit, 1.06f, 6f);
@@ -438,35 +445,8 @@ public class MainActivity extends Activity {
         TvFocusHelper.attachFocusScale(btnCloseCommandBanner, 1.1f, 6f);
     }
 
-    private void setSearchMode(boolean open) {
-        isSearchOpen = open;
-        if (layoutHeaderRoot != null) {
-            TransitionManager.beginDelayedTransition(layoutHeaderRoot, new AutoTransition().setDuration(160));
-        }
-        if (layoutHeaderNormal != null) {
-            layoutHeaderNormal.setVisibility(open ? View.GONE : View.VISIBLE);
-        }
-        if (layoutSearchBox != null) {
-            layoutSearchBox.setVisibility(open ? View.VISIBLE : View.GONE);
-        }
-        if (open) {
-            if (etSearch != null) {
-                etSearch.requestFocus();
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(etSearch, InputMethodManager.SHOW_IMPLICIT);
-                }
-            }
-        } else {
-            hideKeyboard();
-            if (TvFocusHelper.isTv(this) && btnHeaderSearchToggle != null) {
-                btnHeaderSearchToggle.requestFocus();
-            }
-        }
-    }
-
     private void setFoldedMenuOpen(boolean open) {
-        setSearchMode(open);
+        // No-op backward safety
     }
 
     private void toggleFoldedMenu() {
@@ -481,7 +461,7 @@ public class MainActivity extends Activity {
                 showCommandHelpDialog();
                 return true;
             } else if (keyCode == KeyEvent.KEYCODE_SEARCH) {
-                setSearchMode(true);
+                if (etSearch != null) etSearch.requestFocus();
                 return true;
             }
         }
@@ -490,8 +470,9 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (isSearchOpen || (layoutSearchBox != null && layoutSearchBox.getVisibility() == View.VISIBLE)) {
-            setSearchMode(false);
+        if (etSearch != null && etSearch.hasFocus()) {
+            etSearch.clearFocus();
+            hideKeyboard();
             return;
         }
         if (!"musim".equals(currentView)) {
@@ -500,6 +481,7 @@ public class MainActivity extends Activity {
         }
         super.onBackPressed();
     }
+
 
     private void hideCommandBanner(boolean animated) {
         if (layoutCommandBanner == null || layoutCommandBanner.getVisibility() != View.VISIBLE) return;
@@ -1443,6 +1425,11 @@ public class MainActivity extends Activity {
 
     private void checkBackendStatus() {
         showCommandOutput("> tatap$ :ping [Memeriksa 127.0.0.1:8767...]", false);
+        if (tvStatusBadge != null) {
+            tvStatusBadge.setText("⏻");
+            tvStatusBadge.setTextColor(0xFFF59E0B);
+            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_warn);
+        }
         new Thread(() -> {
             try {
                 long start = System.currentTimeMillis();
@@ -1452,24 +1439,27 @@ public class MainActivity extends Activity {
                 long elapsed = System.currentTimeMillis() - start;
                 conn.disconnect();
                 runOnUiThread(() -> {
-                    if (code == 200) {
-                        tvStatusBadge.setText("● ONLINE");
-                        tvStatusBadge.setTextColor(0xFF10B981);
-                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill);
-                        showCommandOutput("> tatap$ [PONG] Backend ONLINE (127.0.0.1:8767 OK, " + elapsed + "ms)", false);
-                    } else {
-                        tvStatusBadge.setText("● OFFLINE");
-                        tvStatusBadge.setTextColor(0xFFEF4444);
-                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
-                        showCommandOutput("> tatap$ [WARN] Backend responded HTTP " + code, true);
+                    if (tvStatusBadge != null) {
+                        tvStatusBadge.setText("⏻");
+                        if (code == 200) {
+                            tvStatusBadge.setTextColor(0xFF10B981);
+                            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill);
+                            showCommandOutput("> tatap$ [PONG] Backend ONLINE (127.0.0.1:8767 OK, " + elapsed + "ms)", false);
+                        } else {
+                            tvStatusBadge.setTextColor(0xFFEF4444);
+                            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
+                            showCommandOutput("> tatap$ [WARN] Backend responded HTTP " + code, true);
+                        }
                     }
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    tvStatusBadge.setText("● OFFLINE");
-                    tvStatusBadge.setTextColor(0xFFEF4444);
-                    tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
-                    showCommandOutput("> tatap$ [OFFLINE] Backend tidak terhubung: " + e.getMessage(), true);
+                    if (tvStatusBadge != null) {
+                        tvStatusBadge.setText("⏻");
+                        tvStatusBadge.setTextColor(0xFFEF4444);
+                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
+                        showCommandOutput("> tatap$ [OFFLINE] Backend tidak terhubung: " + e.getMessage(), true);
+                    }
                 });
             }
         }).start();
@@ -1677,6 +1667,27 @@ public class MainActivity extends Activity {
             layoutPagination.setVisibility("riwayat".equals(currentView) || "jadwal".equals(currentView) || "favorit".equals(currentView) ? View.GONE : View.VISIBLE);
         }
 
+        final String cacheKey = currentView + ":" + currentPage + ":" + currentGenre + ":" + currentSeasonName + ":" + currentSeasonYear + ":" + currentScheduleDay;
+        final boolean canCache = !"cari".equals(currentView) && !"riwayat".equals(currentView) && !"favorit".equals(currentView);
+
+        // 1. Cek In-Memory Cache untuk peralihan instan (<1ms)
+        if (canCache && (swipeRefreshLayout == null || !swipeRefreshLayout.isRefreshing())) {
+            TabCacheEntry cached = tabDataCache.get(cacheKey);
+            if (cached != null && !cached.isExpired()) {
+                renderAnimeData(cached.items, cached.count);
+                return;
+            }
+        }
+
+        // 2. Aktifkan animasi pemuatan data
+        if (adapter.getItemCount() == 0 || (layoutEmptyState != null && layoutEmptyState.getVisibility() == View.VISIBLE)) {
+            if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.VISIBLE);
+            if (rvGrid != null) rvGrid.setVisibility(View.GONE);
+        }
+        if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
+
+        final int fetchToken = currentFetchToken.incrementAndGet();
+
         new Thread(() -> {
             try {
                 String u = "http://127.0.0.1:8767" + endpoint;
@@ -1688,6 +1699,11 @@ public class MainActivity extends Activity {
                 String line;
                 while ((line = reader.readLine()) != null) sb.append(line);
                 reader.close();
+
+                // Abaikan jika token sudah tidak mutakhir (mencegah race condition antar-tab)
+                if (fetchToken != currentFetchToken.get()) {
+                    return;
+                }
 
                 JSONObject res = new JSONObject(sb.toString());
                 if (res.optBoolean("success")) {
@@ -1707,62 +1723,19 @@ public class MainActivity extends Activity {
                     }
 
                     final int count = list.size();
-                    runOnUiThread(() -> {
-                        if (pbLoading != null) pbLoading.setVisibility(View.GONE);
-                        if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
-                        tvItemCount.setText(count + " judul");
-                        adapter.setData(list);
-                        btnNextPage.setEnabled(count >= 10);
-                        btnNextPage.setAlpha(count >= 10 ? 1.0f : 0.4f);
+                    if (canCache) {
+                        tabDataCache.put(cacheKey, new TabCacheEntry(list, count));
+                    }
 
-                        if (count == 0) {
-                            if (layoutPagination != null && currentPage == 1) {
-                                layoutPagination.setVisibility(View.GONE);
-                            }
-                            if (layoutEmptyState != null) {
-                                layoutEmptyState.setVisibility(View.VISIBLE);
-                                if ("riwayat".equals(currentView)) {
-                                    tvEmptyTitle.setText("Belum Ada Riwayat Tontonan");
-                                    tvEmptyDesc.setText("Anime yang Anda tonton akan otomatis tercatat di sini.");
-                                } else if ("favorit".equals(currentView)) {
-                                    tvEmptyTitle.setText("Belum Ada Anime Favorit");
-                                    tvEmptyDesc.setText("Tandai anime favorit Anda dengan menekan tombol ⭐ + Favorit pada halaman detail.");
-                                } else if ("jadwal".equals(currentView)) {
-                                    String dayLabel = "hari ini";
-                                    if ("yesterday".equals(currentScheduleDay)) dayLabel = "kemarin";
-                                    else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "besok";
-                                    tvEmptyTitle.setText("Tidak Ada Jadwal Rilis");
-                                    tvEmptyDesc.setText("Tidak ada rilis anime untuk " + dayLabel + " yang tersedia di aplikasi.");
-                                } else {
-                                    tvEmptyTitle.setText("Tidak Ada Anime Ditemukan");
-                                    tvEmptyDesc.setText("Tidak ada judul anime yang cocok dengan filter atau pencarian ini.");
-                                }
-                            }
-                            if (rvGrid != null) rvGrid.setVisibility(View.GONE);
-                        } else {
-                            if (layoutPagination != null && !"riwayat".equals(currentView) && !"jadwal".equals(currentView) && !"favorit".equals(currentView)) {
-                                layoutPagination.setVisibility(View.VISIBLE);
-                            }
-                            if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
-                            if (rvGrid != null) {
-                                rvGrid.setVisibility(View.VISIBLE);
-                                rvGrid.scrollToPosition(0);
-                                if (TvFocusHelper.isTv(MainActivity.this)) {
-                                    rvGrid.post(() -> {
-                                        RecyclerView.ViewHolder vh = rvGrid.findViewHolderForAdapterPosition(0);
-                                        if (vh != null && vh.itemView != null) {
-                                            vh.itemView.requestFocus();
-                                        } else {
-                                            rvGrid.requestFocus();
-                                        }
-                                    });
-                                }
-                            }
-                        }
+                    runOnUiThread(() -> {
+                        if (fetchToken != currentFetchToken.get()) return;
+                        renderAnimeData(list, count);
                     });
                 } else {
                     final String err = res.optString("error", "gagal memuat data");
                     runOnUiThread(() -> {
+                        if (fetchToken != currentFetchToken.get()) return;
+                        if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
                         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                         if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                         showCommandOutput("> tatap$ [ERROR] " + err, true);
@@ -1779,6 +1752,8 @@ public class MainActivity extends Activity {
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> {
+                    if (fetchToken != currentFetchToken.get()) return;
+                    if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
                     if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                     if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
                     showCommandOutput("> tatap$ [ERROR] Gagal terhubung: " + e.getMessage(), true);
@@ -1794,6 +1769,62 @@ public class MainActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private void renderAnimeData(List<JSONObject> list, int count) {
+        if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
+        if (pbLoading != null) pbLoading.setVisibility(View.GONE);
+        if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+        tvItemCount.setText(count + " judul");
+        adapter.setData(list);
+        btnNextPage.setEnabled(count >= 10);
+        btnNextPage.setAlpha(count >= 10 ? 1.0f : 0.4f);
+
+        if (count == 0) {
+            if (layoutPagination != null && currentPage == 1) {
+                layoutPagination.setVisibility(View.GONE);
+            }
+            if (layoutEmptyState != null) {
+                layoutEmptyState.setVisibility(View.VISIBLE);
+                if ("riwayat".equals(currentView)) {
+                    tvEmptyTitle.setText("Belum Ada Riwayat Tontonan");
+                    tvEmptyDesc.setText("Anime yang Anda tonton akan otomatis tercatat di sini.");
+                } else if ("favorit".equals(currentView)) {
+                    tvEmptyTitle.setText("Belum Ada Anime Favorit");
+                    tvEmptyDesc.setText("Tandai anime favorit Anda dengan menekan tombol ⭐ + Favorit pada halaman detail.");
+                } else if ("jadwal".equals(currentView)) {
+                    String dayLabel = "hari ini";
+                    if ("yesterday".equals(currentScheduleDay)) dayLabel = "kemarin";
+                    else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "besok";
+                    tvEmptyTitle.setText("Tidak Ada Jadwal Rilis");
+                    tvEmptyDesc.setText("Tidak ada rilis anime untuk " + dayLabel + " yang tersedia di aplikasi.");
+                } else {
+                    tvEmptyTitle.setText("Tidak Ada Anime Ditemukan");
+                    tvEmptyDesc.setText("Tidak ada judul anime yang cocok dengan filter atau pencarian ini.");
+                }
+            }
+            if (rvGrid != null) rvGrid.setVisibility(View.GONE);
+        } else {
+            if (layoutPagination != null && !"riwayat".equals(currentView) && !"jadwal".equals(currentView) && !"favorit".equals(currentView)) {
+                layoutPagination.setVisibility(View.VISIBLE);
+            }
+            if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
+            if (rvGrid != null) {
+                rvGrid.setVisibility(View.VISIBLE);
+                rvGrid.scheduleLayoutAnimation();
+                rvGrid.scrollToPosition(0);
+                if (TvFocusHelper.isTv(MainActivity.this)) {
+                    rvGrid.post(() -> {
+                        RecyclerView.ViewHolder vh = rvGrid.findViewHolderForAdapterPosition(0);
+                        if (vh != null && vh.itemView != null) {
+                            vh.itemView.requestFocus();
+                        } else {
+                            rvGrid.requestFocus();
+                        }
+                    });
+                }
+            }
+        }
     }
 
     private void confirmAndClearHistory() {

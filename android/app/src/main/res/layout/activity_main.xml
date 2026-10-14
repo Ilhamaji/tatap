@@ -12,109 +12,38 @@
     android:clipToPadding="false"
     android:background="#090A0F">
 
-    <!-- Top App Bar / Modern Unified Header (44dp) -->
-    <FrameLayout
+    <!-- Top App Bar / Modern Unified Header with Clean Fluid Search Bar (44dp) -->
+    <LinearLayout
         android:id="@+id/layout_header_root"
         android:layout_width="match_parent"
         android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         android:background="#090A0F"
         android:paddingHorizontal="12dp">
 
-        <!-- Normal State: Logo + Online Status + Search Button + Menu Button -->
-        <LinearLayout
-            android:id="@+id/layout_header_normal"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+        <!-- App Brand Logo / Title (Kapital TATAP) -->
+        <TextView
+            android:id="@+id/tv_app_logo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TATAP"
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.04"
+            android:layout_marginEnd="10dp" />
 
-            <!-- App Brand Logo / Title -->
-            <TextView
-                android:id="@+id/tv_app_logo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Tatap"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.01" />
-
-            <!-- Online Status Badge -->
-            <TextView
-                android:id="@+id/tv_status_badge"
-                android:layout_width="wrap_content"
-                android:layout_height="24dp"
-                android:background="@drawable/bg_status_pill"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:gravity="center"
-                android:paddingHorizontal="8dp"
-                android:layout_marginEnd="8dp"
-                android:text="Online"
-                android:textColor="#10B981"
-                android:textSize="10sp"
-                android:textStyle="bold" />
-
-            <!-- Header Search Toggle Button -->
-            <TextView
-                android:id="@+id/btn_header_search_toggle"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_header_button"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:nextFocusDown="@+id/btn_tab_musim"
-                android:gravity="center"
-                android:text="🔍"
-                android:textSize="13sp"
-                android:layout_marginEnd="6dp" />
-
-            <!-- Header Quick Menu Button -->
-            <TextView
-                android:id="@+id/btn_toggle_menu"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:background="@drawable/bg_menu_toggle"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?attr/selectableItemBackground"
-                android:nextFocusDown="@+id/btn_tab_musim"
-                android:gravity="center"
-                android:paddingHorizontal="11dp"
-                android:text="⋮ Menu"
-                android:textColor="#CBD5E1"
-                android:textSize="11.5sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <!-- Search Mode Bar (Expandable full-width in header) -->
+        <!-- Fluid Search Bar (Clean from icon, pure text field) -->
         <LinearLayout
             android:id="@+id/layout_search_box"
-            android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:layout_gravity="center_vertical"
+            android:layout_width="0dp"
+            android:layout_height="34dp"
+            android:layout_weight="1"
             android:background="@drawable/bg_search_box"
             android:gravity="center_vertical"
-            android:paddingHorizontal="8dp"
-            android:visibility="gone">
-
-            <!-- Back from search -->
-            <TextView
-                android:id="@+id/btn_search_back"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:gravity="center"
-                android:text="←"
-                android:textColor="#94A3B8"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_marginEnd="4dp" />
+            android:paddingHorizontal="12dp"
+            android:layout_marginEnd="8dp">
 
             <EditText
                 android:id="@+id/et_search"
@@ -122,19 +51,19 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:background="@null"
-                android:hint="Cari judul anime atau ketik :command..."
+                android:hint="Cari anime atau :command..."
                 android:textColorHint="#4B5563"
                 android:textColor="#F1F5F9"
-                android:textSize="12.5sp"
+                android:textSize="12sp"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:singleLine="true" />
 
-            <!-- Clear Search Button -->
+            <!-- Clear Search Button (Hanya muncul saat ada teks diketik) -->
             <TextView
                 android:id="@+id/btn_clear_search"
-                android:layout_width="26dp"
-                android:layout_height="26dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:gravity="center"
                 android:text="✕"
                 android:textColor="#64748B"
@@ -143,15 +72,41 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:background="?attr/selectableItemBackgroundBorderless" />
-
-            <ProgressBar
-                android:id="@+id/pb_loading"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:visibility="gone"
-                android:indeterminateTint="#38BDF8" />
         </LinearLayout>
-    </FrameLayout>
+
+        <!-- Status Online Badge: Cukup Ikon Power Hijau di antara Search Bar & Tombol Menu -->
+        <TextView
+            android:id="@+id/tv_status_badge"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/bg_status_pill"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:text="⏻"
+            android:textColor="#10B981"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Header Quick Menu Button -->
+        <TextView
+            android:id="@+id/btn_toggle_menu"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:background="@drawable/bg_menu_toggle"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:nextFocusDown="@+id/btn_tab_musim"
+            android:gravity="center"
+            android:paddingHorizontal="11dp"
+            android:text="⋮ Menu"
+            android:textColor="#CBD5E1"
+            android:textSize="11.5sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
     <!-- Command Execution Feedback Banner -->
     <LinearLayout
@@ -488,7 +443,7 @@
                 android:layout_height="match_parent"
                 android:clipChildren="false">
 
-                <!-- Native Grid of Anime Cards -->
+                <!-- Native Grid of Anime Cards with Entrance Cascade Animation -->
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rv_anime_grid"
                     android:layout_width="match_parent"
@@ -498,7 +453,34 @@
                     android:paddingBottom="64dp"
                     android:clipToPadding="false"
                     android:clipChildren="false"
+                    android:layoutAnimation="@anim/grid_layout_animation"
                     android:scrollbars="vertical" />
+
+                <!-- Central Loading State (Animasi Loading Utama di Tengah Konten) -->
+                <LinearLayout
+                    android:id="@+id/layout_loading_state"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <ProgressBar
+                        android:id="@+id/pb_central_loading"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:indeterminateTint="#38BDF8" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Memuat data anime..."
+                        android:textColor="#64748B"
+                        android:textSize="12sp"
+                        android:letterSpacing="0.02" />
+                </LinearLayout>
 
                 <!-- Empty / Error Placeholder View -->
                 <LinearLayout

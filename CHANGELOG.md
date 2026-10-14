@@ -32,11 +32,19 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - **Navigasi Tab & Drawer Favorit:**
     - Android: Menambahkan pill `⭐ Favorit` pada Category Pills Carousel beranda untuk akses instan ke seluruh anime tersimpan.
     - Desktop Web: Menambahkan menu navigasi `⭐ Anime Favorit` pada drawer panel dan dukungan perintah `:favorit` / `:bookmark`.
-- **Penataan Ulang Top Menu Android (Modern Unified App Bar & Category Pills Carousel):**
-  - **Unified Action Bar 44dp:** Mengganti header bertingkat yang memakan hingga ~140dp dengan App Bar modern ringkas 44dp. Menampilkan logo Tatap di sisi kiri, serta tombol icon 🔍 (Cari) dan ⋮ (Menu Cepat) di sisi kanan.
-  - **Expandable In-Header Search Bar:** Mengetuk icon 🔍 mentransisikan header secara dinamis menjadi search input penuh dengan tombol kembali (`←`) dan clear (`✕`), membebaskan ruang pencarian tanpa menghimpit judul atau menu.
+- **Penataan Ulang Top Menu Android & Ultra-Clean Fluid Search Bar:**
+  - **Logo TATAP Kapital:** Menampilkan brand `TATAP` dalam huruf kapital penuh dengan letter-spacing proporsional di sisi kiri header.
+  - **Ultra-Clean Fluid Search Bar:** Mengembalikan bilah pencarian fluid inline satu baris (`layout_weight="1"`) yang bersih sepenuhnya dari ikon (tanpa icon kaca pembesar dan tanpa spinner di dalam kotak), memberikan tampilan minimalis, lapang, dan langsung siap menerima input.
+  - **Status Online Ikon Power Hijau:** Menyederhanakan indikator backend menjadi tombol ikon power bulat (`⏻`) berwarna hijau (`#10B981`) di antara Search Bar dan Tombol `⋮ Menu`.
   - **Horizontal Scrollable Category Pills (36dp):** Mengganti segmented tabs kaku dengan deretan pill kategori horizontal yang ramah satu jempol di HP dan D-Pad remote TV: *🌸 Musim Ini*, *📺 Masih Tayang*, *⭐ Favorit*, *📚 Katalog*, *⏱️ Jadwal*, dan *🏷️ Genre*.
   - **Efisiensi Ruang Layar (~58dp):** Menghilangkan tumpukan baris header ganda sehingga baris kartu anime langsung tampak luas dan utuh dari bagian atas layar pada ponsel maupun TV.
+
+- **Aktivasi Load Animation & Optimasi List Data:**
+  - **Central Loading Indicator:** Menggantikan mini-loader search bar dengan animasi pemuatan cyber cyan (`#38BDF8`, 40dp) di tengah layar konten lengkap dengan teks status memuat.
+  - **Cascade Layout Animation:** Menambahkan animasi entrance halus (fade-in & slide-up 180ms via `grid_item_fade_in.xml` dan `grid_layout_animation.xml`) saat kartu-kartu anime masuk ke `RecyclerView`.
+  - **Smooth Poster Fade-In:** Animasi transisi 160ms pada `ImageLoader.java` saat poster selesai diunduh dari jaringan.
+  - **In-Memory Tab Caching (<1ms):** Menyimpan cache daftar anime per-tab dengan masa berlaku 3 menit, membuat perpindahan antar tab (Musim Ini, Masih Tayang, Favorit, Katalog, Jadwal) berlangsung instan seketika tanpa latency jaringan.
+  - **Pencegahan Race Condition:** Menggunakan `AtomicInteger` tokenization untuk membatalkan respons jaringan yang usang saat pengguna berganti tab dengan cepat.
 
 - **Dual-Lane View & Pemisahan Anime Musiman vs Serial Panjang (Semua Platform):**
   - **Pemisahan Jalur Adaptif:** Memisahkan katalog anime yang masih tayang (`which=airing` / `:lanjutan` / Tab `MASIH TAYANG`) menjadi dua seksi terpisah dalam satu halaman:
