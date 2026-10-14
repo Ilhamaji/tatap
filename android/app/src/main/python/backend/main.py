@@ -958,7 +958,7 @@ def _get_video_client(url: str):
     import httpx as _hx
     if _direct_client is None:
         if os.environ.get("TATAP_IS_TV") == "1":
-            limits = _hx.Limits(max_connections=8, max_keepalive_connections=3, keepalive_expiry=20.0)
+            limits = _hx.Limits(max_connections=30, max_keepalive_connections=20, keepalive_expiry=90.0)
         else:
             limits = _hx.Limits(max_connections=60, max_keepalive_connections=30, keepalive_expiry=90.0)
         _direct_client = _hx.AsyncClient(

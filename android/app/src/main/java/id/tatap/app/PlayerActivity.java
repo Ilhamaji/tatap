@@ -40,6 +40,7 @@ import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.AspectRatioFrameLayout;
@@ -147,6 +148,7 @@ public class PlayerActivity extends Activity {
     }
 
     private String lastSubtitleText = "";
+    private boolean hasAppliedTrackSelectionForStream = false;
     private final Runnable subtitleSyncRunnable = new Runnable() {
         @Override
         public void run() {
@@ -388,18 +390,14 @@ public class PlayerActivity extends Activity {
     }
 
     private void initExoPlayer() {
-        boolean isTv = TvFocusHelper.isTv(this);
-        int minBuffer = isTv ? 8_000 : 12_000;
-        int maxBuffer = isTv ? 15_000 : 25_000;
-        int rebuffer = isTv ? 2_500 : 3_000;
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        minBuffer,
-                        maxBuffer,
-                        1_500,  // bufferForPlaybackMs
-                        rebuffer
+                        25_000, // minBufferMs (25s - mencegah starvation di 1080p)
+                        50_000, // maxBufferMs (50s)
+                        2_000,  // bufferForPlaybackMs (2s cepat mulai)
+                        4_000   // bufferForPlaybackAfterRebufferMs (4s)
                 )
-                .setPrioritizeTimeOverSizeThresholds(true)
+                .setPrioritizeTimeOverSizeThresholds(false)
                 .build();
 
         // Bandwidth meter dengan estimasi awal tinggi (25 Mbps) agar ExoPlayer langsung
@@ -409,7 +407,12 @@ public class PlayerActivity extends Activity {
                 .setInitialBitrateEstimate(25_000_000)
                 .build();
 
-        player = new ExoPlayer.Builder(this)
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this)
+                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
+                .setEnableDecoderFallback(true)
+                .forceEnableMediaCodecAsynchronousQueueing();
+
+        player = new ExoPlayer.Builder(this, renderersFactory)
                 .setLoadControl(loadControl)
                 .setBandwidthMeter(bandwidthMeter)
                 .setSeekForwardIncrementMs(5000)
@@ -477,13 +480,14 @@ public class PlayerActivity extends Activity {
         }
 
         player.addListener(new Player.Listener() {
-            private int lastVideoHeight = 0;
-
             @Override
             public void onTracksChanged(androidx.media3.common.Tracks tracks) {
-                // Saat manifest/tracks HLS baru selesai di-resolve oleh ExoPlayer, terapkan kembali track selection
-                // agar target override (1080p dsb.) terikat ke TrackGroup yang valid
-                if (activeQuality != null && player != null) {
+                // Saat manifest/tracks HLS baru selesai di-resolve pertama kali oleh ExoPlayer,
+                // kunci track selection HANYA SEKALI agar target (1080p dsb.) terikat ke TrackGroup yang valid.
+                // Proteksi boolean atomik mencegah loop rekursif pemanggilan setTrackSelectionParameters
+                // yang menyebabkan decoder video terus-menerus di-flush saat pemutaran sedang berjalan.
+                if (!hasAppliedTrackSelectionForStream && !tracks.isEmpty() && activeQuality != null && player != null) {
+                    hasAppliedTrackSelectionForStream = true;
                     applyHlsTrackSelection(activeQuality);
                 }
             }
@@ -532,21 +536,6 @@ public class PlayerActivity extends Activity {
                         sv.requestLayout();
                     }
                     playerView.requestLayout();
-                }
-
-                // Proteksi Android TV: jika resolusi melonjak dari resolusi rendah (< 720) ke resolusi tinggi (>= 720),
-                // hardware decoder TV rentan tidak menyesuaikan dimensi buffer (mengakibatkan zoom/crop).
-                // Lakukan seamless codec refresh jika terdeteksi lonjakan resolusi.
-                if (TvFocusHelper.isTv(PlayerActivity.this) && lastVideoHeight > 0 && lastVideoHeight < 720 && videoSize.height >= 720 && player != null) {
-                    lastVideoHeight = videoSize.height;
-                    long pos = player.getCurrentPosition();
-                    boolean playing = player.isPlaying();
-                    player.stop();
-                    if (pos > 0) player.seekTo(pos);
-                    player.prepare();
-                    if (playing) player.play();
-                } else {
-                    lastVideoHeight = videoSize.height;
                 }
             }
 
@@ -1158,10 +1147,12 @@ public class PlayerActivity extends Activity {
             MediaItem.Builder mib = new MediaItem.Builder()
                     .setUri(Uri.parse(proxiedVideo))
                     .setMediaMetadata(mediaMetadata);
+            hasAppliedTrackSelectionForStream = false;
+
             if (isHls) {
                 mib.setMimeType(MimeTypes.APPLICATION_M3U8);
                 HlsMediaSource videoSource = new HlsMediaSource.Factory(httpDataSourceFactory)
-                        .setAllowChunklessPreparation(false)
+                        .setAllowChunklessPreparation(true)
                         .createMediaSource(mib.build());
                 player.setMediaSource(videoSource);
             } else {
@@ -1522,6 +1513,7 @@ public class PlayerActivity extends Activity {
             long resumePos = player.getCurrentPosition();
             boolean wasPlaying = player.isPlaying();
 
+            hasAppliedTrackSelectionForStream = true;
             applyHlsTrackSelection(newQ);
 
             // Pada Android TV, hardware decoder (MediaCodec) mengunci ukuran buffer saat inisialisasi awal.
@@ -1631,26 +1623,24 @@ public class PlayerActivity extends Activity {
             } else {
                 int maxH = Integer.MAX_VALUE;
                 int maxW = Integer.MAX_VALUE;
-                int minH = 0;
-                int minW = 0;
                 if ("best".equalsIgnoreCase(quality) || "hd".equalsIgnoreCase(quality) || quality.contains("1080")) {
-                    maxH = 1080; maxW = 1920; minH = 900; minW = 1600;
+                    maxH = 1080; maxW = 1920;
                 } else if (quality.contains("720")) {
-                    maxH = 720; maxW = 1280; minH = 600; minW = 1000;
+                    maxH = 720; maxW = 1280;
                 } else if (quality.contains("480")) {
-                    maxH = 480; maxW = 854; minH = 400; minW = 700;
+                    maxH = 480; maxW = 854;
                 } else if (quality.contains("360")) {
-                    maxH = 360; maxW = 640; minH = 0; minW = 0;
+                    maxH = 360; maxW = 640;
                 }
 
                 builder.setMaxVideoSize(maxW, maxH);
-                if (minW > 0 && minH > 0) {
-                    builder.setMinVideoSize(minW, minH);
-                }
             }
         }
 
-        player.setTrackSelectionParameters(builder.build());
+        androidx.media3.common.TrackSelectionParameters newParams = builder.build();
+        if (!newParams.equals(player.getTrackSelectionParameters())) {
+            player.setTrackSelectionParameters(newParams);
+        }
     }
 
     private void showSubtitleSelectorDialog() {
