@@ -5,6 +5,7 @@ var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[]
             subSize:"m",          // ukuran subtitle overlay: s|m|l
             translate:false        // toggle translate subtitle Indonesia (persist localStorage)
            };
+var _playTokenCounter = 0;
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
 function toast(msg,ms){
@@ -255,6 +256,8 @@ function syncSeg(){
 function openPlayer(ep, resumeTime){
   cur.ep=ep;
   cur.playerOpenedAt=Date.now();
+  cur.playToken = ++_playTokenCounter;
+  var token = cur.playToken;
   closeTitle();
   $("player-modal").classList.remove("hidden");
   $("pm-title").textContent=cur.title;
@@ -265,6 +268,7 @@ function openPlayer(ep, resumeTime){
   var t0=Date.now();
   var src=cur.source||"";
   window.Tatap.resolve(cur.slug,ep,cur.mode,cur.quality,src).then(function(r){
+    if(cur.playToken !== token) return;
     if(!r || !r.success){
       $("pm-spinner").classList.add("hidden");
       $("pm-status").textContent="ERROR: "+(r && r.error ? r.error : "gagal resolve stream");
@@ -299,6 +303,7 @@ function openPlayer(ep, resumeTime){
     playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
     window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode}).then(function(){renderContinue();});
   }).catch(function(err){
+    if(cur.playToken !== token) return;
     $("pm-spinner").classList.add("hidden");
     $("pm-status").textContent="KONEKSI GAGAL: "+(err&&err.message||err);
     toast("Koneksi gagal saat resolve: "+(err&&err.message||err));
@@ -621,8 +626,14 @@ function syncNativeTextTrack(vttText, cues, langCode){
 
   if(v.textTracks){
     for(var j=0;j<v.textTracks.length;j++){
-      if(v.textTracks[j].label&&v.textTracks[j].label.indexOf("Tatap")>=0){
-        v.textTracks[j].mode="disabled";
+      var tt = v.textTracks[j];
+      if(tt.label&&tt.label.indexOf("Tatap")>=0){
+        tt.mode="disabled";
+        if(tt.cues){
+          for(var ci=tt.cues.length-1;ci>=0;ci--){
+            try{tt.removeCue(tt.cues[ci]);}catch(_){}
+          }
+        }
       }
     }
   }
@@ -635,7 +646,7 @@ function syncNativeTextTrack(vttText, cues, langCode){
     trackEl.kind="subtitles";
     trackEl.label="Tatap Subtitle";
     trackEl.srclang=langCode||"id";
-    trackEl.default=true;
+    trackEl.default=false;
 
     if(vttText&&window.Blob&&window.URL&&window.URL.createObjectURL){
       var blob=new Blob([vttText],{type:"text/vtt"});
@@ -749,11 +760,17 @@ function paintCue(){
   if(!s)return;
   if($("player-modal").classList.contains("hidden")){s.innerHTML="";return;}
   var t=v.currentTime||0;
-  var html="";
-  for(var i=0;i<cur.cues.length;i++){
-    if(t>=cur.cues[i].start&&t<=cur.cues[i].end){html=cur.cues[i].html;break;}
+  if(isVideoFullscreen()){
+    if(s._last!==""){s.innerHTML="";s._last="";}
+    box.style.display="none";
+  }else{
+    box.style.display="";
+    var html="";
+    for(var i=0;i<cur.cues.length;i++){
+      if(t>=cur.cues[i].start&&t<=cur.cues[i].end){html=cur.cues[i].html;break;}
+    }
+    if(s._last!==html){s.innerHTML=html;s._last=html;}
   }
-  if(s._last!==html){s.innerHTML=html;s._last=html;}
   checkSkipTimes(t);
 }
 
@@ -856,6 +873,7 @@ function switchSubtitleTrack(url, langCode){
   // langCode opsional ("id", "ja", dst.) — backend akan translate kalau beda.
   var v=$("vid");
   if(!v)return;
+  var token = cur.playToken;
   // Bersihkan track lama lalu kosongkan overlay.
   syncNativeTextTrack("", [], "");
   cur.cues=[];
@@ -901,6 +919,7 @@ function switchSubtitleTrack(url, langCode){
   var ref=cur.res&&cur.res.referer||"";
   var subPromise = prefetchSubtitleTrack(originalUrl, ref, langCode);
   subPromise.then(function(res){
+    if(cur.playToken !== token) return;
     clearOverlay();
     cur.cues=parseVtt(res.text);
     paintCue();
@@ -931,14 +950,18 @@ function switchSubtitleTrack(url, langCode){
         // Jika mode AI Fansub dan disajikan instan via GTX+ / MT, upgrade di background saat AI selesai:
         if(trackMode === "ai" && (res.bg === "llm-translating" || res.tier === "tier2" || res.tier === "gtx+" || res.tier === "cached-gtx+" || res.tier === "aigtx" || res.tier === "cached-aigtx" || res.tier === "cached-mt")){
           var checkUpgrade = function(attempt){
+            if(cur.playToken !== token) return;
             if(attempt > 20) return; // Maksimal ~5 menit
             cur._subUpgradeTimer = setTimeout(function(){
+              if(cur.playToken !== token) return;
               var qs = "url=" + encodeURIComponent(url) + "&referer=" + encodeURIComponent(ref || "") + "&lang=id";
               fetch("/api/player/sub?" + qs).then(function(ur){
+                if(cur.playToken !== token) return;
                 var uTier = ur.headers.get("X-Translate-Tier") || "";
                 var uModel = ur.headers.get("X-Translate-Model") || "";
                 if(uTier === "cached" || uTier === "tier1"){
                   ur.text().then(function(uText){
+                    if(cur.playToken !== token) return;
                     cur.cues = parseVtt(uText);
                     paintCue();
                     syncNativeTextTrack(uText, cur.cues, "id");
@@ -956,6 +979,7 @@ function switchSubtitleTrack(url, langCode){
       }
     }
   }).catch(function(err){
+    if(cur.playToken !== token) return;
     cur.cues=[];
     clearOverlay();
     syncNativeTextTrack("", [], "");
@@ -1190,6 +1214,10 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
       backBufferLength:30,
       liveSyncDurationCount:2,
       maxFragLookUpTolerance:0.5,
+      nudgeOffset:0.1,
+      nudgeMaxRetry:5,
+      maxStarvationDelay:4,
+      highBufferWatchdogPeriod:2,
       testBandwidth:false,
       progressive:true,
       lowLatencyMode:false,
@@ -1197,6 +1225,12 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
       enableWorker:true
     });
     window._hls=h;
+    h._networkRetryCount = 0;
+    h._mediaRetryCount = 0;
+    h.on(Hls.Events.FRAG_LOADED, function(){
+      h._networkRetryCount = 0;
+      h._mediaRetryCount = 0;
+    });
     h.on(Hls.Events.AUDIO_TRACKS_UPDATED,function(ev,data){
       if(data&&data.audioTracks&&data.audioTracks.length){
         var isDub = (cur.mode === "dub");
@@ -1237,7 +1271,11 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
           for(var fi=0;fi<fr.length;fi++){if(!fr[fi].loaded){nxt=fr[fi];break;}}
         }
         if(nxt&&nxt.url){
-          fetch("/api/player/video?url="+encodeURIComponent(nxt.url)+"&referer="+encodeURIComponent(referrer||""),{mode:"no-cors",priority:"low"}).catch(function(){});
+          var fetchTarget = nxt.url;
+          if(!fetchTarget.startsWith("/api/player/video") && !fetchTarget.startsWith("/api/")){
+            fetchTarget = "/api/player/video?url="+encodeURIComponent(nxt.url)+"&referer="+encodeURIComponent(referrer||"");
+          }
+          fetch(fetchTarget,{mode:"no-cors",priority:"low"}).catch(function(){});
         }
       }catch(e){}
     });
@@ -1294,20 +1332,28 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
     h.attachMedia(v);
     h.on(Hls.Events.ERROR,function(ev,d){
       if(!d)return;
+      if(d.details === Hls.ErrorDetails.BUFFER_STALLED_ERROR || d.details === "bufferStalledError"){
+        try{
+          if(!v.paused && v.readyState >= 2){
+            v.currentTime += 0.08;
+          }
+          h.startLoad();
+        }catch(_){}
+        return;
+      }
       if(d.fatal){
         if(d.type===Hls.ErrorTypes.NETWORK_ERROR){
-          // Coba pulihkan koneksi network sekali sebelum menyerah
-          if(!h._networkRetried){
-            h._networkRetried=true;
-            $("pm-status").textContent="mencoba memulihkan koneksi stream...";
-            h.startLoad();
+          h._networkRetryCount = (h._networkRetryCount || 0) + 1;
+          if(h._networkRetryCount <= 4){
+            $("pm-status").textContent="mencoba memulihkan koneksi stream ("+h._networkRetryCount+"/4)...";
+            setTimeout(function(){ try{h.startLoad();}catch(_){} }, 600);
             return;
           }
         }else if(d.type===Hls.ErrorTypes.MEDIA_ERROR){
-          if(!h._mediaRetried){
-            h._mediaRetried=true;
-            $("pm-status").textContent="mencoba memulihkan codec media...";
-            h.recoverMediaError();
+          h._mediaRetryCount = (h._mediaRetryCount || 0) + 1;
+          if(h._mediaRetryCount <= 3){
+            $("pm-status").textContent="mencoba memulihkan codec media ("+h._mediaRetryCount+"/3)...";
+            setTimeout(function(){ try{h.recoverMediaError();}catch(_){} }, 500);
             return;
           }
         }

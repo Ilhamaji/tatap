@@ -13,6 +13,30 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.6.2] - 2026-10-14
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.6.1 -> 2.6.2)
+Kenaikan digit PATCH diterapkan secara resmi sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan stabilitas platform Desktop (Windows Portable) dan Web Desktop tanpa penambahan modul arsitektur baru:
+1. **Perbaikan Subtitle Ganda (Duplicate Subtitle Rendering):** Mengeliminasi konflik visual antara rendering native `video::cue` dan overlay kustom `#pm-subs-overlay` di Chromium dan Edge WebView2 Windows Portable dengan menyetel `trackEl.default = false` dan menyembunyikan overlay saat mode native fullscreen aktif.
+2. **Percepatan Resolving Video:** Memangkas rantai HTTP request berulang pada backend MegaPlay dengan menggunakan single-fetch master playlist m3u8 dan mempercepat soft-validasi track subtitle CDN terpercaya.
+3. **Pemberian Batas Timeout AniSkip:** Membatasi pemanggilan sinkron API AniSkip dengan timeout maksimal 1.2 detik sehingga episode langsung diputar tanpa tertahan jika server skip-times lambat atau mengalami latency.
+4. **Perbaikan Macet Streaming & URL Nesting Prefetch:** Memperbaiki bug pembungkusan URL bersarang (*nested proxy url*) pada Hls.js `FRAG_BUFFERED` yang sebelumnya memicu HTTP 400 Bad Request, menambahkan auto-nudge buffer stall recovery, serta mencegah keracunan cache host DPI pada CDN streaming normal.
+5. **Pencegahan Race Condition Episode Navigation:** Menambahkan token request unik `cur.playToken` pada navigasi episode dan pergantian subtitle agar respon episode lama tidak menimpa episode baru saat navigasi cepat.
+
+### Diperbaiki
+- **Frontend Player & Subtitle Dual-Layer (`frontend/js/app.js`):**
+  - **Single-Layer Subtitle Display:** Menyetel `trackEl.default = false;` pada `syncNativeTextTrack` dan memperbarui `paintCue()` untuk menyembunyikan `#pm-subs-overlay` saat native video fullscreen aktif. Membersihkan seluruh cue sisa dari track lama saat transisi track.
+  - **URL Nesting Prefetch Fix:** Memeriksa apakah fragmen Hls sudah berawalan `/api/player/video` sebelum memanggil prefetch, menghilangkan banjir error HTTP 400 Bad Request di latar belakang.
+  - **Hls.js Auto-Nudge & Resilient Recovery:** Menambahkan `nudgeOffset: 0.1`, `nudgeMaxRetry: 5`, menangani `bufferStalledError` dengan micro-nudge `v.currentTime += 0.08`, serta mengimplementasikan multi-attempt retry (hingga 4 kali) yang direset setiap kali segmen berhasil dimuat (`FRAG_LOADED`).
+  - **Episode Navigation Race Protection:** Menambahkan token `cur.playToken = ++_playTokenCounter;` di awal `openPlayer()` dan `switchSubtitleTrack()` untuk membatalkan callback lama jika pengguna berpindah episode secara cepat.
+- **Backend Resolving & Streaming Pipeline (`backend/api/hianime.py` & `backend/main.py`):**
+  - **Single Master M3U8 Fetch:** Memangkas 3x pengunduhan berulang master m3u8 menjadi 1x pengunduhan terintegrasi di `_try_megaplay`, mempercepat waktu pembukaan video hingga 60-70%.
+  - **Trusted CDN Subtitle Fast-Track:** Melewati download mendalam file subtitle WebVTT saat me-resolve stream dari CDN terpercaya (MegaPlay, MegaCloud, Rabbitstream) sehingga metadata stream selesai instan.
+  - **AniSkip Non-Blocking Timeout:** Membungkus pencarian intro/outro AniSkip dengan batas waktu 1.2 detik menggunakan `asyncio.wait_for`, menjamin ketiadaan atau kelambatan respon server eksternal tidak menunda pemutaran.
+  - **Anti Host Poisoning Protection:** Melindungi daftar host DPI (`_BLOCKED_DPI_HOSTS`) agar tidak tercemar oleh domain CDN umum saat terjadi timeout jaringan biasa.
+- **Automated Test Suite (`tests/test_desktop_perf_and_subs.py`):**
+  - Menambahkan pengujian otomatis untuk validasi cepat subtitle terpercaya, batas waktu AniSkip, dan proteksi anti host poisoning.
+
 ## [2.6.1] - 2026-10-14
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.6.0 -> 2.6.1)

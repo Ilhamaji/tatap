@@ -933,7 +933,10 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
             if (hit["intro"].get("end", 0) == 0 or hit["outro"].get("end", 0) == 0) and hit.get("mal_id"):
                 try:
                     loop = asyncio.get_running_loop()
-                    sk = await loop.run_in_executor(None, lambda: aniskip.get_skip_times(hit["mal_id"], ep))
+                    sk = await asyncio.wait_for(
+                        loop.run_in_executor(None, lambda: aniskip.get_skip_times(hit["mal_id"], ep)),
+                        timeout=1.2
+                    )
                     if sk.get("intro", {}).get("end", 0) > 0 and hit["intro"].get("end", 0) == 0:
                         hit["intro"] = sk["intro"]
                     if sk.get("outro", {}).get("end", 0) > 0 and hit["outro"].get("end", 0) == 0:
@@ -991,7 +994,10 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         mal_id = got.get("mal_id") or ""
         if (got["intro"].get("end", 0) == 0 or got["outro"].get("end", 0) == 0) and mal_id:
             try:
-                sk = await loop.run_in_executor(None, lambda: aniskip.get_skip_times(mal_id, ep))
+                sk = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: aniskip.get_skip_times(mal_id, ep)),
+                    timeout=1.2
+                )
                 if sk.get("intro", {}).get("end", 0) > 0 and got["intro"].get("end", 0) == 0:
                     got["intro"] = sk["intro"]
                 if sk.get("outro", {}).get("end", 0) > 0 and got["outro"].get("end", 0) == 0:
@@ -1207,11 +1213,14 @@ async def _pipe_video(url: str, referer: str):
             if attempt == 0:
                 await _asyncio.sleep(0.3)
                 continue
-            # Jika 2x attempt gagal (RST, timeout, DNS), tandai host dan coba TLS desync
             try:
                 from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
                 host = _host_from(url)
-                _BLOCKED_DPI_HOSTS.add(host)
+                err_text = str(e).lower()
+                is_known_dpi = any(k in host for k in ("dramahot", "zokoanime"))
+                is_rst = any(w in err_text for w in ("connection reset", "connectionreseterror", "rst", "closed connection"))
+                if is_known_dpi or is_rst:
+                    _BLOCKED_DPI_HOSTS.add(host)
                 async for chunk in _pipe_desync_video(url, referer):
                     yield chunk
                 return
