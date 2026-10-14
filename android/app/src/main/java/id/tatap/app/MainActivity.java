@@ -23,11 +23,14 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.inputmethod.EditorInfo;
 import android.graphics.PorterDuff;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -92,6 +95,7 @@ public class MainActivity extends Activity {
 
     // Scrollable Category Pills & Pagination
     private View layoutTabsSegmented;
+    private LinearLayout layoutTabsContainer;
     private TextView btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabJadwal, btnTabGenre;
     private View layoutScheduleDays;
     private TextView btnDayYesterday, btnDayToday, btnDayTomorrow;
@@ -157,6 +161,7 @@ public class MainActivity extends Activity {
         showLoadingState("Memulai backend Tatap...");
 
         layoutTabsSegmented = findViewById(R.id.layout_tabs_segmented);
+        layoutTabsContainer = findViewById(R.id.layout_tabs_container);
         btnTabMusim = findViewById(R.id.btn_tab_musim);
         btnTabAiring = findViewById(R.id.btn_tab_airing);
         btnTabFavorit = findViewById(R.id.btn_tab_favorit);
@@ -268,21 +273,40 @@ public class MainActivity extends Activity {
         if (layoutTabsSegmented != null) {
             ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) layoutTabsSegmented.getLayoutParams();
             if (mlp != null) {
-                mlp.topMargin = dpToPx(1);
-                mlp.bottomMargin = dpToPx(3);
+                mlp.topMargin = dpToPx(2);
+                mlp.bottomMargin = dpToPx(4);
                 layoutTabsSegmented.setLayoutParams(mlp);
             }
-            layoutTabsSegmented.setPadding(dpToPx(2), dpToPx(2), dpToPx(2), dpToPx(2));
+            layoutTabsSegmented.setPadding(0, 0, 0, 0);
         }
-        View[] tabs = new View[]{btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabJadwal, btnTabGenre};
-        for (View tab : tabs) {
-            if (tab != null) {
-                ViewGroup.LayoutParams lp = tab.getLayoutParams();
-                if (lp != null) {
-                    lp.height = dpToPx(30);
-                    tab.setLayoutParams(lp);
-                }
+        if (layoutTabsContainer != null) {
+            ViewGroup.LayoutParams clp = layoutTabsContainer.getLayoutParams();
+            if (clp != null) {
+                clp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+                clp.height = dpToPx(42);
+                layoutTabsContainer.setLayoutParams(clp);
             }
+        }
+        // Pada Android TV, 5 tab aktif (Musim Ini, Masih Tayang, Favorit, Katalog, Genre)
+        // dibagikan rata (weight=1.0f) membentang penuh 100% menyesuaikan lebar layar TV (10-Foot UI)
+        TextView[] tvTabs = new TextView[]{btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabGenre};
+        for (int i = 0; i < tvTabs.length; i++) {
+            TextView tab = tvTabs[i];
+            if (tab != null) {
+                LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(0, dpToPx(38), 1.0f);
+                tlp.setMarginEnd(i < tvTabs.length - 1 ? dpToPx(8) : 0);
+                tab.setLayoutParams(tlp);
+                tab.setGravity(Gravity.CENTER);
+                tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+                tab.setPadding(dpToPx(6), 0, dpToPx(6), 0);
+            }
+        }
+        // Sambungkan rantai D-Pad TV: Katalog -> Genre (karena Jadwal disembunyikan di TV)
+        if (btnTabKatalog != null) {
+            btnTabKatalog.setNextFocusRightId(R.id.btn_tab_genre);
+        }
+        if (btnTabGenre != null) {
+            btnTabGenre.setNextFocusLeftId(R.id.btn_tab_katalog);
         }
     }
 

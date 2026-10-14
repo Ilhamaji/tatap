@@ -13,6 +13,21 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.6.1] - 2026-10-14
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.6.0 -> 2.6.1)
+Kenaikan digit PATCH diterapkan secara resmi sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan dan penyesuaian tata letak antarmuka perangkat spesifik (Android TV 10-Foot UI Layout Adaptation) tanpa memutus kompatibilitas ke belakang maupun mengubah struktur modul backend:
+1. **Adaptive Full-Width Category Pill Menu di Android TV:** Menyesuaikan ukuran baris menu pill kedua (*horizontal scroll category tabs*) agar membentang 100% mengisi lebar layar TV secara simetris, mengeliminasi ruang kosong di sisi kanan layar.
+2. **Optimal 10-Foot TV Ergonomics:** Meningkatkan tinggi sentuh/fokus pill menjadi 38dp dan ukuran font menjadi 13.5sp tebal dengan perataan tengah untuk kenyamanan jarak pandang sofa TV (3 meter).
+3. **Perbaikan D-Pad Remote Chain:** Menyambungkan fokus navigasi remote TV secara langsung dari tab Katalog ke Genre saat tab Jadwal disembunyikan di TV.
+
+### Diubah
+- **Penyesuaian Ukuran Pill Menu Kategori Menyesuaikan Layar TV (`activity_main.xml` & `MainActivity.java`):**
+  - **Full-Width Symmetrical Distribution:** Mengaktifkan `android:fillViewport="true"` pada `HorizontalScrollView` dan mengubah kontainer `layoutTabsContainer` ke `MATCH_PARENT`. Kelima tab yang aktif di TV (*🌸 Musim Ini*, *📺 Masih Tayang*, *⭐ Favorit*, *📚 Katalog*, *🏷️ Genre*) dibagikan rata menggunakan `layout_weight="1.0f"` sehingga mengisi lebar layar 16:9 secara penuh, seimbang, dan proporsional.
+  - **10-Foot Viewing Dimensions:** Menaikkan tinggi pill dari `30dp` menjadi `38dp` dan ukuran teks dari `11.5sp` menjadi `13.5sp` berpusat di tengah (`Gravity.CENTER`) dengan margin antar-pill yang rapi (`8dp`), menjamin legibilitas optimal dari jarak jauh.
+  - **D-Pad TV Navigation Chain:** Memperbaiki rantai navigasi remote TV D-Pad (`setNextFocusRightId` / `setNextFocusLeftId`) antara `btnTabKatalog` dan `btnTabGenre` agar remote tidak terhenti pada tab yang disembunyikan.
+  - **Isolasi Ponsel Aman:** Mempertahankan tata letak asli pada perangkat ponsel Android sebagai carousel horizontal compact yang dapat digeser secara luwes dengan sentuhan jari.
+
 ## [2.6.0] - 2026-10-14
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.5.0 -> 2.6.0)
