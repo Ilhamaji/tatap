@@ -40,6 +40,7 @@ import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.DefaultLoadControl;
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
@@ -392,11 +393,21 @@ public class PlayerActivity extends Activity {
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
 
+        // Bandwidth meter dengan estimasi awal tinggi (25 Mbps) agar ExoPlayer langsung
+        // memilih track video beresolusi optimal (1080p/720p) saat pertama kali memutar,
+        // mencegah hardware decoder Android TV terlanjur mengunci buffer di 360p yang menyebabkan video ter-crop/zoom.
+        DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter.Builder(this)
+                .setInitialBitrateEstimate(25_000_000)
+                .build();
+
         player = new ExoPlayer.Builder(this)
                 .setLoadControl(loadControl)
+                .setBandwidthMeter(bandwidthMeter)
                 .setSeekForwardIncrementMs(5000)
                 .setSeekBackIncrementMs(5000)
                 .build();
+
+        player.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT);
 
         forwardingPlayer = new ForwardingPlayer(player) {
             @Override
@@ -457,6 +468,17 @@ public class PlayerActivity extends Activity {
         }
 
         player.addListener(new Player.Listener() {
+            private int lastVideoHeight = 0;
+
+            @Override
+            public void onTracksChanged(androidx.media3.common.Tracks tracks) {
+                // Saat manifest/tracks HLS baru selesai di-resolve oleh ExoPlayer, terapkan kembali track selection
+                // agar target override (1080p dsb.) terikat ke TrackGroup yang valid
+                if (activeQuality != null && player != null) {
+                    applyHlsTrackSelection(activeQuality);
+                }
+            }
+
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
@@ -501,6 +523,21 @@ public class PlayerActivity extends Activity {
                         sv.requestLayout();
                     }
                     playerView.requestLayout();
+                }
+
+                // Proteksi Android TV: jika resolusi melonjak dari resolusi rendah (< 720) ke resolusi tinggi (>= 720),
+                // hardware decoder TV rentan tidak menyesuaikan dimensi buffer (mengakibatkan zoom/crop).
+                // Lakukan seamless codec refresh jika terdeteksi lonjakan resolusi.
+                if (TvFocusHelper.isTv(PlayerActivity.this) && lastVideoHeight > 0 && lastVideoHeight < 720 && videoSize.height >= 720 && player != null) {
+                    lastVideoHeight = videoSize.height;
+                    long pos = player.getCurrentPosition();
+                    boolean playing = player.isPlaying();
+                    player.stop();
+                    if (pos > 0) player.seekTo(pos);
+                    player.prepare();
+                    if (playing) player.play();
+                } else {
+                    lastVideoHeight = videoSize.height;
                 }
             }
 
@@ -1125,6 +1162,10 @@ public class PlayerActivity extends Activity {
                 player.setMediaSource(videoSource);
             }
 
+            if (isHls) {
+                applyHlsTrackSelection(activeQuality);
+            }
+
             player.prepare();
             player.play();
 
@@ -1536,17 +1577,25 @@ public class PlayerActivity extends Activity {
     }
 
     private void applyHlsTrackSelection(String quality) {
-        if (player == null || quality == null) return;
+        if (player == null) return;
+        if (quality == null || quality.isEmpty()) quality = "best";
+
         androidx.media3.common.TrackSelectionParameters.Builder builder =
                 player.getTrackSelectionParameters().buildUpon()
                         .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_VIDEO)
                         .clearVideoSizeConstraints();
 
-        if (!"auto".equalsIgnoreCase(quality) && !"best".equalsIgnoreCase(quality)) {
+        if (!"auto".equalsIgnoreCase(quality)) {
             int targetH = 1080;
-            if (quality.contains("720")) targetH = 720;
-            else if (quality.contains("480")) targetH = 480;
-            else if (quality.contains("360")) targetH = 360;
+            if ("best".equalsIgnoreCase(quality) || "hd".equalsIgnoreCase(quality) || quality.contains("1080")) {
+                targetH = 1080;
+            } else if (quality.contains("720")) {
+                targetH = 720;
+            } else if (quality.contains("480")) {
+                targetH = 480;
+            } else if (quality.contains("360")) {
+                targetH = 360;
+            }
 
             androidx.media3.common.Tracks currentTracks = player.getCurrentTracks();
             androidx.media3.common.TrackGroup targetGroup = null;
@@ -1575,10 +1624,15 @@ public class PlayerActivity extends Activity {
                 int maxW = Integer.MAX_VALUE;
                 int minH = 0;
                 int minW = 0;
-                if (quality.contains("1080")) { maxH = 1080; maxW = 1920; minH = 900; minW = 1600; }
-                else if (quality.contains("720")) { maxH = 720; maxW = 1280; minH = 600; minW = 1000; }
-                else if (quality.contains("480")) { maxH = 480; maxW = 854; minH = 400; minW = 700; }
-                else if (quality.contains("360")) { maxH = 360; maxW = 640; minH = 0; minW = 0; }
+                if ("best".equalsIgnoreCase(quality) || "hd".equalsIgnoreCase(quality) || quality.contains("1080")) {
+                    maxH = 1080; maxW = 1920; minH = 900; minW = 1600;
+                } else if (quality.contains("720")) {
+                    maxH = 720; maxW = 1280; minH = 600; minW = 1000;
+                } else if (quality.contains("480")) {
+                    maxH = 480; maxW = 854; minH = 400; minW = 700;
+                } else if (quality.contains("360")) {
+                    maxH = 360; maxW = 640; minH = 0; minW = 0;
+                }
 
                 builder.setMaxVideoSize(maxW, maxH);
                 if (minW > 0 && minH > 0) {

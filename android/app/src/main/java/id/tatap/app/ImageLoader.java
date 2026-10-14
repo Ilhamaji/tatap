@@ -51,6 +51,8 @@ public class ImageLoader {
         }
 
         imageView.setTag(urlString);
+        // Anti-ghosting: segera set placeholder saat memulai loading gambar baru
+        imageView.setImageDrawable(new android.graphics.drawable.ColorDrawable(0xFF151822));
         executor.execute(() -> {
             try {
                 URL url = new URL(urlString);
