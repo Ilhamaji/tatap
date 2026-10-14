@@ -317,7 +317,7 @@ public class PlayerActivity extends Activity {
         if (btnSkipOpEd != null) {
             btnSkipOpEd.setOnClickListener(v -> doSkipOpEd());
             if (TvFocusHelper.isTv(this)) {
-                TvFocusHelper.attachCardFocus(btnSkipOpEd);
+                TvFocusHelper.attachFocusScale(btnSkipOpEd, 1.08f, 4f);
             }
         }
 
