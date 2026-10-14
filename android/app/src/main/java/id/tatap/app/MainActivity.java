@@ -167,11 +167,15 @@ public class MainActivity extends Activity {
         rvGrid.setLayoutManager(new GridLayoutManager(this, spanCount));
         adapter = new AnimeAdapter(this);
         rvGrid.setAdapter(adapter);
-        // Performance tuning untuk perangkat low-end (TV Stick RAM 1GB, HP murah)
+        // Performance tuning: bedakan antara Android TV (ramah low-RAM STB) dan Mobile
         rvGrid.setHasFixedSize(true);
-        rvGrid.setItemViewCacheSize(20);
-        rvGrid.setDrawingCacheEnabled(true);
-        rvGrid.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_LOW);
+        if (TvFocusHelper.isTv(this)) {
+            rvGrid.setItemViewCacheSize(4);
+        } else {
+            rvGrid.setItemViewCacheSize(20);
+            rvGrid.setDrawingCacheEnabled(true);
+            rvGrid.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_LOW);
+        }
 
         setupTabsAndListeners();
 
@@ -1505,9 +1509,10 @@ public class MainActivity extends Activity {
                 }
                 Object pyInstance = pyClass.getMethod("getInstance").invoke(null);
                 Object launcherMod = pyClass.getMethod("getModule", String.class).invoke(pyInstance, "server_launcher");
+                boolean isTv = TvFocusHelper.isTv(this);
                 String dataDir = getFilesDir().getAbsolutePath();
-                Log.d(TAG, "Menjalankan server_launcher.py dengan dataDir=" + dataDir);
-                launcherMod.getClass().getMethod("callAttr", String.class, Object[].class).invoke(launcherMod, "run_in_background", new Object[]{dataDir});
+                Log.d(TAG, "Menjalankan server_launcher.py dengan dataDir=" + dataDir + ", isTv=" + isTv);
+                launcherMod.getClass().getMethod("callAttr", String.class, Object[].class).invoke(launcherMod, "run_in_background", new Object[]{dataDir, isTv});
                 Log.d(TAG, "server_launcher.run_in_background dipanggil dengan sukses.");
             } catch (Throwable t) {
                 Log.e(TAG, "Error startEmbeddedBackend: " + t.getMessage(), t);
@@ -1842,6 +1847,18 @@ public class MainActivity extends Activity {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             ImageLoader.trimMemory();
+            if (TvFocusHelper.isTv(this)) {
+                new Thread(() -> {
+                    try {
+                        Class<?> pyClass = Class.forName("com.chaquo.python.Python");
+                        if ((Boolean) pyClass.getMethod("isStarted").invoke(null)) {
+                            Object pyInstance = pyClass.getMethod("getInstance").invoke(null);
+                            Object launcherMod = pyClass.getMethod("getModule", String.class).invoke(pyInstance, "server_launcher");
+                            launcherMod.getClass().getMethod("callAttr", String.class, Object[].class).invoke(launcherMod, "trim_memory", new Object[]{});
+                        }
+                    } catch (Throwable ignored) {}
+                }).start();
+            }
         }
     }
 }

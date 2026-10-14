@@ -146,6 +146,7 @@ public class PlayerActivity extends Activity {
                 || lower.contains("/hls/playlist");
     }
 
+    private String lastSubtitleText = "";
     private final Runnable subtitleSyncRunnable = new Runnable() {
         @Override
         public void run() {
@@ -153,25 +154,29 @@ public class PlayerActivity extends Activity {
                 long pos = player.getCurrentPosition();
                 SubtitleCue active = findActiveCue(pos);
                 if (active != null) {
-                    if (tvSubtitles.getVisibility() != View.VISIBLE || !active.text.equals(tvSubtitles.getText().toString())) {
+                    if (tvSubtitles.getVisibility() != View.VISIBLE || !active.text.equals(lastSubtitleText)) {
+                        lastSubtitleText = active.text;
                         tvSubtitles.setText(active.text);
                         tvSubtitles.setVisibility(View.VISIBLE);
                     }
                 } else {
                     if (tvSubtitles.getVisibility() == View.VISIBLE) {
+                        lastSubtitleText = "";
                         tvSubtitles.setText("");
                         tvSubtitles.setVisibility(View.GONE);
                     }
                 }
             } else {
                 if (tvSubtitles != null && tvSubtitles.getVisibility() == View.VISIBLE) {
+                    lastSubtitleText = "";
                     tvSubtitles.setText("");
                     tvSubtitles.setVisibility(View.GONE);
                 }
             }
 
             if (player != null && player.isPlaying()) {
-                handler.postDelayed(this, 75);
+                int syncInterval = TvFocusHelper.isTv(PlayerActivity.this) ? 150 : 75;
+                handler.postDelayed(this, syncInterval);
             }
         }
     };
@@ -383,12 +388,16 @@ public class PlayerActivity extends Activity {
     }
 
     private void initExoPlayer() {
+        boolean isTv = TvFocusHelper.isTv(this);
+        int minBuffer = isTv ? 8_000 : 12_000;
+        int maxBuffer = isTv ? 15_000 : 25_000;
+        int rebuffer = isTv ? 2_500 : 3_000;
         DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
                 .setBufferDurationsMs(
-                        12_000, // minBufferMs (12s alih-alih default 50s, hemat RAM 50%)
-                        25_000, // maxBufferMs (25s alih-alih 50s)
+                        minBuffer,
+                        maxBuffer,
                         1_500,  // bufferForPlaybackMs
-                        3_000   // bufferForPlaybackAfterRebufferMs
+                        rebuffer
                 )
                 .setPrioritizeTimeOverSizeThresholds(true)
                 .build();
@@ -2026,6 +2035,7 @@ public class PlayerActivity extends Activity {
         super.onPause();
         if (player != null) player.pause();
         handler.removeCallbacks(subtitleSyncRunnable);
+        handler.removeCallbacks(preResolveRunnable);
     }
 
     @Override
@@ -2042,6 +2052,7 @@ public class PlayerActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         handler.removeCallbacks(subtitleSyncRunnable);
+        handler.removeCallbacks(preResolveRunnable);
         if (player != null) {
             player.release();
             player = null;
@@ -2351,7 +2362,19 @@ public class PlayerActivity extends Activity {
      * di-scrape & disimpan ke SQLite episode_cache). Tidak mengunduh segmen video .ts
      * atau buffer video ExoPlayer untuk menjaga konsumsi RAM dan kuota tetap minimal.
      */
+    private final Runnable preResolveRunnable = this::executePreResolveNeighbors;
+
     private void preResolveNeighbors() {
+        if (TvFocusHelper.isTv(this)) {
+            // Pada TV, tunda preResolve 20 detik setelah pemutaran stabil agar tidak berebut CPU/RAM hardware decoder
+            handler.removeCallbacks(preResolveRunnable);
+            handler.postDelayed(preResolveRunnable, 20_000);
+            return;
+        }
+        executePreResolveNeighbors();
+    }
+
+    private void executePreResolveNeighbors() {
         final String currentSlug = (slug != null) ? slug : "";
         final String currentQ = (activeQuality != null && !activeQuality.isEmpty()) ? activeQuality : "best";
 
@@ -2394,6 +2417,18 @@ public class PlayerActivity extends Activity {
         super.onTrimMemory(level);
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             ImageLoader.trimMemory();
+            if (TvFocusHelper.isTv(this)) {
+                new Thread(() -> {
+                    try {
+                        Class<?> pyClass = Class.forName("com.chaquo.python.Python");
+                        if ((Boolean) pyClass.getMethod("isStarted").invoke(null)) {
+                            Object pyInstance = pyClass.getMethod("getInstance").invoke(null);
+                            Object launcherMod = pyClass.getMethod("getModule", String.class).invoke(pyInstance, "server_launcher");
+                            launcherMod.getClass().getMethod("callAttr", String.class, Object[].class).invoke(launcherMod, "trim_memory", new Object[]{});
+                        }
+                    } catch (Throwable ignored) {}
+                }).start();
+            }
         }
     }
 }

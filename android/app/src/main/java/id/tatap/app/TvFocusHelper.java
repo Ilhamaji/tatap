@@ -80,6 +80,6 @@ public class TvFocusHelper {
     }
 
     public static void attachCardFocus(final MaterialCardView card) {
-        attachFocusScale(card, 1.04f, 8f);
+        attachFocusScale(card, 1.04f, 0f);
     }
 }
