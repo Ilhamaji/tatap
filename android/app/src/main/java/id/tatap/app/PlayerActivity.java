@@ -1516,12 +1516,22 @@ public class PlayerActivity extends Activity {
             hasAppliedTrackSelectionForStream = true;
             applyHlsTrackSelection(newQ);
 
-            // Pada Android TV, hardware decoder (MediaCodec) mengunci ukuran buffer saat inisialisasi awal.
-            // Jika resolusi diubah tanpa me-reset codec, switch dari resolusi kecil (360p) ke besar (1080p)
-            // akan menyebabkan video ter-crop/zoom, atau sebaliknya menyusut (shrink dengan black borders).
-            // player.stop() diikuti player.seekTo() dan player.prepare() memaksa ExoPlayer merilis
-            // MediaCodec lama dan menginisialisasi ulang hardware decoder baru dengan buffer resolusi baru
-            // secara mulus tanpa mengubah media source (tidak looping dan sinkronisasi audio tetap utuh).
+            // Khusus Android TV: True Seamless Quality Switching
+            // Tidak memanggil player.stop() atau player.prepare() agar pemutaran tidak terputus (tanpa black screen/spinner).
+            // SurfaceView dan hardware decoder otomatis menyesuaikan dimensi buffer pada batas segmen/GOP berikutnya.
+            if (TvFocusHelper.isTv(this)) {
+                if (playerView != null) {
+                    playerView.setResizeMode(currentResizeMode);
+                    View sv = playerView.getVideoSurfaceView();
+                    if (sv != null) {
+                        sv.requestLayout();
+                    }
+                    playerView.requestLayout();
+                }
+                return;
+            }
+
+            // Pada Android Mobile: Pertahankan alokasi/perilaku bawaan yang ada (100% UNTOUCHED)
             player.stop();
             if (resumePos > 0) {
                 player.seekTo(resumePos);
