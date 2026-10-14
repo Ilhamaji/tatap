@@ -90,9 +90,11 @@ main{width:100%;margin:0;padding:var(--pad-y) var(--pad-x) calc(var(--status-h) 
 .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 6px;flex-wrap:wrap}
 .sec-title-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sec-head h2{font-size:var(--fs-head);margin:0;letter-spacing:1px;text-transform:uppercase;color:var(--dim);font-weight:600}
-.schedule-days-bar{display:inline-flex;margin:0;flex:0 0 auto}
+.schedule-days-bar{display:inline-flex;margin:0;flex:0 0 auto;gap:3px;overflow-x:auto;max-width:100%;white-space:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.schedule-days-bar::-webkit-scrollbar{display:none}
 .schedule-days-bar.hidden{display:none!important}
-.schedule-days-bar button{padding:4px 10px;font-size:11px}
+.schedule-days-bar button{padding:4px 9px;font-size:11px;white-space:nowrap;border-radius:4px;transition:all .15s}
+.schedule-days-bar button.is-today::after{content:" •";color:var(--cyan);font-weight:bold}
 .dim{color:var(--dim)}
 .small{font-size:11px}
 .link-btn{background:none;border:0;color:var(--dim);cursor:pointer;font:inherit;font-size:11px;text-decoration:underline;padding:0}

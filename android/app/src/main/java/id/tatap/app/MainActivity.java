@@ -98,8 +98,9 @@ public class MainActivity extends Activity {
     private LinearLayout layoutTabsContainer;
     private TextView btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabJadwal, btnTabGenre;
     private View layoutScheduleDays;
-    private TextView btnDayYesterday, btnDayToday, btnDayTomorrow;
-    private String currentScheduleDay = "today"; // "yesterday" | "today" | "tomorrow"
+    private TextView btnDaySenin, btnDaySelasa, btnDayRabu, btnDayKamis, btnDayJumat, btnDaySabtu, btnDayMinggu;
+    private String currentScheduleDay = "today"; // "monday".."sunday" | "today" | "yesterday" | "tomorrow"
+    private String currentScheduleActualDay = ""; // actual weekday key dari backend (misal "thursday")
     private TextView btnPrevPage, btnNextPage;
     private View layoutPagination;
 
@@ -169,16 +170,33 @@ public class MainActivity extends Activity {
         btnTabJadwal = findViewById(R.id.btn_tab_jadwal);
         btnTabGenre = findViewById(R.id.btn_tab_genre);
         layoutScheduleDays = findViewById(R.id.layout_schedule_days);
-        btnDayYesterday = findViewById(R.id.btn_day_yesterday);
-        btnDayToday = findViewById(R.id.btn_day_today);
-        btnDayTomorrow = findViewById(R.id.btn_day_tomorrow);
+        btnDaySenin = findViewById(R.id.btn_day_senin);
+        btnDaySelasa = findViewById(R.id.btn_day_selasa);
+        btnDayRabu = findViewById(R.id.btn_day_rabu);
+        btnDayKamis = findViewById(R.id.btn_day_kamis);
+        btnDayJumat = findViewById(R.id.btn_day_jumat);
+        btnDaySabtu = findViewById(R.id.btn_day_sabtu);
+        btnDayMinggu = findViewById(R.id.btn_day_minggu);
 
-        // Tab Jadwal HANYA untuk APK Mobile (!TvFocusHelper.isTv)
-        if (!TvFocusHelper.isTv(this)) {
-            if (btnTabJadwal != null) btnTabJadwal.setVisibility(View.VISIBLE);
-        } else {
-            if (btnTabJadwal != null) btnTabJadwal.setVisibility(View.GONE);
-            if (layoutScheduleDays != null) layoutScheduleDays.setVisibility(View.GONE);
+        // Tab Jadwal aktif untuk APK Mobile dan Android TV
+        if (btnTabJadwal != null) {
+            btnTabJadwal.setVisibility(View.VISIBLE);
+            if (TvFocusHelper.isTv(this)) {
+                TvFocusHelper.attachFocusScale(btnTabJadwal, 1.05f, 4f);
+            }
+        }
+        if (TvFocusHelper.isTv(this)) {
+            TextView[] scheduleChips = {btnDaySenin, btnDaySelasa, btnDayRabu, btnDayKamis, btnDayJumat, btnDaySabtu, btnDayMinggu};
+            for (int i = 0; i < scheduleChips.length; i++) {
+                TextView chip = scheduleChips[i];
+                if (chip != null) {
+                    TvFocusHelper.attachFocusScale(chip, 1.06f, 4f);
+                    chip.setNextFocusUpId(R.id.btn_tab_jadwal);
+                    chip.setNextFocusDownId(R.id.rv_anime_grid);
+                    if (i > 0 && scheduleChips[i - 1] != null) chip.setNextFocusLeftId(scheduleChips[i - 1].getId());
+                    if (i < scheduleChips.length - 1 && scheduleChips[i + 1] != null) chip.setNextFocusRightId(scheduleChips[i + 1].getId());
+                }
+            }
         }
 
         btnPrevPage = findViewById(R.id.btn_prev_page);
@@ -410,15 +428,13 @@ public class MainActivity extends Activity {
             });
         }
 
-        if (btnDayYesterday != null) {
-            btnDayYesterday.setOnClickListener(v -> switchScheduleDay("yesterday"));
-        }
-        if (btnDayToday != null) {
-            btnDayToday.setOnClickListener(v -> switchScheduleDay("today"));
-        }
-        if (btnDayTomorrow != null) {
-            btnDayTomorrow.setOnClickListener(v -> switchScheduleDay("tomorrow"));
-        }
+        if (btnDaySenin != null) btnDaySenin.setOnClickListener(v -> switchScheduleDay("monday"));
+        if (btnDaySelasa != null) btnDaySelasa.setOnClickListener(v -> switchScheduleDay("tuesday"));
+        if (btnDayRabu != null) btnDayRabu.setOnClickListener(v -> switchScheduleDay("wednesday"));
+        if (btnDayKamis != null) btnDayKamis.setOnClickListener(v -> switchScheduleDay("thursday"));
+        if (btnDayJumat != null) btnDayJumat.setOnClickListener(v -> switchScheduleDay("friday"));
+        if (btnDaySabtu != null) btnDaySabtu.setOnClickListener(v -> switchScheduleDay("saturday"));
+        if (btnDayMinggu != null) btnDayMinggu.setOnClickListener(v -> switchScheduleDay("sunday"));
 
         btnPrevPage.setOnClickListener(v -> {
             if (currentPage > 1) {
@@ -765,20 +781,13 @@ public class MainActivity extends Activity {
 
             case "jadwal":
             case "schedule":
-                if (!TvFocusHelper.isTv(this)) {
-                    if (!args.isEmpty()) {
-                        if (args.equalsIgnoreCase("kemarin") || args.equalsIgnoreCase("yesterday")) {
-                            currentScheduleDay = "yesterday";
-                        } else if (args.equalsIgnoreCase("besok") || args.equalsIgnoreCase("tomorrow")) {
-                            currentScheduleDay = "tomorrow";
-                        } else {
-                            currentScheduleDay = "today";
-                        }
-                    }
-                    resetFiltersToTab("jadwal");
+                if (!args.isEmpty()) {
+                    String d = parseScheduleDayArg(args);
+                    if (d != null) currentScheduleDay = d;
                 } else {
-                    showCommandOutput("> tatap$ Fitur Jadwal hanya tersedia di versi Mobile.", true);
+                    currentScheduleDay = "today";
                 }
+                resetFiltersToTab("jadwal");
                 break;
 
             case "genre":
@@ -1779,7 +1788,7 @@ public class MainActivity extends Activity {
         btnTabKatalog.setBackgroundResource(isKatalog ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
         btnTabKatalog.setTextColor(isKatalog ? 0xFFFFFFFF : 0xFF8892B0);
 
-        if (btnTabJadwal != null && !TvFocusHelper.isTv(this)) {
+        if (btnTabJadwal != null) {
             btnTabJadwal.setBackgroundResource(isJadwal ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
             btnTabJadwal.setTextColor(isJadwal ? 0xFFFFFFFF : 0xFF8892B0);
         }
@@ -1790,7 +1799,7 @@ public class MainActivity extends Activity {
         }
 
         if (layoutScheduleDays != null) {
-            layoutScheduleDays.setVisibility(isJadwal && !TvFocusHelper.isTv(this) ? View.VISIBLE : View.GONE);
+            layoutScheduleDays.setVisibility(isJadwal ? View.VISIBLE : View.GONE);
             if (isJadwal) {
                 updateScheduleDayButtons();
             }
@@ -1808,19 +1817,63 @@ public class MainActivity extends Activity {
     }
 
     private void updateScheduleDayButtons() {
-        if (btnDayYesterday == null || btnDayToday == null || btnDayTomorrow == null) return;
-        boolean isYesterday = "yesterday".equals(currentScheduleDay);
-        boolean isToday = "today".equals(currentScheduleDay);
-        boolean isTomorrow = "tomorrow".equals(currentScheduleDay);
+        TextView[] chips = {btnDaySenin, btnDaySelasa, btnDayRabu, btnDayKamis, btnDayJumat, btnDaySabtu, btnDayMinggu};
+        String[] keys = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"};
+        String activeKey = currentScheduleDay;
+        if ("today".equals(activeKey) && !currentScheduleActualDay.isEmpty()) {
+            activeKey = currentScheduleActualDay;
+        }
 
-        btnDayYesterday.setBackgroundResource(isYesterday ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
-        btnDayYesterday.setTextColor(isYesterday ? 0xFFFFFFFF : 0xFF8892B0);
+        TextView activeChip = null;
+        for (int i = 0; i < chips.length; i++) {
+            TextView chip = chips[i];
+            if (chip == null) continue;
+            boolean isActive = keys[i].equalsIgnoreCase(activeKey);
+            chip.setBackgroundResource(isActive ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
+            chip.setTextColor(isActive ? 0xFFFFFFFF : 0xFF8892B0);
+            if (isActive) activeChip = chip;
+        }
 
-        btnDayToday.setBackgroundResource(isToday ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
-        btnDayToday.setTextColor(isToday ? 0xFFFFFFFF : 0xFF8892B0);
+        if (activeChip != null && layoutScheduleDays instanceof HorizontalScrollView) {
+            final TextView target = activeChip;
+            layoutScheduleDays.post(() -> {
+                int scrollX = target.getLeft() - dpToPx(20);
+                ((HorizontalScrollView) layoutScheduleDays).smoothScrollTo(Math.max(0, scrollX), 0);
+            });
+        }
+    }
 
-        btnDayTomorrow.setBackgroundResource(isTomorrow ? R.drawable.bg_tab_active : R.drawable.bg_header_button);
-        btnDayTomorrow.setTextColor(isTomorrow ? 0xFFFFFFFF : 0xFF8892B0);
+    private String getScheduleDayLabel(String key) {
+        if (key == null) return "Hari Ini";
+        switch (key.toLowerCase()) {
+            case "monday": case "senin": return "Senin";
+            case "tuesday": case "selasa": return "Selasa";
+            case "wednesday": case "rabu": return "Rabu";
+            case "thursday": case "kamis": return "Kamis";
+            case "friday": case "jumat": return "Jumat";
+            case "saturday": case "sabtu": return "Sabtu";
+            case "sunday": case "minggu": return "Minggu";
+            case "yesterday": case "kemarin": return "Kemarin";
+            case "tomorrow": case "besok": return "Besok";
+            default: return "Hari Ini";
+        }
+    }
+
+    private String parseScheduleDayArg(String arg) {
+        if (arg == null) return "today";
+        String a = arg.trim().toLowerCase();
+        switch (a) {
+            case "senin": case "mon": case "monday": return "monday";
+            case "selasa": case "tue": case "tuesday": return "tuesday";
+            case "rabu": case "wed": case "wednesday": return "wednesday";
+            case "kamis": case "thu": case "thursday": return "thursday";
+            case "jumat": case "fri": case "friday": return "friday";
+            case "sabtu": case "sat": case "saturday": return "saturday";
+            case "minggu": case "sun": case "sunday": return "sunday";
+            case "kemarin": case "yesterday": return "yesterday";
+            case "besok": case "tomorrow": return "tomorrow";
+            case "hari ini": case "today": default: return "today";
+        }
     }
 
     private void hideKeyboard() {
@@ -1928,9 +1981,7 @@ public class MainActivity extends Activity {
                 endpoint = "/api/catalog?page=" + currentPage;
             }
         } else if ("jadwal".equals(currentView)) {
-            String dayLabel = "Hari Ini";
-            if ("yesterday".equals(currentScheduleDay)) dayLabel = "Kemarin";
-            else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "Besok";
+            String dayLabel = getScheduleDayLabel(currentScheduleDay);
             title = "Jadwal Rilis (" + dayLabel + ")";
             endpoint = "/api/schedule?day=" + currentScheduleDay;
         } else if ("genre".equals(currentView)) {
@@ -2007,6 +2058,22 @@ public class MainActivity extends Activity {
                     }
 
                     final int count = list.size();
+                    if ("jadwal".equals(currentView)) {
+                        JSONObject dataObj = res.optJSONObject("data");
+                        if (dataObj != null) {
+                            String curDay = dataObj.optString("current_day", "");
+                            String dayName = dataObj.optString("day_name", "");
+                            boolean isToday = dataObj.optBoolean("is_today", false);
+                            if (!curDay.isEmpty()) currentScheduleActualDay = curDay;
+                            runOnUiThread(() -> {
+                                if (!dayName.isEmpty()) {
+                                    tvSectionTitle.setText("Jadwal Rilis (" + dayName + (isToday ? " · Hari Ini" : "") + ")");
+                                }
+                                updateScheduleDayButtons();
+                            });
+                        }
+                    }
+
                     if (canCache) {
                         tabDataCache.put(cacheKey, new TabCacheEntry(list, count));
                     }
@@ -2080,11 +2147,9 @@ public class MainActivity extends Activity {
                     tvEmptyTitle.setText("Belum Ada Anime Favorit");
                     tvEmptyDesc.setText("Tandai anime favorit Anda dengan menekan tombol ⭐ + Favorit pada halaman detail.");
                 } else if ("jadwal".equals(currentView)) {
-                    String dayLabel = "hari ini";
-                    if ("yesterday".equals(currentScheduleDay)) dayLabel = "kemarin";
-                    else if ("tomorrow".equals(currentScheduleDay)) dayLabel = "besok";
+                    String dayLabel = getScheduleDayLabel(currentScheduleDay);
                     tvEmptyTitle.setText("Tidak Ada Jadwal Rilis");
-                    tvEmptyDesc.setText("Tidak ada rilis anime untuk " + dayLabel + " yang tersedia di aplikasi.");
+                    tvEmptyDesc.setText("Tidak ada rilis anime untuk hari " + dayLabel + " yang tersedia di aplikasi.");
                 } else {
                     tvEmptyTitle.setText("Tidak Ada Anime Ditemukan");
                     tvEmptyDesc.setText("Tidak ada judul anime yang cocok dengan filter atau pencarian ini.");

@@ -33,11 +33,21 @@ var Tui = (function () {
     S.page=1;loadView();
   }
 
+  var SCHEDULE_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  var SCHEDULE_LABELS = {
+    monday: "Senin", tuesday: "Selasa", wednesday: "Rabu",
+    thursday: "Kamis", friday: "Jumat", saturday: "Sabtu", sunday: "Minggu"
+  };
+
   S.scheduleDay = S.scheduleDay || "today";
 
-  function updateScheduleChips(){
+  function updateScheduleChips(currentServerDay){
     document.querySelectorAll("#schedule-days-bar button").forEach(function(b){
-      b.classList.toggle("active", b.getAttribute("data-day") === (S.scheduleDay || "today"));
+      var d = b.getAttribute("data-day");
+      b.classList.toggle("active", d === S.scheduleDay);
+      if(currentServerDay){
+        b.classList.toggle("is-today", d === currentServerDay);
+      }
     });
   }
 
@@ -61,7 +71,7 @@ var Tui = (function () {
       case "favorit":$("results-title").textContent="Anime Favorit";break;
       case "katalog":$("results-title").textContent=getCatalogFilterTitle();break;
       case "terbaru":{
-        var lblDay = S.scheduleDay === "yesterday" ? "kemarin" : (S.scheduleDay === "tomorrow" ? "besok" : "hari ini");
+        var lblDay = SCHEDULE_LABELS[S.scheduleDay] || S.scheduleDay || "Hari Ini";
         $("results-title").textContent="Jadwal rilis (" + lblDay + ")";
         break;
       }
@@ -144,13 +154,21 @@ var Tui = (function () {
         S.items = d.slice(start, start + pageSize);
         S.sel = -1;
       }else if(S.view==="terbaru"){
-        var days = ["yesterday", "today", "tomorrow"];
-        var curIdx = days.indexOf(S.scheduleDay || "today");
-        if(curIdx < 0) curIdx = 1;
+        var curDayKey = d.weekday || d.day || "";
+        if(curDayKey && SCHEDULE_DAYS.indexOf(curDayKey) >= 0){
+          S.scheduleDay = curDayKey;
+        }
+        var curIdx = SCHEDULE_DAYS.indexOf(S.scheduleDay || "");
+        if(curIdx < 0) curIdx = 0;
         S.page = curIdx + 1;
-        S.total = 3;
+        S.total = 7;
         S.items = d.items || (Array.isArray(d) ? d : []);
         S.sel = -1;
+        if(d.current_day) updateScheduleChips(d.current_day);
+        else updateScheduleChips();
+        var lblDay = SCHEDULE_LABELS[S.scheduleDay] || S.scheduleDay;
+        var isToday = d.is_today || (d.current_day === S.scheduleDay);
+        $("results-title").textContent = "Jadwal rilis (" + lblDay + (isToday ? " · Hari Ini" : "") + ")";
       }else if(Array.isArray(d)){
         S.items=d;S.page=1;S.total=1;S.sel=-1;
       }else{
@@ -389,13 +407,12 @@ var Tui = (function () {
     var info=$("pg-info");
 
     if(S.view === "terbaru"){
-      var days=["yesterday","today","tomorrow"];
-      var dayLabels={yesterday:"Kemarin",today:"Hari Ini",tomorrow:"Besok"};
-      var curIdx=days.indexOf(S.scheduleDay||"today");
-      if(curIdx<0) curIdx=1;
-      if(prevBtn) prevBtn.disabled=(curIdx<=0);
-      if(nextBtn) nextBtn.disabled=(curIdx>=days.length-1);
-      if(info) info.textContent=dayLabels[days[curIdx]]+" ("+(curIdx+1)+"/3) · "+S.items.length+" anime";
+      var curIdx = SCHEDULE_DAYS.indexOf(S.scheduleDay || "");
+      if(curIdx < 0) curIdx = 0;
+      if(prevBtn) prevBtn.disabled = (curIdx <= 0);
+      if(nextBtn) nextBtn.disabled = (curIdx >= SCHEDULE_DAYS.length - 1);
+      var dayName = SCHEDULE_LABELS[SCHEDULE_DAYS[curIdx]] || SCHEDULE_DAYS[curIdx];
+      if(info) info.textContent = dayName + " (" + (curIdx + 1) + "/7) · " + S.items.length + " anime";
       return;
     }
 
@@ -764,7 +781,16 @@ var Tui = (function () {
       case "katalog":setView("katalog");break;
       case "filter":case "cf":openCatalogFilterModal();break;
       case "season":cmdSeason(args);break;
-      case "terbaru":case "airing":setView("terbaru");break;
+      case "jadwal":case "schedule":case "terbaru":case "airing":
+        var dArg = (args || "").trim().toLowerCase();
+        if(dArg) {
+          var idMap = {senin:"monday",selasa:"tuesday",rabu:"wednesday",kamis:"thursday",jumat:"friday",sabtu:"saturday",minggu:"sunday",kemarin:"yesterday",besok:"tomorrow","hari ini":"today"};
+          if(idMap[dArg]) dArg = idMap[dArg];
+          if(SCHEDULE_DAYS.indexOf(dArg) >= 0 || dArg === "today" || dArg === "yesterday" || dArg === "tomorrow"){
+            S.scheduleDay = dArg;
+          }
+        }
+        setView("terbaru");break;
       case "switch":
         var target = (args || "").toLowerCase().trim();
         var curSrc = (window.cur && window.cur.source) || "hianime";
@@ -943,10 +969,10 @@ var Tui = (function () {
   }
   function pagePrev(){
     if(S.view==="terbaru"){
-      var days=["yesterday","today","tomorrow"];
-      var curIdx=days.indexOf(S.scheduleDay||"today");
-      if(curIdx>0){
-        S.scheduleDay=days[curIdx-1];
+      var curIdx = SCHEDULE_DAYS.indexOf(S.scheduleDay || "");
+      if(curIdx < 0) curIdx = 0;
+      if(curIdx > 0){
+        S.scheduleDay = SCHEDULE_DAYS[curIdx - 1];
         updateScheduleChips();
         loadView();
       }
@@ -972,10 +998,10 @@ var Tui = (function () {
 
   function pageNext(){
     if(S.view==="terbaru"){
-      var days=["yesterday","today","tomorrow"];
-      var curIdx=days.indexOf(S.scheduleDay||"today");
-      if(curIdx<days.length-1){
-        S.scheduleDay=days[curIdx+1];
+      var curIdx = SCHEDULE_DAYS.indexOf(S.scheduleDay || "");
+      if(curIdx < 0) curIdx = 0;
+      if(curIdx < SCHEDULE_DAYS.length - 1){
+        S.scheduleDay = SCHEDULE_DAYS[curIdx + 1];
         updateScheduleChips();
         loadView();
       }

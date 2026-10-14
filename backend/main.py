@@ -570,9 +570,17 @@ async def _match_slug_batch(items):
     return pairs
 
 
+DAYS_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+DAYS_ID = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+EN_TO_ID = dict(zip(DAYS_KEYS, DAYS_ID))
+ID_TO_EN = {
+    "senin": "monday", "selasa": "tuesday", "rabu": "wednesday",
+    "kamis": "thursday", "jumat": "friday", "sabtu": "saturday", "minggu": "sunday"
+}
+
 @app.get("/api/schedule")
-async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|tomorrow|all)$")):
-    """Jadwal rilis anime 3 hari (kemarin, hari ini, besok) waktu WIB.
+async def anime_schedule(day: str = Query("today")):
+    """Jadwal rilis anime 7 hari mingguan (Senin - Minggu) waktu WIB.
     HANYA menampilkan anime yang tersedia di aplikasi Tatap (memiliki slug valid).
     Anime yang tidak ada di aplikasi Tatap otomatis di-remove."""
     try:
@@ -581,20 +589,24 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
         tz_offset = 7 * 3600  # WIB (UTC+7)
         now_utc = int(time.time())
         now_wib = now_utc + tz_offset
-        today_midnight_wib = (now_wib // 86400) * 86400
-        today_midnight_utc = today_midnight_wib - tz_offset
+        now_dt_wib = _dt.datetime.fromtimestamp(now_utc, _dt.timezone(_dt.timedelta(hours=7)))
+        cur_weekday = now_dt_wib.weekday()  # 0=Monday, ..., 6=Sunday
+        today_key = DAYS_KEYS[cur_weekday]
+        yesterday_key = DAYS_KEYS[(cur_weekday - 1) % 7]
+        tomorrow_key = DAYS_KEYS[(cur_weekday + 1) % 7]
 
-        y_start_utc = today_midnight_utc - 86400
-        t_start_utc = today_midnight_utc
-        tm_start_utc = today_midnight_utc + 86400
-        tm_end_utc = today_midnight_utc + (2 * 86400) - 1
+        today_mid_wib = (now_wib // 86400) * 86400
+        mon_mid_wib = today_mid_wib - (cur_weekday * 86400)
+        mon_mid_utc = mon_mid_wib - tz_offset
+        sun_end_wib = mon_mid_wib + (7 * 86400) - 1
+        sun_end_utc = sun_end_wib - tz_offset
 
-        cache_key = "schedule_3days_v3"
-        cached_data = await get_browse_cache(cache_key, ttl=3600 * 3)
+        cache_key = f"schedule_7days_v1_{mon_mid_wib}"
+        cached_data = await get_browse_cache(cache_key, ttl=3600 * 2)
 
         if not cached_data:
             schedules = await loop.run_in_executor(
-                None, lambda: al.anilist_schedules_range(y_start_utc, tm_end_utc, max_pages=3)
+                None, lambda: al.anilist_schedules_range(mon_mid_utc, sun_end_utc, max_pages=6)
             )
 
             pending = []
@@ -616,7 +628,7 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
             slug_pairs = await _match_slug_batch([(t, alt) for _, t, alt in pending]) if pending else []
             slug_by_title = {t: sl for t, sl in slug_pairs}
 
-            buckets = {"yesterday": [], "today": [], "tomorrow": []}
+            buckets = {k: [] for k in DAYS_KEYS}
 
             for s, title, _ in pending:
                 slug = slug_by_title.get(title)
@@ -628,13 +640,9 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
                 dt_wib = _dt.datetime.fromtimestamp(airing_at, _dt.timezone(_dt.timedelta(hours=7)))
                 time_str = dt_wib.strftime("%H:%M WIB")
                 date_str = dt_wib.strftime("%d %b")
-
-                if airing_at < t_start_utc:
-                    day_cat = "yesterday"
-                elif airing_at < tm_start_utc:
-                    day_cat = "today"
-                else:
-                    day_cat = "tomorrow"
+                item_weekday = dt_wib.weekday()
+                day_cat = DAYS_KEYS[item_weekday]
+                day_name = EN_TO_ID.get(day_cat, "Senin")
 
                 cover = (s.get("media") or {}).get("coverImage", {})
                 fmt = (s.get("media") or {}).get("format") or "TV"
@@ -648,6 +656,7 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
                     "time": time_str,
                     "date": date_str,
                     "day": day_cat,
+                    "day_name": day_name,
                     "poster": cover.get("large") or cover.get("medium") or "",
                     "type": _format_to_type(fmt),
                     "score": round(score / 10.0, 1) if score else 0.0,
@@ -659,27 +668,60 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
                 buckets[k].sort(key=lambda x: x["airing_at"])
 
             cached_data = {
-                "yesterday": buckets["yesterday"],
-                "today": buckets["today"],
-                "tomorrow": buckets["tomorrow"],
+                "week_start": mon_mid_utc,
+                "week_end": sun_end_utc,
+                "current_day": today_key,
+                "current_day_name": EN_TO_ID[today_key],
+                "days": {k: buckets[k] for k in DAYS_KEYS},
+                "monday": buckets["monday"],
+                "tuesday": buckets["tuesday"],
+                "wednesday": buckets["wednesday"],
+                "thursday": buckets["thursday"],
+                "friday": buckets["friday"],
+                "saturday": buckets["saturday"],
+                "sunday": buckets["sunday"],
+                "today": buckets[today_key],
+                "yesterday": buckets[yesterday_key],
+                "tomorrow": buckets[tomorrow_key],
+                "counts": {
+                    **{k: len(buckets[k]) for k in DAYS_KEYS},
+                    "today": len(buckets[today_key]),
+                    "yesterday": len(buckets[yesterday_key]),
+                    "tomorrow": len(buckets[tomorrow_key]),
+                },
                 "total": sum(len(v) for v in buckets.values()),
                 "cached": False,
             }
             await set_browse_cache(cache_key, cached_data)
 
-        if day == "all":
+        req_day = (day or "today").strip().lower()
+        if req_day == "all":
             return ok(cached_data)
 
-        target_items = cached_data.get(day, [])
+        if req_day == "today":
+            target_day = today_key
+        elif req_day == "yesterday":
+            target_day = yesterday_key
+        elif req_day == "tomorrow":
+            target_day = tomorrow_key
+        elif req_day in ID_TO_EN:
+            target_day = ID_TO_EN[req_day]
+        elif req_day in DAYS_KEYS:
+            target_day = req_day
+        else:
+            target_day = today_key
+
+        resp_day = req_day if req_day in ("today", "yesterday", "tomorrow") else target_day
+        target_items = cached_data.get(target_day, [])
         return ok({
             "items": target_items,
-            "day": day,
+            "day": resp_day,
+            "weekday": target_day,
+            "day_name": EN_TO_ID.get(target_day, target_day.capitalize()),
+            "current_day": today_key,
+            "is_today": (target_day == today_key),
             "total": len(target_items),
-            "counts": {
-                "yesterday": len(cached_data.get("yesterday", [])),
-                "today": len(cached_data.get("today", [])),
-                "tomorrow": len(cached_data.get("tomorrow", [])),
-            },
+            "counts": cached_data.get("counts", {}),
             "cached": cached_data.get("cached", True),
         })
     except Exception as e:
@@ -687,14 +729,17 @@ async def anime_schedule(day: str = Query("today", pattern="^(today|yesterday|to
 
 @app.get("/api/upcoming-episodes")
 async def upcoming_episodes(days: int = Query(7, ge=1, le=30), day: str = Query("today")):
-    """Penyempurnaan upcoming-episodes yang disinkronkan dengan endpoint schedule 3 hari."""
+    """Penyempurnaan upcoming-episodes yang disinkronkan dengan endpoint schedule 7 hari."""
     try:
-        sch_res = await anime_schedule(day=day if day in ("today", "yesterday", "tomorrow") else "today")
+        sch_res = await anime_schedule(day=day)
         data = sch_res.get("data") if isinstance(sch_res, dict) else None
         if data and "items" in data:
             return ok({
                 "items": data["items"],
                 "day": data.get("day", "today"),
+                "day_name": data.get("day_name", ""),
+                "current_day": data.get("current_day", ""),
+                "is_today": data.get("is_today", False),
                 "total": data.get("total", len(data["items"])),
                 "counts": data.get("counts", {}),
                 "cached": data.get("cached", False),

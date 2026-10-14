@@ -200,7 +200,7 @@ def anilist_schedules(now_ts, end_ts, per_page=50):
     except Exception:
         return []
 
-def anilist_schedules_range(start_ts: int, end_ts: int, max_pages: int = 3):
+def anilist_schedules_range(start_ts: int, end_ts: int, max_pages: int = 6):
     """Episode yang tayang dalam rentang waktu (start_ts..end_ts) dengan pagination."""
     all_schedules = []
     c = _get_al_client()
