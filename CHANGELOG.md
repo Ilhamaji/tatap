@@ -13,6 +13,36 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.6.0] - 2026-10-14
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.5.0 -> 2.6.0)
+Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan fungsionalitas dan antarmuka interaktif baru yang kompatibel ke belakang (*backward-compatible new features*):
+1. **Interactive Cross-Filter Modal Katalog (Urutan, Tahun, Bulan, Format, Status):** Menambahkan antarmuka dialog modal interaktif multiplatform (Android Mobile, Android TV, dan Desktop Web) untuk menyaring katalog anime secara komprehensif tanpa membebani antarmuka genre yang sudah memiliki tab tersendiri.
+2. **Penyaringan Temporal Tahun & Bulan Rilis:** Mendukung filtering temporal presisi tinggi berdasarkan tahun tunggal (2025, 2024, 2023, 2022, 2021, 2020), rentang dekade (2015-2019, 2010-2014, 2000-2009, <2000), serta bulan rilis spesifik (Januari hingga Desember) yang dipadukan dengan opsi urutan (Skor Tertinggi, Terpopuler, Baru Ditambahkan, Paling Difavoritkan), format media (TV, Movie, OVA, ONA, Special), dan status (Selesai, Sedang Tayang).
+3. **Sinkronisasi Bar Filter & Indikator Aktif Dinamis:** Menampilkan ringkasan filter aktif pada judul seksi dan bilah status interaktif dengan tombol reset satu klik (*✕*) baik di Android maupun Desktop Web.
+
+### Ditambahkan
+- **Interactive Cross-Filter Modal Katalog Multiplatform:**
+  - **Antarmuka Android Native Mobile & Android TV (`dialog_catalog_filter.xml` & `MainActivity.java`):**
+    - Menyediakan modal interaktif dengan chip selektor kategori visual: *Urutan* (Skor Tertinggi, Terpopuler, Baru Ditambahkan, Terbanyak Difavoritkan), *Tahun Rilis* (2025, 2024, 2023, 2022, 2021, 2020, 2015-2019, 2010-2014, 2000-2009, <2000), *Bulan Rilis* (Januari s.d. Desember), *Format Media* (TV, Movie, OVA, ONA, Special), dan *Status Tayang* (Selesai, Sedang Tayang).
+    - Tombol pintas `🎛️ Filter` di sisi kanan judul seksi beranda berpadu dengan tombol reset dan terapkan.
+    - Menampilkan *Active Filter Bar* di atas grid kartu saat filter aktif dengan tombol reset `✕`.
+    - Integrasi penuh dengan navigasi remote D-Pad Android TV via `TvFocusHelper` (efek zoom halus 1.04x dan border cyan).
+    - Menambahkan dukungan perintah TUI `:filter` pada terminal command bar Android.
+  - **Desktop Web Terminal & UI (`frontend/index.html`, `frontend/css/style.css`, `frontend/js/term.js`, `frontend/js/app.js`):**
+    - Modal interaktif `#catalog-filter-modal` bergaya cyber dark dengan chip selektor interaktif untuk kombinasi kriteria urutan, tahun, bulan, tipe, dan status.
+    - Tombol pemicu `#btn-catalog-filter` otomatis muncul pada header pencarian saat membuka tampilan katalog.
+    - Integrasi menu Drawer `🎛️ Filter Katalog` untuk akses cepat dari sidebar.
+    - Perintah CLI `:filter` untuk membuka modal filter kapan saja dari prompt command.
+    - Judul tampilan dinamis menampilkan ringkasan kriteria aktif (misalnya `KATALOG · 2024 · OKTOBER · SKOR TERTINGGI`).
+- **Backend & Paritas Chaquopy (`backend/main.py` & `android/app/src/main/python/backend/main.py`):**
+  - Menambahkan parameter `year` dan `month` pada endpoint `/api/browse`.
+  - Parser fleksibel yang menerjemahkan tahun tunggal, rentang dekade, dan label klasik menjadi rentang tahun riil (`sy` dan `ey`) serta bulan (`sm` dan `em`).
+  - Safe parameter extraction untuk mencegah kegagalan runtime FastAPI Dependency Injection dan unit test context.
+  - Tetap menjunjung tinggi *Zero-Tolerance Blacklist Hentai* di semua tingkatan filter.
+- **Automated Test Suite:**
+  - Menambahkan pengujian menyeluruh pada `tests/test_catalog_filter.py` mencakup parsing rentang dekade, parameter temporal, kombinasi cross-filter, serta audit blacklist hentai.
+
 ## [2.5.0] - 2026-10-14
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.4.2 -> 2.5.0)

@@ -703,24 +703,59 @@ async def browse_ep(
     score: str = Query(""), season: str = Query(""), language: str = Query(""),
     sort: str = Query(""), genre: str = Query(""), keyword: str = Query(""),
     sy: str = Query(""), sm: str = Query(""), ey: str = Query(""), em: str = Query(""),
+    year: str = Query(""), month: str = Query(""),
     page: int = Query(1, ge=1, le=100),
 ):
-    """Filter bebas — semua parameter sesuai form filter."""
+    """Filter bebas — semua parameter sesuai form filter (mendukung cross-filter sort, year, month)."""
     try:
-        if (genre or "").strip().lower() == "hentai" or "hentai" in (genre or "").lower():
+        def _to_str(val):
+            return val.strip() if isinstance(val, str) else ""
+
+        c_genre = _to_str(genre)
+        if c_genre.lower() == "hentai" or "hentai" in c_genre.lower():
             return ok({"items": [], "page": 1, "total_pages": 1, "params": {"genre": "hentai"}, "cached": False})
+
+        c_sy = _to_str(sy)
+        c_ey = _to_str(ey)
+        c_sm = _to_str(sm)
+        c_em = _to_str(em)
+        clean_year = _to_str(year)
+        clean_month = _to_str(month)
+
+        if clean_year and not c_sy:
+            if "-" in clean_year:
+                y_parts = clean_year.split("-", 1)
+                c_sy = y_parts[0].strip()
+                c_ey = y_parts[1].strip()
+            elif clean_year.startswith("<"):
+                raw_y = clean_year[1:].strip()
+                try:
+                    c_ey = str(int(raw_y) - 1)
+                except Exception:
+                    c_ey = raw_y
+                c_sy = "1970"
+            else:
+                c_sy = clean_year
+                c_ey = clean_year
+        if clean_month and not c_sm:
+            c_sm = clean_month
+            c_em = clean_month
+
+        c_page = page if isinstance(page, int) and page >= 1 else 1
+
         import json as _json
         params = {k: v for k, v in
-                  {"type": type, "status": status, "rating": rating, "score": score,
-                   "season": season, "language": language, "sort": sort, "genre": genre,
-                   "keyword": keyword, "sy": sy, "sm": sm, "ey": ey, "em": em}.items() if v}
-        key = "browse|" + _json.dumps(params, sort_keys=True) + f"|page={page}"
+                  {"type": _to_str(type), "status": _to_str(status), "rating": _to_str(rating),
+                   "score": _to_str(score), "season": _to_str(season), "language": _to_str(language),
+                   "sort": _to_str(sort), "genre": c_genre, "keyword": _to_str(keyword),
+                   "sy": c_sy, "sm": c_sm, "ey": c_ey, "em": c_em}.items() if v}
+        key = "browse|" + _json.dumps(params, sort_keys=True) + f"|page={c_page}"
         hit = await get_browse_cache(key)
         if hit:
             hit["cached"] = True
             return ok(hit)
         loop = asyncio.get_running_loop()
-        res = await loop.run_in_executor(None, lambda: hi.browse(params, page))
+        res = await loop.run_in_executor(None, lambda: hi.browse(params, c_page))
         await set_browse_cache(key, res)
         res["cached"] = False
         return ok(res)

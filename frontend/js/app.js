@@ -1837,6 +1837,12 @@ function init(){
     if(window.Tui && window.Tui.openGenreModal) window.Tui.openGenreModal();
   });
 
+  var drawerCatFilter = $("drawer-catalog-filter");
+  if(drawerCatFilter) drawerCatFilter.addEventListener("click", function(){
+    closeDrawer();
+    if(window.Tui && window.Tui.openCatalogFilterModal) window.Tui.openCatalogFilterModal();
+  });
+
   var drawerSrc = $("drawer-switch-source");
   if(drawerSrc) drawerSrc.addEventListener("click", function(){
     switchSource();

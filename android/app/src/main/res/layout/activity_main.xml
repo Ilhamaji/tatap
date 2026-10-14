@@ -415,6 +415,23 @@
             android:textStyle="bold" />
 
         <TextView
+            android:id="@+id/btn_filter_catalog"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_header_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:layout_marginEnd="8dp"
+            android:text="🎛️ Filter"
+            android:textColor="#38BDF8"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/tv_item_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -111,6 +111,7 @@ public class MainActivity extends Activity {
     private TextView tvActiveFilterLabel;
     private Button btnClearFilter;
     private TextView btnClearHistoryAll;
+    private TextView btnFilterCatalog;
 
     private final Handler bannerHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideBannerRunnable = () -> hideCommandBanner(true);
@@ -123,6 +124,13 @@ public class MainActivity extends Activity {
     private int currentSeasonYear = 0;
     private int currentPage = 1;
     private int totalPages = 1;
+
+    // State Cross Filter Katalog (Urutan + Tahun + Bulan + Tipe + Status)
+    private String filterCatalogSort = "popularity";
+    private String filterCatalogYear = "";
+    private String filterCatalogMonth = "";
+    private String filterCatalogType = "";
+    private String filterCatalogStatus = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -185,6 +193,20 @@ public class MainActivity extends Activity {
         tvActiveFilterLabel = findViewById(R.id.tv_active_filter_label);
         btnClearFilter = findViewById(R.id.btn_clear_filter);
         btnClearHistoryAll = findViewById(R.id.btn_clear_history_all);
+        btnFilterCatalog = findViewById(R.id.btn_filter_catalog);
+        if (btnFilterCatalog != null) {
+            btnFilterCatalog.setOnClickListener(v -> showCatalogFilterDialog());
+            TvFocusHelper.attachFocusScale(btnFilterCatalog, 1.08f, 4f);
+        }
+        if (tvActiveFilterLabel != null) {
+            tvActiveFilterLabel.setOnClickListener(v -> {
+                if ("katalog".equals(currentView)) {
+                    showCatalogFilterDialog();
+                } else if ("genre".equals(currentView)) {
+                    showGenreSelectorDialog();
+                }
+            });
+        }
 
         int spanCount = getResources().getInteger(R.integer.anime_grid_columns);
         GridLayoutManager glm = new GridLayoutManager(this, spanCount);
@@ -345,7 +367,11 @@ public class MainActivity extends Activity {
         }
 
         btnTabKatalog.setOnClickListener(v -> {
-            resetFiltersToTab("katalog");
+            if ("katalog".equals(currentView)) {
+                showCatalogFilterDialog();
+            } else {
+                resetFiltersToTab("katalog");
+            }
         });
 
         if (btnTabJadwal != null) {
@@ -393,7 +419,15 @@ public class MainActivity extends Activity {
         }
 
         if (btnClearFilter != null) {
-            btnClearFilter.setOnClickListener(v -> resetFiltersToTab("musim"));
+            btnClearFilter.setOnClickListener(v -> {
+                if ("katalog".equals(currentView)) {
+                    resetCatalogFilterState();
+                    updateActiveFilterBar();
+                    fetchData();
+                } else {
+                    resetFiltersToTab("musim");
+                }
+            });
         }
 
         if (btnHeaderAi != null) {
@@ -569,10 +603,66 @@ public class MainActivity extends Activity {
         bannerHandler.postDelayed(hideBannerRunnable, delayMs);
     }
 
+    private boolean isCatalogFilterActive() {
+        return !"popularity".equals(filterCatalogSort) ||
+                !filterCatalogYear.isEmpty() ||
+                !filterCatalogMonth.isEmpty() ||
+                !filterCatalogType.isEmpty() ||
+                !filterCatalogStatus.isEmpty();
+    }
+
+    private String getCatalogFilterSummary() {
+        List<String> parts = new ArrayList<>();
+        if ("score".equals(filterCatalogSort)) parts.add("SKOR TERTINGGI");
+        else if ("latest".equals(filterCatalogSort)) parts.add("TERBARU");
+        else if ("trending".equals(filterCatalogSort)) parts.add("TRENDING");
+        else if ("az".equals(filterCatalogSort)) parts.add("A-Z");
+        else if ("most_favorite".equals(filterCatalogSort)) parts.add("FAVORIT");
+
+        if (!filterCatalogYear.isEmpty()) parts.add(filterCatalogYear.toUpperCase());
+        if (!filterCatalogMonth.isEmpty()) {
+            String[] mNames = {"", "JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"};
+            try {
+                int mi = Integer.parseInt(filterCatalogMonth);
+                if (mi >= 1 && mi <= 12) parts.add(mNames[mi]);
+                else parts.add("BLN " + filterCatalogMonth);
+            } catch (Exception e) {
+                parts.add("BLN " + filterCatalogMonth);
+            }
+        }
+        if (!filterCatalogType.isEmpty()) parts.add(filterCatalogType.toUpperCase());
+        if (!filterCatalogStatus.isEmpty()) {
+            parts.add("releasing".equals(filterCatalogStatus) ? "AIRING" : "TAMAT");
+        }
+        if (parts.isEmpty()) return "KATALOG TERFILTER";
+        StringBuilder sb = new StringBuilder("KATALOG: ");
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) sb.append(" · ");
+            sb.append(parts.get(i));
+        }
+        return sb.toString();
+    }
+
+    private void resetCatalogFilterState() {
+        filterCatalogSort = "popularity";
+        filterCatalogYear = "";
+        filterCatalogMonth = "";
+        filterCatalogType = "";
+        filterCatalogStatus = "";
+        currentPage = 1;
+    }
+
     private void updateActiveFilterBar() {
+        if (btnFilterCatalog != null) {
+            btnFilterCatalog.setVisibility("katalog".equals(currentView) ? View.VISIBLE : View.GONE);
+        }
         if (layoutActiveFilter == null || tvActiveFilterLabel == null) return;
 
-        if ("genre".equals(currentView)) {
+        if ("katalog".equals(currentView) && isCatalogFilterActive()) {
+            layoutActiveFilter.setVisibility(View.VISIBLE);
+            tvActiveFilterLabel.setText(getCatalogFilterSummary());
+            if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
+        } else if ("genre".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
             tvActiveFilterLabel.setText("GENRE: " + currentGenre.toUpperCase().replace("-", " "));
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
@@ -604,6 +694,9 @@ public class MainActivity extends Activity {
         currentSeasonYear = 0;
         currentSearchQuery = "";
         etSearch.setText("");
+        if (!"katalog".equals(targetTab)) {
+            resetCatalogFilterState();
+        }
         switchView(targetTab);
         updateActiveFilterBar();
         showCommandOutput("> tatap$ Tampilan diatur ke: " + targetTab.toUpperCase(), false);
@@ -670,6 +763,11 @@ public class MainActivity extends Activity {
                 } else {
                     setGenreFilter(args);
                 }
+                break;
+
+            case "filter":
+                showCommandOutput("> tatap$ :filter [Membuka Filter Katalog]", false);
+                showCatalogFilterDialog();
                 break;
 
             case "cari":
@@ -892,6 +990,139 @@ public class MainActivity extends Activity {
                 genreAdapter.setData(list);
             });
         }).start();
+    }
+
+    private void showCatalogFilterDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_catalog_filter);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        final String[] tempSort = new String[]{filterCatalogSort};
+        final String[] tempYear = new String[]{filterCatalogYear};
+        final String[] tempMonth = new String[]{filterCatalogMonth};
+        final String[] tempType = new String[]{filterCatalogType};
+        final String[] tempStatus = new String[]{filterCatalogStatus};
+
+        interface ChipSelectAction {
+            void onSelect(String val);
+        }
+
+        class ChipGroupHelper {
+            void bind(int[] ids, String[] values, String current, ChipSelectAction action) {
+                for (int i = 0; i < ids.length; i++) {
+                    final int idx = i;
+                    TextView chip = dialog.findViewById(ids[i]);
+                    if (chip == null) continue;
+                    boolean selected = values[i].equals(current);
+                    chip.setBackgroundResource(selected ? R.drawable.bg_chip_selected : R.drawable.bg_tab_inactive);
+                    chip.setTextColor(selected ? 0xFFFFFFFF : 0xFF8892B0);
+                    chip.setOnClickListener(v -> {
+                        for (int j = 0; j < ids.length; j++) {
+                            TextView c = dialog.findViewById(ids[j]);
+                            if (c != null) {
+                                boolean nowSel = (j == idx);
+                                c.setBackgroundResource(nowSel ? R.drawable.bg_chip_selected : R.drawable.bg_tab_inactive);
+                                c.setTextColor(nowSel ? 0xFFFFFFFF : 0xFF8892B0);
+                            }
+                        }
+                        action.onSelect(values[idx]);
+                    });
+                    TvFocusHelper.attachFocusScale(chip, 1.05f, 3f);
+                }
+            }
+        }
+        ChipGroupHelper helper = new ChipGroupHelper();
+
+        // 1. Sort
+        int[] sortIds = new int[]{
+            R.id.chip_sort_pop, R.id.chip_sort_score, R.id.chip_sort_latest,
+            R.id.chip_sort_trending, R.id.chip_sort_az, R.id.chip_sort_fav
+        };
+        String[] sortVals = new String[]{"popularity", "score", "latest", "trending", "az", "most_favorite"};
+        helper.bind(sortIds, sortVals, tempSort[0], val -> tempSort[0] = val);
+
+        // 2. Year
+        int[] yearIds = new int[]{
+            R.id.chip_year_all, R.id.chip_year_2026, R.id.chip_year_2025, R.id.chip_year_2024,
+            R.id.chip_year_2023, R.id.chip_year_2022, R.id.chip_year_2021, R.id.chip_year_2020,
+            R.id.chip_year_2015_2019, R.id.chip_year_2010_2014, R.id.chip_year_2000_2009, R.id.chip_year_classic
+        };
+        String[] yearVals = new String[]{
+            "", "2026", "2025", "2024", "2023", "2022", "2021", "2020",
+            "2015-2019", "2010-2014", "2000-2009", "<2000"
+        };
+        helper.bind(yearIds, yearVals, tempYear[0], val -> tempYear[0] = val);
+
+        // 3. Month
+        int[] monthIds = new int[]{
+            R.id.chip_month_all, R.id.chip_month_1, R.id.chip_month_2, R.id.chip_month_3,
+            R.id.chip_month_4, R.id.chip_month_5, R.id.chip_month_6, R.id.chip_month_7,
+            R.id.chip_month_8, R.id.chip_month_9, R.id.chip_month_10, R.id.chip_month_11, R.id.chip_month_12
+        };
+        String[] monthVals = new String[]{"", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
+        helper.bind(monthIds, monthVals, tempMonth[0], val -> tempMonth[0] = val);
+
+        // 4. Type
+        int[] typeIds = new int[]{
+            R.id.chip_type_all, R.id.chip_type_tv, R.id.chip_type_movie,
+            R.id.chip_type_ova, R.id.chip_type_ona, R.id.chip_type_special
+        };
+        String[] typeVals = new String[]{"", "tv", "movie", "ova", "ona", "special"};
+        helper.bind(typeIds, typeVals, tempType[0], val -> tempType[0] = val);
+
+        // 5. Status
+        int[] statusIds = new int[]{
+            R.id.chip_status_all, R.id.chip_status_airing, R.id.chip_status_completed
+        };
+        String[] statusVals = new String[]{"", "releasing", "completed"};
+        helper.bind(statusIds, statusVals, tempStatus[0], val -> tempStatus[0] = val);
+
+        // Action Buttons
+        View btnClose = dialog.findViewById(R.id.btn_close_catalog_dialog);
+        View btnReset = dialog.findViewById(R.id.btn_reset_catalog_filter);
+        View btnApply = dialog.findViewById(R.id.btn_apply_catalog_filter);
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+            TvFocusHelper.attachFocusScale(btnClose, 1.1f, 4f);
+        }
+
+        if (btnReset != null) {
+            btnReset.setOnClickListener(v -> {
+                dialog.dismiss();
+                resetCatalogFilterState();
+                currentView = "katalog";
+                updateTabButtons();
+                updateActiveFilterBar();
+                showCommandOutput("> tatap$ Filter katalog direset ke Terpopuler", false);
+                fetchData();
+            });
+            TvFocusHelper.attachFocusScale(btnReset, 1.05f, 4f);
+        }
+
+        if (btnApply != null) {
+            btnApply.setOnClickListener(v -> {
+                dialog.dismiss();
+                filterCatalogSort = tempSort[0];
+                filterCatalogYear = tempYear[0];
+                filterCatalogMonth = tempMonth[0];
+                filterCatalogType = tempType[0];
+                filterCatalogStatus = tempStatus[0];
+                currentPage = 1;
+                currentView = "katalog";
+                updateTabButtons();
+                updateActiveFilterBar();
+                showCommandOutput("> tatap$ " + getCatalogFilterSummary() + " [Diterapkan]", false);
+                fetchData();
+            });
+            TvFocusHelper.attachFocusScale(btnApply, 1.05f, 4f);
+        }
+
+        dialog.show();
     }
 
     private void showCommandHelpDialog() {
@@ -1659,8 +1890,19 @@ public class MainActivity extends Activity {
             title = "Masih Tayang (Hal " + currentPage + ")";
             endpoint = "/api/seasonal?which=airing&page=" + currentPage;
         } else if ("katalog".equals(currentView)) {
-            title = "Katalog Populer (Hal " + currentPage + ")";
-            endpoint = "/api/catalog?page=" + currentPage;
+            if (isCatalogFilterActive()) {
+                StringBuilder ep = new StringBuilder("/api/browse?sort=").append(URLEncoder.encode(filterCatalogSort));
+                if (!filterCatalogYear.isEmpty()) ep.append("&year=").append(URLEncoder.encode(filterCatalogYear));
+                if (!filterCatalogMonth.isEmpty()) ep.append("&month=").append(URLEncoder.encode(filterCatalogMonth));
+                if (!filterCatalogType.isEmpty()) ep.append("&type=").append(URLEncoder.encode(filterCatalogType));
+                if (!filterCatalogStatus.isEmpty()) ep.append("&status=").append(URLEncoder.encode(filterCatalogStatus));
+                ep.append("&page=").append(currentPage);
+                endpoint = ep.toString();
+                title = "Katalog Filter (Hal " + currentPage + ")";
+            } else {
+                title = "Katalog Populer (Hal " + currentPage + ")";
+                endpoint = "/api/catalog?page=" + currentPage;
+            }
         } else if ("jadwal".equals(currentView)) {
             String dayLabel = "Hari Ini";
             if ("yesterday".equals(currentScheduleDay)) dayLabel = "Kemarin";
@@ -1689,7 +1931,7 @@ public class MainActivity extends Activity {
             layoutPagination.setVisibility("riwayat".equals(currentView) || "jadwal".equals(currentView) || "favorit".equals(currentView) ? View.GONE : View.VISIBLE);
         }
 
-        final String cacheKey = currentView + ":" + currentPage + ":" + currentGenre + ":" + currentSeasonName + ":" + currentSeasonYear + ":" + currentScheduleDay;
+        final String cacheKey = currentView + ":" + currentPage + ":" + currentGenre + ":" + currentSeasonName + ":" + currentSeasonYear + ":" + currentScheduleDay + ":" + filterCatalogSort + ":" + filterCatalogYear + ":" + filterCatalogMonth + ":" + filterCatalogType + ":" + filterCatalogStatus;
         final boolean canCache = !"cari".equals(currentView) && !"riwayat".equals(currentView) && !"favorit".equals(currentView);
 
         // 1. Cek In-Memory Cache untuk peralihan instan (<1ms)

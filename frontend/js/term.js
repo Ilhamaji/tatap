@@ -51,13 +51,15 @@ var Tui = (function () {
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
     if(v === "terbaru") updateScheduleChips();
+    var cfBtn = $("btn-catalog-filter");
+    if(cfBtn) cfBtn.classList.toggle("hidden", v !== "katalog");
     $("continue-sec").classList.add("hidden");
     switch(v){
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
       case "lanjutan":$("results-title").textContent="Masih tayang (lanjut)";break;
       case "favorit":$("results-title").textContent="Anime Favorit";break;
-      case "katalog":$("results-title").textContent="Katalog";break;
+      case "katalog":$("results-title").textContent=getCatalogFilterTitle();break;
       case "terbaru":{
         var lblDay = S.scheduleDay === "yesterday" ? "kemarin" : (S.scheduleDay === "tomorrow" ? "besok" : "hari ini");
         $("results-title").textContent="Jadwal rilis (" + lblDay + ")";
@@ -73,12 +75,39 @@ var Tui = (function () {
     loadView();
   }
 
+  function getCatalogFilterTitle(){
+    if(!S.catalogFilter) return "Katalog Populer";
+    var f = S.catalogFilter;
+    var parts = [];
+    if(f.sort && f.sort !== "popularity") {
+      var sNames = {score: "Skor Tertinggi", latest: "Terbaru", trending: "Trending", az: "A-Z", most_favorite: "Favorit"};
+      parts.push(sNames[f.sort] || f.sort);
+    }
+    if(f.year) parts.push(f.year);
+    if(f.month) {
+      var mNames = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+      var mi = parseInt(f.month);
+      parts.push((mi >= 1 && mi <= 12) ? mNames[mi] : ("Bln " + f.month));
+    }
+    if(f.type) parts.push(f.type.toUpperCase());
+    if(f.status) parts.push(f.status === "releasing" ? "Airing" : "Tamat");
+    if(!parts.length) return "Katalog Populer";
+    return "Katalog (" + parts.join(" · ") + ")";
+  }
+
   function apiCall(name){
     switch(name){
       case "musim":return window.Tatap.seasonNow(S.page);
       case "lanjutan":return window.Tatap.stillAiring(S.page);
       case "favorit":return window.Tatap.bookmarks();
-      case "katalog":return window.Tatap.browse(S.filter,S.page);
+      case "katalog":{
+        var f = S.catalogFilter || {};
+        var hasFilter = (f.sort && f.sort !== "popularity") || f.year || f.month || f.type || f.status;
+        if(hasFilter) {
+          return window.Tatap.browse(f, S.page);
+        }
+        return window.Tatap.catalog(S.page);
+      }
       case "terbaru":return window.Tatap.schedule(S.scheduleDay || "today");
       case "season-custom":{
         if(!S.seasonFilter)return null;
@@ -413,6 +442,40 @@ var Tui = (function () {
     if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
   }
 
+  // ==== :filter (Catalog Cross-Filter) ====
+  function openCatalogFilterModal(){
+    var m = $("catalog-filter-modal");
+    if(!m) return;
+    m.classList.remove("hidden");
+    syncCatalogFilterUI();
+  }
+  function closeCatalogFilterModal(){
+    var m = $("catalog-filter-modal");
+    if(m) m.classList.add("hidden");
+  }
+  function syncCatalogFilterUI(){
+    var f = S.catalogFilter || {sort: "popularity", year: "", month: "", type: "", status: ""};
+    setGroupActive("cf-chips-sort", f.sort || "popularity");
+    setGroupActive("cf-chips-year", f.year || "");
+    setGroupActive("cf-chips-month", f.month || "");
+    setGroupActive("cf-chips-type", f.type || "");
+    setGroupActive("cf-chips-status", f.status || "");
+  }
+  function setGroupActive(containerId, activeVal){
+    var box = $(containerId);
+    if(!box) return;
+    box.querySelectorAll(".cf-chip").forEach(function(b){
+      var v = b.getAttribute("data-val") || "";
+      b.classList.toggle("active", v === activeVal);
+    });
+  }
+  function getGroupActive(containerId){
+    var box = $(containerId);
+    if(!box) return "";
+    var act = box.querySelector(".cf-chip.active");
+    return act ? (act.getAttribute("data-val") || "") : "";
+  }
+
   // ==== :genre ====
   var _genreList=null;
   function slugifyGenre(s){
@@ -663,6 +726,7 @@ var Tui = (function () {
       case "musim":setView("musim");break;
       case "lanjutan":setView("lanjutan");break;
       case "katalog":setView("katalog");break;
+      case "filter":case "cf":openCatalogFilterModal();break;
       case "season":cmdSeason(args);break;
       case "terbaru":case "airing":setView("terbaru");break;
       case "switch":
@@ -874,6 +938,48 @@ var Tui = (function () {
           renderGenreList(filtered);
         });
       });
+    // Catalog filter modal listeners
+    var cfClose = $("cf-close");
+    if(cfClose) cfClose.addEventListener("click", closeCatalogFilterModal);
+    var cfModal = $("catalog-filter-modal");
+    if(cfModal) cfModal.addEventListener("click", function(e){ if(e.target === cfModal) closeCatalogFilterModal(); });
+    document.querySelectorAll("#catalog-filter-modal .cf-chip").forEach(function(chip){
+      chip.addEventListener("click", function(){
+        var parent = chip.closest(".cf-chips");
+        if(!parent) return;
+        parent.querySelectorAll(".cf-chip").forEach(function(c){ c.classList.remove("active"); });
+        chip.classList.add("active");
+      });
+    });
+    var cfReset = $("cf-reset-btn");
+    if(cfReset){
+      cfReset.addEventListener("click", function(){
+        S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: ""};
+        syncCatalogFilterUI();
+        closeCatalogFilterModal();
+        setView("katalog");
+      });
+    }
+    var cfApply = $("cf-apply-btn");
+    if(cfApply){
+      cfApply.addEventListener("click", function(){
+        S.catalogFilter = {
+          sort: getGroupActive("cf-chips-sort") || "popularity",
+          year: getGroupActive("cf-chips-year"),
+          month: getGroupActive("cf-chips-month"),
+          type: getGroupActive("cf-chips-type"),
+          status: getGroupActive("cf-chips-status")
+        };
+        closeCatalogFilterModal();
+        setView("katalog");
+      });
+    }
+    var btnCatFilter = $("btn-catalog-filter");
+    if(btnCatFilter){
+      btnCatFilter.addEventListener("click", function(){
+        openCatalogFilterModal();
+      });
+    }
     $("clear-hist").addEventListener("click",async function(){
       try{await fetch("/api/history",{method:"DELETE"});}catch(e){}
       App.renderContinue();log("riwayat dihapus","ok");
@@ -890,5 +996,5 @@ var Tui = (function () {
     renderRecents();
   }
 
-  return {boot:boot,log:log,clearLog:clearLog,setView:setView,loadView:loadView,moveSel:moveSel,renderSel:renderSel,openSelected:openSelected,startSearch:startSearch,doSearch:doSearch,renderResults:renderResults,renderPager:renderPager,renderRecents:renderRecents,cmdUsage:cmdUsage,openGenreModal:openGenreModal,view:function(){return S.view;},state:function(){return S;}};
+  return {boot:boot,log:log,clearLog:clearLog,setView:setView,loadView:loadView,moveSel:moveSel,renderSel:renderSel,openSelected:openSelected,startSearch:startSearch,doSearch:doSearch,renderResults:renderResults,renderPager:renderPager,renderRecents:renderRecents,cmdUsage:cmdUsage,openGenreModal:openGenreModal,openCatalogFilterModal:openCatalogFilterModal,closeCatalogFilterModal:closeCatalogFilterModal,view:function(){return S.view;},state:function(){return S;}};
 })();

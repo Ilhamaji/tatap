@@ -15,7 +15,7 @@
 <header class="tui-head">
   <div class="head-brand">
     <span class="brand-name">TATAP</span>
-    <span class="brand-ver" id="brand-ver">v2.5.0</span>
+    <span class="brand-ver" id="brand-ver">v2.6.0</span>
   </div>
   <div class="head-actions">
     <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
@@ -46,6 +46,7 @@
       <div class="sec-title-wrap">
         <h2 id="results-title">siap</h2>
         <span id="results-meta" class="dim small"></span>
+        <button id="btn-catalog-filter" class="icon-btn catalog-filter-btn hidden" title="Filter Katalog (Cross Filter Urutan + Tahun + Bulan)">🎛️ Filter</button>
       </div>
       <div id="schedule-days-bar" class="seg schedule-days-bar hidden" role="group" aria-label="Filter Hari Rilis">
         <button class="ep-range-chip" data-day="yesterday">Kemarin</button>
@@ -71,7 +72,7 @@
     <div class="drawer-head">
       <div class="drawer-title">
         <span class="brand-name">TATAP</span>
-        <span class="dim small">v2.5.0</span>
+        <span class="dim small">v2.6.0</span>
       </div>
       <button class="icon-btn big" id="drawer-close" title="Tutup Menu (Esc)">✕</button>
     </div>
@@ -113,6 +114,11 @@
 
       <div class="drawer-group">
         <div class="drawer-group-label">KONTROL & FILTER</div>
+        <button class="drawer-item" id="drawer-catalog-filter">
+          <span class="drawer-item-icon">🎛️</span>
+          <span class="drawer-item-label">Filter Katalog (Urutan+Tahun+Bulan)</span>
+          <span class="drawer-item-badge">:filter</span>
+        </button>
         <button class="drawer-item" id="drawer-genre">
           <span class="drawer-item-icon">🏷️</span>
           <span class="drawer-item-label">Filter Genre</span>
@@ -180,6 +186,102 @@
     <div class="sec-head"><h2>Pilih Genre</h2><button class="link-btn" id="genre-close">close</button></div>
     <input id="genre-search" placeholder="Cari genre… cth: isekai" autocapitalize="off" autocomplete="off" spellcheck="false">
     <div id="genre-list" class="genre-list"></div>
+  </div>
+</div>
+
+<!-- CATALOG CROSS-FILTER MODAL -->
+<div id="catalog-filter-modal" class="overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet catalog-filter-sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="eyebrow">FILTER KATALOG ANIME</div>
+        <h2>Cross Filter: Urutan, Tahun, Bulan, Tipe &amp; Status</h2>
+        <div class="dim small">Kombinasikan kriteria untuk menemukan anime spesifik</div>
+      </div>
+      <button class="icon-btn big" id="cf-close" title="Tutup (Esc)">✕</button>
+    </div>
+
+    <div class="cf-body">
+      <!-- 1. Urutan (Sort) -->
+      <div class="cf-group">
+        <label class="cf-label">URUTAN (SORT)</label>
+        <div class="cf-chips" id="cf-chips-sort">
+          <button class="cf-chip active" data-val="popularity">🔥 Terpopuler</button>
+          <button class="cf-chip" data-val="score">⭐ Skor Tertinggi</button>
+          <button class="cf-chip" data-val="latest">⏱️ Terbaru</button>
+          <button class="cf-chip" data-val="trending">📈 Trending</button>
+          <button class="cf-chip" data-val="az">🔤 A-Z</button>
+          <button class="cf-chip" data-val="most_favorite">💖 Favorit</button>
+        </div>
+      </div>
+
+      <!-- 2. Tahun (Year) -->
+      <div class="cf-group">
+        <label class="cf-label">TAHUN RILIS</label>
+        <div class="cf-chips" id="cf-chips-year">
+          <button class="cf-chip active" data-val="">Semua Tahun</button>
+          <button class="cf-chip" data-val="2026">2026</button>
+          <button class="cf-chip" data-val="2025">2025</button>
+          <button class="cf-chip" data-val="2024">2024</button>
+          <button class="cf-chip" data-val="2023">2023</button>
+          <button class="cf-chip" data-val="2022">2022</button>
+          <button class="cf-chip" data-val="2021">2021</button>
+          <button class="cf-chip" data-val="2020">2020</button>
+          <button class="cf-chip" data-val="2015-2019">2015-2019</button>
+          <button class="cf-chip" data-val="2010-2014">2010-2014</button>
+          <button class="cf-chip" data-val="2000-2009">2000-2009</button>
+          <button class="cf-chip" data-val="<2000">&lt;2000</button>
+        </div>
+      </div>
+
+      <!-- 3. Bulan (Month) -->
+      <div class="cf-group">
+        <label class="cf-label">BULAN RILIS</label>
+        <div class="cf-chips" id="cf-chips-month">
+          <button class="cf-chip active" data-val="">Semua Bulan</button>
+          <button class="cf-chip" data-val="1">Jan (1)</button>
+          <button class="cf-chip" data-val="2">Feb (2)</button>
+          <button class="cf-chip" data-val="3">Mar (3)</button>
+          <button class="cf-chip" data-val="4">Apr (4)</button>
+          <button class="cf-chip" data-val="5">Mei (5)</button>
+          <button class="cf-chip" data-val="6">Jun (6)</button>
+          <button class="cf-chip" data-val="7">Jul (7)</button>
+          <button class="cf-chip" data-val="8">Agu (8)</button>
+          <button class="cf-chip" data-val="9">Sep (9)</button>
+          <button class="cf-chip" data-val="10">Okt (10)</button>
+          <button class="cf-chip" data-val="11">Nov (11)</button>
+          <button class="cf-chip" data-val="12">Des (12)</button>
+        </div>
+      </div>
+
+      <!-- 4. Format / Tipe -->
+      <div class="cf-group">
+        <label class="cf-label">FORMAT / TIPE</label>
+        <div class="cf-chips" id="cf-chips-type">
+          <button class="cf-chip active" data-val="">Semua Format</button>
+          <button class="cf-chip" data-val="tv">📺 TV Series</button>
+          <button class="cf-chip" data-val="movie">🎬 Movie</button>
+          <button class="cf-chip" data-val="ova">💿 OVA</button>
+          <button class="cf-chip" data-val="ona">🌐 ONA</button>
+          <button class="cf-chip" data-val="special">✨ Special</button>
+        </div>
+      </div>
+
+      <!-- 5. Status -->
+      <div class="cf-group">
+        <label class="cf-label">STATUS PENAYANGAN</label>
+        <div class="cf-chips" id="cf-chips-status">
+          <button class="cf-chip active" data-val="">Semua Status</button>
+          <button class="cf-chip" data-val="releasing">🟢 Sedang Tayang</button>
+          <button class="cf-chip" data-val="completed">🏁 Sudah Tamat</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-foot cf-foot">
+      <button class="btn btn-muted" id="cf-reset-btn">Hapus Filter</button>
+      <button class="btn btn-primary" id="cf-apply-btn">Terapkan Filter</button>
+    </div>
   </div>
 </div>
 
