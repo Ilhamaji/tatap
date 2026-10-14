@@ -187,7 +187,13 @@ var Tui = (function () {
     var box=$("results");box.innerHTML="";
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.add("hidden");
-    if(!r.length){$("empty-state").style.display="";$("results-title").textContent="siap";$("results-meta").textContent="";$("pager").classList.add("hidden");return;}
+    if(!r.length){
+      $("empty-state").style.display="";
+      $("results-title").textContent="siap";
+      $("results-meta").textContent="";
+      renderPager();
+      return;
+    }
     $("empty-state").style.display="none";
     $("results-title").textContent="saran pencarian";$("results-meta").textContent=r.length+" recent";
     for(var i=0;i<r.length;i++){
@@ -198,6 +204,7 @@ var Tui = (function () {
         box.appendChild(d);
       })(r[i]);
     }
+    renderPager();
   }
 
   function renderResults(){
@@ -1123,6 +1130,7 @@ var Tui = (function () {
     if(btnPgNext) btnPgNext.addEventListener("click", function(e){ e.preventDefault(); pageNext(); });
     $("sb-view").textContent="view: "+S.view;
     renderRecents();
+    renderPager();
   }
 
   return {boot:boot,log:log,clearLog:clearLog,setView:setView,loadView:loadView,moveSel:moveSel,renderSel:renderSel,openSelected:openSelected,startSearch:startSearch,doSearch:doSearch,renderResults:renderResults,renderPager:renderPager,renderRecents:renderRecents,cmdUsage:cmdUsage,openGenreModal:openGenreModal,openCatalogFilterModal:openCatalogFilterModal,closeCatalogFilterModal:closeCatalogFilterModal,view:function(){return S.view;},state:function(){return S;}};
