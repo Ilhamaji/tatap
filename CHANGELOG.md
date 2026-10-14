@@ -35,12 +35,12 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 - **Penataan Ulang Top Menu Android & Ultra-Clean Fluid Search Bar:**
   - **Logo TATAP Kapital:** Menampilkan brand `TATAP` dalam huruf kapital penuh dengan letter-spacing proporsional di sisi kiri header.
   - **Ultra-Clean Fluid Search Bar:** Mengembalikan bilah pencarian fluid inline satu baris (`layout_weight="1"`) yang bersih sepenuhnya dari ikon (tanpa icon kaca pembesar dan tanpa spinner di dalam kotak), memberikan tampilan minimalis, lapang, dan langsung siap menerima input.
-  - **Status Online Ikon Power Hijau:** Menyederhanakan indikator backend menjadi tombol ikon power bulat (`⏻`) berwarna hijau (`#10B981`) di antara Search Bar dan Tombol `⋮ Menu`.
+  - **Status Online Ikon Power Vektor Material (`ic_power.xml`):** Menggantikan render karakter Unicode glyph `⏻` dan penulisan teks panjang yang terpotong menjadi komponen `ImageView` 34x34dp dengan Android Vector Drawable resmi Material Design (`ic_power.xml`). Menggunakan 3 status warna dinamis melalui `PorterDuff.Mode.SRC_IN`: Hijau (`#10B981`) saat Online, Kuning (`#F59E0B`) saat Checking / Booting, dan Merah (`#EF4444`) saat Offline / Error, lengkap dengan handling interaktif untuk mencoba koneksi ulang.
   - **Horizontal Scrollable Category Pills (36dp):** Mengganti segmented tabs kaku dengan deretan pill kategori horizontal yang ramah satu jempol di HP dan D-Pad remote TV: *🌸 Musim Ini*, *📺 Masih Tayang*, *⭐ Favorit*, *📚 Katalog*, *⏱️ Jadwal*, dan *🏷️ Genre*.
   - **Efisiensi Ruang Layar (~58dp):** Menghilangkan tumpukan baris header ganda sehingga baris kartu anime langsung tampak luas dan utuh dari bagian atas layar pada ponsel maupun TV.
 
 - **Aktivasi Load Animation & Optimasi List Data:**
-  - **Central Loading Indicator:** Menggantikan mini-loader search bar dengan animasi pemuatan cyber cyan (`#38BDF8`, 40dp) di tengah layar konten lengkap dengan teks status memuat.
+  - **Central Loading Indicator Seamless Cold Start & Page Switch:** Mengaktifkan loading state central spinner cyber cyan (`#38BDF8`) sejak detik pertama aplikasi dibuka (`visibility="visible"` default pada XML), meredupkan grid lama (`alpha 0.25f`) saat berpindah halaman katalog/tab baru yang belum di-cache, dan mengembalikan kecerahan penuh (`alpha 1.0f`) diikuti entrance cascade layout animation saat data anime tiba.
   - **Cascade Layout Animation:** Menambahkan animasi entrance halus (fade-in & slide-up 180ms via `grid_item_fade_in.xml` dan `grid_layout_animation.xml`) saat kartu-kartu anime masuk ke `RecyclerView`.
   - **Smooth Poster Fade-In:** Animasi transisi 160ms pada `ImageLoader.java` saat poster selesai diunduh dari jaringan.
   - **In-Memory Tab Caching (<1ms):** Menyimpan cache daftar anime per-tab dengan masa berlaku 3 menit, membuat perpindahan antar tab (Musim Ini, Masih Tayang, Favorit, Katalog, Jadwal) berlangsung instan seketika tanpa latency jaringan.

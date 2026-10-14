@@ -22,10 +22,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.inputmethod.EditorInfo;
+import android.graphics.PorterDuff;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -53,7 +55,9 @@ public class MainActivity extends Activity {
     private TextView btnClearSearch;
     private ProgressBar pbLoading;
     private View layoutLoadingState;
-    private TextView tvSectionTitle, tvItemCount, tvStatusBadge, tvPageIndicator;
+    private TextView tvLoadingLabel;
+    private TextView tvSectionTitle, tvItemCount, tvPageIndicator;
+    private ImageView btnStatusPower;
     private RecyclerView rvGrid;
     private AnimeAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -135,10 +139,14 @@ public class MainActivity extends Activity {
         layoutLoadingState = findViewById(R.id.layout_loading_state);
         tvSectionTitle = findViewById(R.id.tv_section_title);
         tvItemCount = findViewById(R.id.tv_item_count);
-        tvStatusBadge = findViewById(R.id.tv_status_badge);
+        btnStatusPower = findViewById(R.id.btn_status_power);
+        tvLoadingLabel = findViewById(R.id.tv_loading_label);
         tvPageIndicator = findViewById(R.id.tv_page_indicator);
         rvGrid = findViewById(R.id.rv_anime_grid);
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
+
+        updateBackendStatusUI(0);
+        showLoadingState("Memulai backend Tatap...");
 
         layoutTabsSegmented = findViewById(R.id.layout_tabs_segmented);
         btnTabMusim = findViewById(R.id.btn_tab_musim);
@@ -260,6 +268,39 @@ public class MainActivity extends Activity {
         return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    /**
+     * Mengupdate warna dan background indikator icon power.
+     * @param state 1 = Online (Hijau), 0 = Checking / Booting (Kuning), 2 = Offline / Error (Merah)
+     */
+    private void updateBackendStatusUI(int state) {
+        if (btnStatusPower == null) return;
+        if (state == 1) { // Online
+            btnStatusPower.setColorFilter(0xFF10B981, PorterDuff.Mode.SRC_IN);
+            btnStatusPower.setBackgroundResource(R.drawable.bg_status_pill);
+        } else if (state == 0) { // Checking / Booting
+            btnStatusPower.setColorFilter(0xFFF59E0B, PorterDuff.Mode.SRC_IN);
+            btnStatusPower.setBackgroundResource(R.drawable.bg_status_pill_warn);
+        } else { // Offline / Error
+            btnStatusPower.setColorFilter(0xFFEF4444, PorterDuff.Mode.SRC_IN);
+            btnStatusPower.setBackgroundResource(R.drawable.bg_status_pill_err);
+        }
+    }
+
+    private void showLoadingState(String message) {
+        if (layoutLoadingState != null) {
+            if (tvLoadingLabel != null && message != null) {
+                tvLoadingLabel.setText(message);
+            }
+            layoutLoadingState.setVisibility(View.VISIBLE);
+        }
+        if (rvGrid != null) {
+            rvGrid.setAlpha(0.25f);
+        }
+        if (layoutEmptyState != null) {
+            layoutEmptyState.setVisibility(View.GONE);
+        }
+    }
+
     private void setupTabsAndListeners() {
         if (btnToggleMenu != null) {
             btnToggleMenu.setOnClickListener(v -> showCommandHelpDialog());
@@ -332,12 +373,14 @@ public class MainActivity extends Activity {
         btnPrevPage.setOnClickListener(v -> {
             if (currentPage > 1) {
                 currentPage--;
+                showLoadingState("Memuat halaman " + currentPage + "...");
                 fetchData();
             }
         });
 
         btnNextPage.setOnClickListener(v -> {
             currentPage++;
+            showLoadingState("Memuat halaman " + currentPage + "...");
             fetchData();
         });
 
@@ -421,15 +464,13 @@ public class MainActivity extends Activity {
             });
         }
 
-        if (tvStatusBadge != null) {
-            tvStatusBadge.setOnClickListener(v -> {
-                checkBackendStatus();
-            });
+        if (btnStatusPower != null) {
+            btnStatusPower.setOnClickListener(v -> checkBackendStatus());
         }
 
         // Pasang respon fokus D-Pad TV pada seluruh elemen interaktif
         TvFocusHelper.attachFocusScale(btnToggleMenu, 1.1f, 6f);
-        if (tvStatusBadge != null) TvFocusHelper.attachFocusScale(tvStatusBadge, 1.15f, 6f);
+        if (btnStatusPower != null) TvFocusHelper.attachFocusScale(btnStatusPower, 1.15f, 6f);
         if (layoutSearchBox != null) TvFocusHelper.attachFocusScale(layoutSearchBox, 1.03f, 4f);
         TvFocusHelper.attachFocusScale(btnTabMusim, 1.06f, 6f);
         TvFocusHelper.attachFocusScale(btnTabAiring, 1.06f, 6f);
@@ -1425,11 +1466,7 @@ public class MainActivity extends Activity {
 
     private void checkBackendStatus() {
         showCommandOutput("> tatap$ :ping [Memeriksa 127.0.0.1:8767...]", false);
-        if (tvStatusBadge != null) {
-            tvStatusBadge.setText("⏻");
-            tvStatusBadge.setTextColor(0xFFF59E0B);
-            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_warn);
-        }
+        updateBackendStatusUI(0);
         new Thread(() -> {
             try {
                 long start = System.currentTimeMillis();
@@ -1439,27 +1476,18 @@ public class MainActivity extends Activity {
                 long elapsed = System.currentTimeMillis() - start;
                 conn.disconnect();
                 runOnUiThread(() -> {
-                    if (tvStatusBadge != null) {
-                        tvStatusBadge.setText("⏻");
-                        if (code == 200) {
-                            tvStatusBadge.setTextColor(0xFF10B981);
-                            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill);
-                            showCommandOutput("> tatap$ [PONG] Backend ONLINE (127.0.0.1:8767 OK, " + elapsed + "ms)", false);
-                        } else {
-                            tvStatusBadge.setTextColor(0xFFEF4444);
-                            tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
-                            showCommandOutput("> tatap$ [WARN] Backend responded HTTP " + code, true);
-                        }
+                    if (code == 200) {
+                        updateBackendStatusUI(1);
+                        showCommandOutput("> tatap$ [PONG] Backend ONLINE (127.0.0.1:8767 OK, " + elapsed + "ms)", false);
+                    } else {
+                        updateBackendStatusUI(2);
+                        showCommandOutput("> tatap$ [WARN] Backend responded HTTP " + code, true);
                     }
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    if (tvStatusBadge != null) {
-                        tvStatusBadge.setText("⏻");
-                        tvStatusBadge.setTextColor(0xFFEF4444);
-                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
-                        showCommandOutput("> tatap$ [OFFLINE] Backend tidak terhubung: " + e.getMessage(), true);
-                    }
+                    updateBackendStatusUI(2);
+                    showCommandOutput("> tatap$ [OFFLINE] Backend tidak terhubung: " + e.getMessage(), true);
                 });
             }
         }).start();
@@ -1587,34 +1615,28 @@ public class MainActivity extends Activity {
             final boolean isReady = ready;
             if (isReady) {
                 runOnUiThread(() -> {
-                    tvStatusBadge.setText("● ONLINE");
-                    tvStatusBadge.setTextColor(0xFF10B981);
-                    tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill);
+                    updateBackendStatusUI(1);
                     fetchData();
                 });
             } else if (attempt < 45) { // Coba sampai ~22 detik
                 runOnUiThread(() -> {
                     if (attempt % 5 == 0 && attempt > 0) {
-                        tvStatusBadge.setText("● INIT " + (attempt * 2) + "%");
-                        tvStatusBadge.setTextColor(0xFFF59E0B);
-                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_warn);
+                        updateBackendStatusUI(0);
                     }
                 });
                 try { Thread.sleep(500); } catch (Exception ignored) {}
                 waitForServerAndLoadCatalog(attempt + 1);
             } else {
                 runOnUiThread(() -> {
-                    tvStatusBadge.setText("● OFFLINE");
-                    tvStatusBadge.setTextColor(0xFFEF4444);
-                    tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_err);
+                    updateBackendStatusUI(2);
                     showCommandOutput("> tatap$ Server butuh inisialisasi lebih lama. Ketuk badge status untuk mencoba ulang.", true);
-                    tvStatusBadge.setOnClickListener(v -> {
-                        tvStatusBadge.setText("● RETRYING...");
-                        tvStatusBadge.setTextColor(0xFFF59E0B);
-                        tvStatusBadge.setBackgroundResource(R.drawable.bg_status_pill_warn);
-                        startEmbeddedBackend();
-                        waitForServerAndLoadCatalog(0);
-                    });
+                    if (btnStatusPower != null) {
+                        btnStatusPower.setOnClickListener(v -> {
+                            updateBackendStatusUI(0);
+                            startEmbeddedBackend();
+                            waitForServerAndLoadCatalog(0);
+                        });
+                    }
                     fetchData();
                 });
             }
@@ -1680,11 +1702,7 @@ public class MainActivity extends Activity {
         }
 
         // 2. Aktifkan animasi pemuatan data
-        if (adapter.getItemCount() == 0 || (layoutEmptyState != null && layoutEmptyState.getVisibility() == View.VISIBLE)) {
-            if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.VISIBLE);
-            if (rvGrid != null) rvGrid.setVisibility(View.GONE);
-        }
-        if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
+        showLoadingState("Memuat " + title + "...");
 
         final int fetchToken = currentFetchToken.incrementAndGet();
 
@@ -1738,6 +1756,7 @@ public class MainActivity extends Activity {
                         if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
                         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                         if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                        if (rvGrid != null) rvGrid.setAlpha(1.0f);
                         showCommandOutput("> tatap$ [ERROR] " + err, true);
                         if (adapter.getItemCount() == 0) {
                             if (layoutPagination != null) layoutPagination.setVisibility(View.GONE);
@@ -1756,6 +1775,7 @@ public class MainActivity extends Activity {
                     if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
                     if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                     if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+                    if (rvGrid != null) rvGrid.setAlpha(1.0f);
                     showCommandOutput("> tatap$ [ERROR] Gagal terhubung: " + e.getMessage(), true);
                     if (adapter.getItemCount() == 0) {
                         if (layoutPagination != null) layoutPagination.setVisibility(View.GONE);
@@ -1775,6 +1795,7 @@ public class MainActivity extends Activity {
         if (layoutLoadingState != null) layoutLoadingState.setVisibility(View.GONE);
         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
         if (swipeRefreshLayout != null) swipeRefreshLayout.setRefreshing(false);
+        if (rvGrid != null) rvGrid.setAlpha(1.0f);
         tvItemCount.setText(count + " judul");
         adapter.setData(list);
         btnNextPage.setEnabled(count >= 10);

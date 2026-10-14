@@ -74,21 +74,20 @@
                 android:background="?attr/selectableItemBackgroundBorderless" />
         </LinearLayout>
 
-        <!-- Status Online Badge: Cukup Ikon Power Hijau di antara Search Bar & Tombol Menu -->
-        <TextView
-            android:id="@+id/tv_status_badge"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+        <!-- Status Online Power Icon (Antara Search Bar & Tombol Menu) -->
+        <ImageView
+            android:id="@+id/btn_status_power"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:background="@drawable/bg_status_pill"
             android:clickable="true"
             android:focusable="true"
             android:foreground="?attr/selectableItemBackgroundBorderless"
-            android:gravity="center"
-            android:text="⏻"
-            android:textColor="#10B981"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:layout_marginEnd="8dp" />
+            android:padding="7dp"
+            android:src="@drawable/ic_power"
+            app:tint="#10B981"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="Status Backend" />
 
         <!-- Header Quick Menu Button -->
         <TextView
@@ -464,7 +463,7 @@
                     android:layout_gravity="center"
                     android:gravity="center"
                     android:orientation="vertical"
-                    android:visibility="gone">
+                    android:visibility="visible">
 
                     <ProgressBar
                         android:id="@+id/pb_central_loading"
@@ -473,6 +472,7 @@
                         android:indeterminateTint="#38BDF8" />
 
                     <TextView
+                        android:id="@+id/tv_loading_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="10dp"
