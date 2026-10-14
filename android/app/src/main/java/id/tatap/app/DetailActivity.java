@@ -46,7 +46,8 @@ public class DetailActivity extends Activity {
 
     private TextView tvTitle, tvTitleFull, tvSlug, tvTypeBadge;
     private ImageView ivPoster;
-    private Button btnQuickPlay, btnSortOrder;
+    private Button btnQuickPlay, btnBookmark, btnSortOrder;
+    private boolean isBookmarked = false;
     private ProgressBar pbLoading;
     private RecyclerView rvEpisodes;
     private EpisodeAdapter adapter;
@@ -121,6 +122,12 @@ public class DetailActivity extends Activity {
         btnBack.setOnClickListener(v -> finish());
         TvFocusHelper.attachFocusScale(btnBack, 1.1f, 6f);
         TvFocusHelper.attachFocusScale(btnQuickPlay, 1.05f, 6f);
+        btnBookmark = findViewById(R.id.btn_detail_bookmark);
+        if (btnBookmark != null) {
+            TvFocusHelper.attachFocusScale(btnBookmark, 1.05f, 6f);
+            btnBookmark.setOnClickListener(v -> toggleBookmark());
+            checkBookmarkStatus();
+        }
         TvFocusHelper.attachFocusScale(btnSortOrder, 1.05f, 6f);
 
         int epSpan = getResources().getInteger(R.integer.episode_grid_columns);
@@ -568,5 +575,87 @@ public class DetailActivity extends Activity {
                 TvFocusHelper.attachFocusScale(itemView, 1.08f, 6f);
             }
         }
+    }
+
+    private void checkBookmarkStatus() {
+        if (slug == null || slug.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                URL u = new URL("http://127.0.0.1:8767/api/bookmarks/check?slug=" + URLEncoder.encode(slug, "UTF-8"));
+                HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                conn.setConnectTimeout(3000);
+                conn.setReadTimeout(3000);
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) sb.append(line);
+                    reader.close();
+                    JSONObject obj = new JSONObject(sb.toString());
+                    if (obj.optBoolean("success", false)) {
+                        JSONObject data = obj.optJSONObject("data");
+                        boolean b = data != null && data.optBoolean("bookmarked", false);
+                        runOnUiThread(() -> updateBookmarkUI(b));
+                    }
+                }
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    private void updateBookmarkUI(boolean bookmarked) {
+        this.isBookmarked = bookmarked;
+        if (btnBookmark == null) return;
+        if (bookmarked) {
+            btnBookmark.setText("★ Tersimpan");
+            btnBookmark.setTextColor(0xFFFBBF24);
+            btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF2A2210));
+        } else {
+            btnBookmark.setText("⭐ + Favorit");
+            btnBookmark.setTextColor(0xFF94A3B8);
+            btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1E2433));
+        }
+    }
+
+    private void toggleBookmark() {
+        if (slug == null || slug.isEmpty()) return;
+        boolean nextState = !isBookmarked;
+        updateBookmarkUI(nextState);
+        Toast.makeText(this, nextState ? "Tersimpan ke Favorit ⭐" : "Dihapus dari Favorit", Toast.LENGTH_SHORT).show();
+
+        new Thread(() -> {
+            try {
+                if (nextState) {
+                    URL u = new URL("http://127.0.0.1:8767/api/bookmarks");
+                    HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setDoOutput(true);
+                    conn.setConnectTimeout(3000);
+                    conn.setReadTimeout(3000);
+                    JSONObject body = new JSONObject();
+                    body.put("slug", slug);
+                    body.put("title", title != null ? title : "");
+                    body.put("poster", poster != null ? poster : "");
+                    body.put("type", type != null ? type : "");
+                    body.put("sub", sub != null ? sub : "");
+                    body.put("eps", eps != null ? eps : "");
+                    body.put("score", 0.0);
+                    java.io.OutputStream out = conn.getOutputStream();
+                    out.write(body.toString().getBytes("UTF-8"));
+                    out.flush();
+                    out.close();
+                    conn.getResponseCode();
+                } else {
+                    URL u = new URL("http://127.0.0.1:8767/api/bookmarks/" + URLEncoder.encode(slug, "UTF-8"));
+                    HttpURLConnection conn = (HttpURLConnection) u.openConnection();
+                    conn.setRequestMethod("DELETE");
+                    conn.setConnectTimeout(3000);
+                    conn.setReadTimeout(3000);
+                    conn.getResponseCode();
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> checkBookmarkStatus());
+            }
+        }).start();
     }
 }

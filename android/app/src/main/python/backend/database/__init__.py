@@ -59,6 +59,17 @@ async def init_db():
         # Quota counter MyMemory per-day (Tier 2). Soft limit 4500/5000 char/day per-IP.
         await db.execute("""CREATE TABLE IF NOT EXISTS mychar_counts(
             day TEXT PRIMARY KEY, total INTEGER DEFAULT 0)""")
+        # Tabel bookmarks / favorit anime tersimpan mandiri & terisolasi
+        await db.execute("""CREATE TABLE IF NOT EXISTS bookmarks(
+            slug TEXT PRIMARY KEY,
+            title TEXT,
+            poster TEXT DEFAULT '',
+            type TEXT DEFAULT '',
+            sub TEXT DEFAULT '',
+            eps TEXT DEFAULT '',
+            score REAL DEFAULT 0.0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )""")
         await db.commit()
 
 def _now():
@@ -152,6 +163,53 @@ async def clear_history():
     async with _connect_db() as db:
         await db.execute("DELETE FROM watch_history")
         await db.commit()
+
+async def add_bookmark(slug: str, title: str, poster: str = "", type: str = "", sub: str = "", eps: str = "", score: float = 0.0):
+    """Tambah atau update bookmark favorit anime."""
+    if not slug:
+        return
+    async with _connect_db() as db:
+        await db.execute("""INSERT OR REPLACE INTO bookmarks(slug, title, poster, type, sub, eps, score, created_at)
+            VALUES(?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+            (slug, title, poster or "", type or "", sub or "", eps or "", float(score or 0.0)))
+        await db.commit()
+
+async def remove_bookmark(slug: str):
+    """Hapus bookmark berdasarkan slug."""
+    if not slug:
+        return
+    async with _connect_db() as db:
+        await db.execute("DELETE FROM bookmarks WHERE slug=?", (slug,))
+        await db.commit()
+
+async def get_bookmarks(limit: int = 200):
+    """Ambil daftar bookmark tersimpan terurut dari yang terbaru.
+    Setiap row dilengkapi id=slug agar langsung kompatibel dengan grid adapter kartu anime.
+    """
+    async with _connect_db() as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT * FROM bookmarks ORDER BY created_at DESC LIMIT ?", (limit,)) as cur:
+            rows = [dict(r) for r in await cur.fetchall()]
+            for r in rows:
+                if "slug" in r and r["slug"]:
+                    r["id"] = r["slug"]
+            return rows
+
+async def is_bookmarked(slug: str) -> bool:
+    """Cek apakah anime dengan slug tertentu ada di bookmark."""
+    if not slug:
+        return False
+    async with _connect_db() as db:
+        async with db.execute("SELECT 1 FROM bookmarks WHERE slug=? LIMIT 1", (slug,)) as cur:
+            row = await cur.fetchone()
+            return bool(row)
+
+async def clear_bookmarks():
+    """Hapus seluruh bookmark favorit."""
+    async with _connect_db() as db:
+        await db.execute("DELETE FROM bookmarks")
+        await db.commit()
+
 
 async def get_browse_cache(key: str, ttl=6*3600):
     async with _connect_db() as db:

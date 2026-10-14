@@ -8,6 +8,7 @@ function apiBase(){
 }
 async function jget(u){var r=await fetch(apiBase()+u);return r.json();}
 async function jpost(u,b){var r=await fetch(apiBase()+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});return r.json();}
+async function jdel(u){var r=await fetch(apiBase()+u,{method:"DELETE"});return r.json();}
 window.Tatap={
 search:function(q,source){return jget("/api/search?q="+encodeURIComponent(q)+(source?"&source="+encodeURIComponent(source):""));},
 catalog:function(p){return jget("/api/catalog?page="+(p||1));},
@@ -29,6 +30,10 @@ genres:function(){return jget("/api/genres");},
 health:function(){return jget("/api/health");},
 history:function(){return jget("/api/history");},
 saveHist:function(b){return jpost("/api/history",b);},
+bookmarks:function(){return jget("/api/bookmarks");},
+addBookmark:function(b){return jpost("/api/bookmarks",b);},
+removeBookmark:function(slug){return jdel("/api/bookmarks/"+encodeURIComponent(slug));},
+checkBookmark:function(slug){return jget("/api/bookmarks/check?slug="+encodeURIComponent(slug));},
 playMPV:function(b){return jpost("/api/play-mpv",b);},
 // Settings (termasuk sub_lang).
 getSettings:function(){return jget("/api/settings");},

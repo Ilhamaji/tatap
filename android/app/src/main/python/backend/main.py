@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, FileResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from config import APP_PORT, APP_HOST, HI_BASE, HI_UA
-from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, add_history, get_history, clear_history, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
+from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, add_history, get_history, clear_history, add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked, clear_bookmarks, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
 from api import hianime as hi
 from api import anilist as al
 from api import otakudesu as otaku
@@ -1694,6 +1694,42 @@ async def save_hist(body: dict = None):
 async def del_hist():
     await clear_history()
     return ok(True)
+
+@app.get("/api/bookmarks")
+async def list_bookmarks():
+    return ok(await get_bookmarks())
+
+@app.post("/api/bookmarks")
+async def save_bookmark(body: dict = None):
+    body = body or {}
+    slug = (body.get("slug") or body.get("id") or "").strip()
+    if not slug:
+        return err("Slug wajib diisi", 400)
+    await add_bookmark(
+        slug=slug,
+        title=body.get("title", ""),
+        poster=body.get("poster", ""),
+        type=body.get("type", ""),
+        sub=str(body.get("sub", "")),
+        eps=str(body.get("eps", "")),
+        score=float(body.get("score") or 0.0)
+    )
+    return ok(True)
+
+@app.delete("/api/bookmarks/{slug}")
+async def delete_one_bookmark(slug: str):
+    await remove_bookmark(slug)
+    return ok(True)
+
+@app.delete("/api/bookmarks")
+async def del_all_bookmarks():
+    await clear_bookmarks()
+    return ok(True)
+
+@app.get("/api/bookmarks/check")
+async def check_bookmark(slug: str = ""):
+    return ok({"bookmarked": await is_bookmarked(slug)})
+
 
 @app.get("/api/settings")
 async def get_set():

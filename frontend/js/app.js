@@ -20,8 +20,53 @@ function loadPrefs(){
   }catch(e){}
 }
 
-function openTitle(slug,title){
-  cur.slug=slug;cur.title=title;cur.eps=[];
+function updateBookmarkBtn(isBookmarked){
+  var btn = $("tm-bookmark-btn");
+  if(!btn) return;
+  btn.classList.toggle("bookmarked", !!isBookmarked);
+  btn.innerHTML = isBookmarked ? "★ TERSIMPAN" : "⭐ + FAVORIT";
+  btn.title = isBookmarked ? "Klik untuk menghapus dari favorit" : "Klik untuk menyimpan ke favorit";
+}
+
+function checkModalBookmark(slug){
+  window.Tatap.checkBookmark(slug).then(function(r){
+    if(cur.slug !== slug) return;
+    if(r && r.success && r.data){
+      updateBookmarkBtn(!!r.data.bookmarked);
+    }
+  }).catch(function(){});
+}
+
+function toggleModalBookmark(){
+  var slug = cur.slug;
+  if(!slug) return;
+  var btn = $("tm-bookmark-btn");
+  var currentlyBookmarked = btn && btn.classList.contains("bookmarked");
+  var nextState = !currentlyBookmarked;
+  updateBookmarkBtn(nextState);
+  if(nextState){
+    window.Tatap.addBookmark({
+      slug: slug,
+      title: cur.title,
+      poster: cur.poster || "",
+      type: cur.type || "TV",
+      score: 0.0
+    }).then(function(){
+      if(window.Tui && window.Tui.state && window.Tui.state.view === "favorit"){
+        window.Tui.setView("favorit");
+      }
+    });
+  } else {
+    window.Tatap.removeBookmark(slug).then(function(){
+      if(window.Tui && window.Tui.state && window.Tui.state.view === "favorit"){
+        window.Tui.setView("favorit");
+      }
+    });
+  }
+}
+
+function openTitle(slug,title,poster,type){
+  cur.slug=slug;cur.title=title;cur.poster=poster||cur.poster||"";cur.type=type||cur.type||"";cur.eps=[];
   renderSourceUI();
   $("tm-title").textContent=title;
   $("tm-sub").textContent=slug;
@@ -31,6 +76,8 @@ function openTitle(slug,title){
   $("ep-filter").value="";
   var sBar=$("tm-seasons");if(sBar)sBar.classList.add("hidden");
   var sChips=$("tm-seasons-chips");if(sChips)sChips.innerHTML="";
+  updateBookmarkBtn(false);
+  checkModalBookmark(slug);
   $("title-modal").classList.remove("hidden");
   loadEps();
   loadRelations();
@@ -1685,6 +1732,8 @@ function init(){
   });
   $("ep-filter").addEventListener("input",renderEpGrid);
   $("tm-close").addEventListener("click",closeTitle);
+  var tmBmBtn=$("tm-bookmark-btn");
+  if(tmBmBtn) tmBmBtn.addEventListener("click",toggleModalBookmark);
   $("title-modal").addEventListener("click",function(e){if(e.target===this)closeTitle();});
   $("pm-close").addEventListener("click",closePlayer);
   $("player-modal").addEventListener("click",function(e){

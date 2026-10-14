@@ -99,6 +99,11 @@
           <span class="drawer-item-label">Masih Tayang (Lanjut)</span>
           <span class="drawer-item-badge">:lanjutan</span>
         </button>
+        <button class="drawer-item" data-view="favorit">
+          <span class="drawer-item-icon">⭐</span>
+          <span class="drawer-item-label">Anime Favorit</span>
+          <span class="drawer-item-badge">:favorit</span>
+        </button>
         <button class="drawer-item" data-view="katalog">
           <span class="drawer-item-icon">📚</span>
           <span class="drawer-item-label">Katalog Lengkap</span>
@@ -217,7 +222,10 @@
         <h2 id="tm-title">–</h2>
         <div class="dim small" id="tm-sub">–</div>
       </div>
-      <button class="icon-btn big" id="tm-close" title="Tutup (Esc)">✕</button>
+      <div class="sheet-head-actions">
+        <button id="tm-bookmark-btn" class="tm-bookmark-btn" title="Simpan ke Favorit">⭐ + FAVORIT</button>
+        <button class="icon-btn big" id="tm-close" title="Tutup (Esc)">✕</button>
+      </div>
     </div>
     <div id="tm-seasons" class="seasons-bar hidden">
       <span class="seasons-label">SEASON / TERKAIT:</span>

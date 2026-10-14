@@ -23,6 +23,21 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 4. **GraphQL Query & Filter Baru:** Menambahkan kueri pencarian anime yang baru saja tamat (`recently_finished_page`) dan pengklasifikasi serial anime continuous otomatis.
 
 ### Ditambahkan
+- **Fitur Bookmark / Favorit Anime Multiplatform:**
+  - **Penyimpanan Persisten SQLite Lokal:** Menambahkan tabel SQLite mandiri `bookmarks` (`slug`, `title`, `poster`, `type`, `sub`, `eps`, `score`, `created_at`) di `backend/database/__init__.py` dan paritas Chaquopy Android. Tabel terisolasi dari riwayat tontonan agar pembersihan riwayat tidak menghapus koleksi favorit.
+  - **REST API Endpoints:** Menyediakan endpoint `/api/bookmarks` (GET untuk daftar favorit terurut terbaru, POST untuk simpan), `/api/bookmarks/{slug}` (DELETE untuk hapus item), dan `/api/bookmarks/check` (GET status bookmark instan).
+  - **Tombol Bookmark Ergonomis di Halaman Detail:**
+    - Android (`DetailActivity`): Menambahkan tombol `⭐ + Favorit` berdampingan dengan tombol putar cepat, berubah dinamis menjadi `★ Tersimpan` (warna emas/amber) saat aktif, lengkap dengan notifikasi Toast dan dukungan navigasi remote D-Pad TV.
+    - Desktop Web (`openTitle`): Menambahkan tombol `#tm-bookmark-btn` di sheet header modal anime dengan sinkronisasi status real-time.
+  - **Navigasi Tab & Drawer Favorit:**
+    - Android: Menambahkan pill `⭐ Favorit` pada Category Pills Carousel beranda untuk akses instan ke seluruh anime tersimpan.
+    - Desktop Web: Menambahkan menu navigasi `⭐ Anime Favorit` pada drawer panel dan dukungan perintah `:favorit` / `:bookmark`.
+- **Penataan Ulang Top Menu Android (Modern Unified App Bar & Category Pills Carousel):**
+  - **Unified Action Bar 44dp:** Mengganti header bertingkat yang memakan hingga ~140dp dengan App Bar modern ringkas 44dp. Menampilkan logo Tatap di sisi kiri, serta tombol icon 🔍 (Cari) dan ⋮ (Menu Cepat) di sisi kanan.
+  - **Expandable In-Header Search Bar:** Mengetuk icon 🔍 mentransisikan header secara dinamis menjadi search input penuh dengan tombol kembali (`←`) dan clear (`✕`), membebaskan ruang pencarian tanpa menghimpit judul atau menu.
+  - **Horizontal Scrollable Category Pills (36dp):** Mengganti segmented tabs kaku dengan deretan pill kategori horizontal yang ramah satu jempol di HP dan D-Pad remote TV: *🌸 Musim Ini*, *📺 Masih Tayang*, *⭐ Favorit*, *📚 Katalog*, *⏱️ Jadwal*, dan *🏷️ Genre*.
+  - **Efisiensi Ruang Layar (~58dp):** Menghilangkan tumpukan baris header ganda sehingga baris kartu anime langsung tampak luas dan utuh dari bagian atas layar pada ponsel maupun TV.
+
 - **Dual-Lane View & Pemisahan Anime Musiman vs Serial Panjang (Semua Platform):**
   - **Pemisahan Jalur Adaptif:** Memisahkan katalog anime yang masih tayang (`which=airing` / `:lanjutan` / Tab `MASIH TAYANG`) menjadi dua seksi terpisah dalam satu halaman:
     1. *Anime Musiman (Baru Tamat / Berjalan):* Menampilkan anime musiman reguler dan memprioritaskan anime yang baru saja tamat di bagian paling atas berdasarkan tanggal berakhir riil (`sort: [END_DATE_DESC, POPULARITY_DESC]` via AniList GraphQL) dengan badge `TAMAT` berwarna emerald.

@@ -25,7 +25,7 @@ var Tui = (function () {
   function saveCmdHist(h){try{localStorage.setItem("tatap_hist",JSON.stringify(h.slice(0,50)));}catch(e){}}
 
   function cmdUsage(){
-    return "perintah:\n  cari <judul> | :musim | :lanjutan | :katalog\n  :terbaru | :season <winter|spring|summer|fall> <tahun>\n  :switch [hianime|otaku] (ganti sumber video HiAnime / Otakudesu)\n  :filter [key=val...] | :filter reset\n  :genre <slug|title> | :genre | :genre --list | :genre reset\n  :update (cek versi rilis terbaru secara on-demand)\n  :apikey <key> | :ollama <key> | :groq <key> | :gemini <key> | :model <nama> | :apiurl <url>\n  :logs | :crt on|off|toggle | :ambient on|off|toggle\n  :riwayat | :status | :bantuan | :q";
+    return "perintah:\n  cari <judul> | :musim | :lanjutan | :favorit | :katalog\n  :terbaru | :season <winter|spring|summer|fall> <tahun>\n  :switch [hianime|otaku] (ganti sumber video HiAnime / Otakudesu)\n  :filter [key=val...] | :filter reset\n  :genre <slug|title> | :genre | :genre --list | :genre reset\n  :update (cek versi rilis terbaru secara on-demand)\n  :apikey <key> | :ollama <key> | :groq <key> | :gemini <key> | :model <nama> | :apiurl <url>\n  :logs | :crt on|off|toggle | :ambient on|off|toggle\n  :riwayat | :favorit | :status | :bantuan | :q";
   }
 
   function applyFilter(){
@@ -56,6 +56,7 @@ var Tui = (function () {
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
       case "lanjutan":$("results-title").textContent="Masih tayang (lanjut)";break;
+      case "favorit":$("results-title").textContent="Anime Favorit";break;
       case "katalog":$("results-title").textContent="Katalog";break;
       case "terbaru":{
         var lblDay = S.scheduleDay === "yesterday" ? "kemarin" : (S.scheduleDay === "tomorrow" ? "besok" : "hari ini");
@@ -76,6 +77,7 @@ var Tui = (function () {
     switch(name){
       case "musim":return window.Tatap.seasonNow(S.page);
       case "lanjutan":return window.Tatap.stillAiring(S.page);
+      case "favorit":return window.Tatap.bookmarks();
       case "katalog":return window.Tatap.browse(S.filter,S.page);
       case "terbaru":return window.Tatap.schedule(S.scheduleDay || "today");
       case "season-custom":{
@@ -104,7 +106,11 @@ var Tui = (function () {
         return;
       }
       var d=r.data||{};
-      S.items=d.items||[];S.page=d.page||1;S.total=d.total_pages||1;S.sel=-1;
+      if(Array.isArray(d)){
+        S.items=d;S.page=1;S.total=1;S.sel=-1;
+      }else{
+        S.items=d.items||[];S.page=d.page||1;S.total=d.total_pages||1;S.sel=-1;
+      }
       var label=$("results-title").textContent;
       if(d.season) label+=" · "+String(d.season).toUpperCase();
       $("results-title").textContent=label;
@@ -136,7 +142,11 @@ var Tui = (function () {
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", S.view !== "terbaru");
     var isTxt = S.view==="cari" || S.view==="terbaru";
-    if(!S.items.length){box.innerHTML="<p class='dim'>Kosong.</p>";return;}
+    if(!S.items.length){
+      var emptyMsg = S.view==="favorit" ? "Belum ada anime favorit tersimpan. Ketuk tombol ⭐ + FAVORIT pada detail anime untuk menyimpannya ke sini." : "Kosong.";
+      box.innerHTML="<p class='dim'>"+emptyMsg+"</p>";
+      return;
+    }
     if(isTxt){
       var nowTs=Math.floor(Date.now()/1000);
       var frag=document.createDocumentFragment();
@@ -211,7 +221,7 @@ var Tui = (function () {
 
             d.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title);
+              App.openTitle(a.id,a.title,a.poster,a.type);
             });
             frag.appendChild(d);
           } else {
@@ -271,7 +281,7 @@ var Tui = (function () {
 
             d2.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title);
+              App.openTitle(a.id,a.title,a.poster,a.type);
             });
             frag.appendChild(d2);
           }
@@ -315,7 +325,7 @@ var Tui = (function () {
           var m=[];if(a.type)m.push(a.type);if(a.eps)m.push(a.eps+" ep");if(a.sub)m.push("SUB "+a.sub);if(a.dub)m.push("DUB "+a.dub);if(a.duration)m.push(a.duration);if(a.score)m.push(a.score.toFixed(1));meta.textContent=m.join(" · ");body.appendChild(meta);
           d.appendChild(body);
           if(!isUnavail){
-            d.addEventListener("click",function(){App.openTitle(a.id,a.title);});
+            d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type);});
           }
           grid.appendChild(d);
         })(S.items[j],j);
@@ -358,7 +368,7 @@ var Tui = (function () {
     var a=S.items[S.sel];
     if(!a||a.is_header)return;
     if(!a.id){log("judul ini belum tersedia di hianime","err");return;}
-    App.openTitle(a.id,a.title);
+    App.openTitle(a.id,a.title,a.poster,a.type);
   }
 
   function startSearch(q){
@@ -710,6 +720,8 @@ var Tui = (function () {
         log("ambient "+(nxt2==="on"?"ON":"OFF"),"ok");break;
       case "riwayat":
         try{await fetch("/api/history",{method:"DELETE"});log("riwayat dihapus","ok");}catch(e){log("err: "+e.message,"err");}break;
+      case "favorit":case "bookmark":case "bookmarks":
+        setView("favorit");break;
       case "logs":case "translog":
         await cmdLogs();break;
       case "apikey":case "model":case "apiurl":
