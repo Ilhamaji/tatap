@@ -685,12 +685,17 @@ def _try_megaplay(embed: str):
     except Exception as e:
         raise RuntimeError(f"megaplay playlist: {e}")
 
+    intro = cfg.get("intro") or {"start": 0, "end": 0}
+    outro = cfg.get("outro") or {"start": 0, "end": 0}
+
     return {"master": master, "variants": variants,
             "sub": sub_url,
             "sub_lang": sub_lang,
             "referer": origin + "/", "mal_id": "",
             "tracks": subs,
-            "subtitles": subtitles}
+            "subtitles": subtitles,
+            "intro": intro,
+            "outro": outro}
 
 def _order_servers(servers):
     def score(s):
@@ -874,11 +879,16 @@ def _try_embed_legacy(embed: str):
     if mm:
         mal_id = mm.group(1)
 
+    intro = cfg.get("intro") or {"start": 0, "end": 0}
+    outro = cfg.get("outro") or {"start": 0, "end": 0}
+
     return {"master": master, "variants": variants,
             "sub": sub_url,
             "sub_lang": sub_lang,
             "referer": referer, "mal_id": mal_id,
-            "subtitles": subtitles}
+            "subtitles": subtitles,
+            "intro": intro,
+            "outro": outro}
 
 def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
     req_mode = "dub" if str(mode).lower() == "dub" else "sub"

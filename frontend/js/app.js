@@ -272,6 +272,9 @@ function openPlayer(ep, resumeTime){
       return;
     }
     cur.res=r.data;
+    cur.intro=(r.data&&r.data.intro)||{start:0,end:0};
+    cur.outro=(r.data&&r.data.outro)||{start:0,end:0};
+    cur.activeSkipTarget=0;
     cur.source=r.data.source||"hianime";
     var picked=r.data.picked||(r.data.variants&&r.data.variants[0])||{q:"HD",url:r.data.master||""};
     var srvText=r.data.server||"";
@@ -751,6 +754,53 @@ function paintCue(){
     if(t>=cur.cues[i].start&&t<=cur.cues[i].end){html=cur.cues[i].html;break;}
   }
   if(s._last!==html){s.innerHTML=html;s._last=html;}
+  checkSkipTimes(t);
+}
+
+function checkSkipTimes(currentTime){
+  var btn=$("pm-skip-btn");
+  var label=$("pm-skip-label");
+  if(!btn||!cur.res){return;}
+  var intro=cur.intro||(cur.res&&cur.res.intro)||{start:0,end:0};
+  var outro=cur.outro||(cur.res&&cur.res.outro)||{start:0,end:0};
+
+  var inIntro=(intro.end>intro.start&&(intro.end-intro.start)>=10&&currentTime>=intro.start&&currentTime<intro.end);
+  var inOutro=(outro.end>outro.start&&(outro.end-outro.start)>=10&&currentTime>=outro.start&&currentTime<outro.end);
+
+  if(inIntro){
+    cur.activeSkipTarget=intro.end+0.5;
+    if(label)label.textContent="Lewati Opening (S)";
+    btn.classList.remove("hidden");
+  }else if(inOutro){
+    cur.activeSkipTarget=outro.end+0.5;
+    if(label)label.textContent="Lewati Ending (S)";
+    btn.classList.remove("hidden");
+  }else{
+    cur.activeSkipTarget=0;
+    btn.classList.add("hidden");
+  }
+}
+
+function doSkip(){
+  if(cur.activeSkipTarget&&cur.activeSkipTarget>0){
+    var v=$("vid");
+    if(v){
+      v.currentTime=cur.activeSkipTarget;
+      var btn=$("pm-skip-btn");
+      if(btn)btn.classList.add("hidden");
+      toast("⏩ Melompat ke "+formatTime(v.currentTime),1500);
+      cur.activeSkipTarget=0;
+      return true;
+    }
+  }
+  return false;
+}
+
+function formatTime(sec){
+  var s=Math.floor(sec||0);
+  var m=Math.floor(s/60);
+  s=s%60;
+  return (m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
 }
 function prefetchSubtitleTrack(url, ref, langCode){
   if(!url)return null;
@@ -1435,8 +1485,14 @@ function onKeyPlayer(e){
   else if(e.key==="f"||e.key==="F"){e.preventDefault();toggleFullscreen();}
   else if(e.key==="n")stepEp(1);
   else if(e.key==="p")stepEp(-1);
-  else if(e.key==="m")v.muted=!v.muted;
-  else if(e.key==="s"||e.key==="S")switchSource();
+  else if(e.key==="s"||e.key==="S"){
+    if(cur.activeSkipTarget&&cur.activeSkipTarget>0){
+      e.preventDefault();
+      doSkip();
+    }else{
+      switchSource();
+    }
+  }
   else if(e.key==="ArrowRight"){e.preventDefault();v.currentTime+=5;}
   else if(e.key==="ArrowLeft"){e.preventDefault();v.currentTime-=5;}
 }
@@ -1701,6 +1757,8 @@ function init(){
   document.addEventListener("MSFullscreenChange",syncFullscreenSubtitles);
   var pmFs=$("pm-fs");
   if(pmFs)pmFs.addEventListener("click",toggleFullscreen);
+  var skipBtn=$("pm-skip-btn");
+  if(skipBtn)skipBtn.addEventListener("click",doSkip);
   renderSourceUI();
   var sbSrc=$("sb-source");
   if(sbSrc) sbSrc.addEventListener("click",function(){switchSource();});

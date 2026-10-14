@@ -10,6 +10,7 @@ from database import init_db, get_search_cache, set_search_cache, get_episode_ca
 from api import hianime as hi
 from api import anilist as al
 from api import otakudesu as otaku
+from api import aniskip
 import httpx
 
 frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
@@ -892,6 +893,18 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
             hit["cached"] = True
             hit["subtitles"] = hit.get("subtitles") or []
             hit["source"] = active_source
+            hit["intro"] = hit.get("intro") or {"start": 0, "end": 0}
+            hit["outro"] = hit.get("outro") or {"start": 0, "end": 0}
+            if (hit["intro"].get("end", 0) == 0 or hit["outro"].get("end", 0) == 0) and hit.get("mal_id"):
+                try:
+                    loop = asyncio.get_running_loop()
+                    sk = await loop.run_in_executor(None, lambda: aniskip.get_skip_times(hit["mal_id"], ep))
+                    if sk.get("intro", {}).get("end", 0) > 0 and hit["intro"].get("end", 0) == 0:
+                        hit["intro"] = sk["intro"]
+                    if sk.get("outro", {}).get("end", 0) > 0 and hit["outro"].get("end", 0) == 0:
+                        hit["outro"] = sk["outro"]
+                except Exception:
+                    pass
             await _check_and_prewarm(hit)
             return ok(hit)
 
@@ -937,17 +950,32 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         got["subtitles"] = got.get("subtitles") or []
         actual_mode = got.get("mode") or mode
         got["mode"] = actual_mode
+        got["intro"] = got.get("intro") or {"start": 0, "end": 0}
+        got["outro"] = got.get("outro") or {"start": 0, "end": 0}
+
+        mal_id = got.get("mal_id") or ""
+        if (got["intro"].get("end", 0) == 0 or got["outro"].get("end", 0) == 0) and mal_id:
+            try:
+                sk = await loop.run_in_executor(None, lambda: aniskip.get_skip_times(mal_id, ep))
+                if sk.get("intro", {}).get("end", 0) > 0 and got["intro"].get("end", 0) == 0:
+                    got["intro"] = sk["intro"]
+                if sk.get("outro", {}).get("end", 0) > 0 and got["outro"].get("end", 0) == 0:
+                    got["outro"] = sk["outro"]
+            except Exception:
+                pass
 
         # Simpan cache episode
         await set_episode_cache(cache_slug, ep, mode, got["master"], got["variants"],
                                 got.get("sub"), got.get("sub_lang"),
                                 got.get("referer"), got.get("server"),
-                                subtitles=got["subtitles"])
+                                subtitles=got["subtitles"],
+                                intro=got["intro"], outro=got["outro"])
         if actual_mode != mode:
             await set_episode_cache(cache_slug, ep, actual_mode, got["master"], got["variants"],
                                     got.get("sub"), got.get("sub_lang"),
                                     got.get("referer"), got.get("server"),
-                                    subtitles=got["subtitles"])
+                                    subtitles=got["subtitles"],
+                                    intro=got["intro"], outro=got["outro"])
         await _check_and_prewarm(got)
         return ok(got)
     except Exception as e:

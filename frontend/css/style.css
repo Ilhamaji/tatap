@@ -316,6 +316,53 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 .subs-overlay.sz-m span{font-size:clamp(16px,1.5vw + .65rem,24px)}
 .subs-overlay.sz-l span{font-size:clamp(20px,2.0vw + .75rem,30px)}
 
+/* Floating Skip Opening / Ending Button */
+.pm-skip-btn {
+  position: absolute;
+  right: 24px;
+  bottom: 84px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid var(--acc, #38bdf8);
+  color: var(--acc, #38bdf8);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 8px 18px;
+  border-radius: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6), 0 0 12px rgba(56, 189, 248, 0.25);
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, opacity 0.2s ease;
+  user-select: none;
+}
+.pm-skip-btn:hover {
+  background: var(--acc, #38bdf8);
+  color: #0b0f19;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 6px 22px rgba(56, 189, 248, 0.4);
+}
+.pm-skip-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+.pm-skip-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+}
+.ambient-stage:fullscreen .pm-skip-btn,
+.ambient-stage:-webkit-full-screen .pm-skip-btn {
+  right: 36px;
+  bottom: 96px;
+  font-size: 15px;
+  padding: 10px 22px;
+}
+
 /* Fullscreen styles for ambient-stage container */
 .ambient-stage:fullscreen {
   width:100vw;height:100vh;max-height:100vh;display:flex;align-items:center;justify-content:center;background:#000;border-radius:0;

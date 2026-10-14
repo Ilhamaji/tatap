@@ -35,6 +35,14 @@ async def init_db():
         except Exception:
             # Duplicate column name → kolom sudah ada, aman di-skip.
             pass
+        try:
+            await db.execute("ALTER TABLE episode_cache ADD COLUMN intro TEXT DEFAULT '{}'")
+        except Exception:
+            pass
+        try:
+            await db.execute("ALTER TABLE episode_cache ADD COLUMN outro TEXT DEFAULT '{}'")
+        except Exception:
+            pass
         await db.execute("""CREATE TABLE IF NOT EXISTS watch_history(
             id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT, title TEXT,
             episode INTEGER, mode TEXT DEFAULT 'sub', progress INTEGER DEFAULT 0,
@@ -127,18 +135,32 @@ async def get_episode_cache(slug: str, ep: int, mode: str, ttl=12*3600):
                     "url": d["sub"],
                     "default": True,
                 }]
+            try:
+                d["intro"] = json.loads(d.get("intro") or '{"start": 0, "end": 0}')
+                if not isinstance(d["intro"], dict):
+                    d["intro"] = {"start": 0, "end": 0}
+            except Exception:
+                d["intro"] = {"start": 0, "end": 0}
+            try:
+                d["outro"] = json.loads(d.get("outro") or '{"start": 0, "end": 0}')
+                if not isinstance(d["outro"], dict):
+                    d["outro"] = {"start": 0, "end": 0}
+            except Exception:
+                d["outro"] = {"start": 0, "end": 0}
             return d
 
 async def set_episode_cache(slug, ep, mode, master, variants, sub, sub_lang, referer, server,
-                          subtitles=None):
-    """Simpan cache episode. subtitles=list[{label,lang,url,default}], default []."""
+                          subtitles=None, intro=None, outro=None):
+    """Simpan cache episode. subtitles=list, intro={start,end}, outro={start,end}."""
     subs_json = json.dumps(subtitles or [])
+    intro_json = json.dumps(intro or {"start": 0, "end": 0})
+    outro_json = json.dumps(outro or {"start": 0, "end": 0})
     async with _connect_db() as db:
         await db.execute("""INSERT OR REPLACE INTO episode_cache
-            (slug,ep,mode,master,variants,sub,sub_lang,referer,server,subtitles,fetched_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+            (slug,ep,mode,master,variants,sub,sub_lang,referer,server,subtitles,intro,outro,fetched_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (slug, ep, mode, master, json.dumps(variants), sub or "", sub_lang or "",
-             referer or "", server or "", subs_json, _now()))
+             referer or "", server or "", subs_json, intro_json, outro_json, _now()))
         await db.commit()
 
 async def add_history(slug, title, episode, mode="sub", progress=0, poster="", type=""):

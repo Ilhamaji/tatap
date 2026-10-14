@@ -93,6 +93,12 @@ public class PlayerActivity extends Activity {
     private Button btnQuality;
     private Button btnSubStyle;
     private Button btnSubSelector;
+    private Button btnSkipOpEd;
+    private long introStartMs = 0;
+    private long introEndMs = 0;
+    private long outroStartMs = 0;
+    private long outroEndMs = 0;
+    private long currentSkipTargetMs = 0;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
 
@@ -176,12 +182,56 @@ public class PlayerActivity extends Activity {
                 }
             }
 
+            if (player != null) {
+                checkSkipTimes(player.getCurrentPosition());
+            }
+
             if (player != null && player.isPlaying()) {
                 int syncInterval = TvFocusHelper.isTv(PlayerActivity.this) ? 150 : 75;
                 handler.postDelayed(this, syncInterval);
             }
         }
     };
+
+    private void doSkipOpEd() {
+        if (player != null && currentSkipTargetMs > 0) {
+            player.seekTo(currentSkipTargetMs);
+            if (btnSkipOpEd != null) {
+                btnSkipOpEd.setVisibility(View.GONE);
+            }
+            long sec = currentSkipTargetMs / 1000;
+            currentSkipTargetMs = 0;
+            String timeStr = String.format("%02d:%02d", sec / 60, sec % 60);
+            Toast.makeText(this, "⏩ Melompat ke " + timeStr, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void checkSkipTimes(long posMs) {
+        if (btnSkipOpEd == null || player == null) return;
+        boolean inIntro = (introEndMs > introStartMs && (introEndMs - introStartMs) >= 10_000
+                && posMs >= introStartMs && posMs < introEndMs);
+        boolean inOutro = (outroEndMs > outroStartMs && (outroEndMs - outroStartMs) >= 10_000
+                && posMs >= outroStartMs && posMs < outroEndMs);
+
+        if (inIntro) {
+            currentSkipTargetMs = introEndMs + 500;
+            btnSkipOpEd.setText("⏭ Lewati Opening");
+            if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
+                btnSkipOpEd.setVisibility(View.VISIBLE);
+            }
+        } else if (inOutro) {
+            currentSkipTargetMs = outroEndMs + 500;
+            btnSkipOpEd.setText("⏭ Lewati Ending");
+            if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
+                btnSkipOpEd.setVisibility(View.VISIBLE);
+            }
+        } else {
+            currentSkipTargetMs = 0;
+            if (btnSkipOpEd.getVisibility() == View.VISIBLE) {
+                btnSkipOpEd.setVisibility(View.GONE);
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -261,6 +311,14 @@ public class PlayerActivity extends Activity {
         btnSubSelector = findViewById(R.id.btn_sub_selector);
         if (btnSubSelector != null) {
             btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
+        }
+
+        btnSkipOpEd = findViewById(R.id.btn_skip_op_ed);
+        if (btnSkipOpEd != null) {
+            btnSkipOpEd.setOnClickListener(v -> doSkipOpEd());
+            if (TvFocusHelper.isTv(this)) {
+                TvFocusHelper.attachCardFocus(btnSkipOpEd);
+            }
         }
 
         try {
@@ -1077,6 +1135,25 @@ public class PlayerActivity extends Activity {
                     rawStreamUrl = streamUrl;
                     streamReferer = referer;
                     masterStreamUrl = (!masterUrl.isEmpty() && isHlsStream(masterUrl)) ? masterUrl : "";
+
+                    JSONObject introObj = data.optJSONObject("intro");
+                    if (introObj != null) {
+                        introStartMs = (long) (introObj.optDouble("start", 0) * 1000);
+                        introEndMs = (long) (introObj.optDouble("end", 0) * 1000);
+                    } else {
+                        introStartMs = 0;
+                        introEndMs = 0;
+                    }
+
+                    JSONObject outroObj = data.optJSONObject("outro");
+                    if (outroObj != null) {
+                        outroStartMs = (long) (outroObj.optDouble("start", 0) * 1000);
+                        outroEndMs = (long) (outroObj.optDouble("end", 0) * 1000);
+                    } else {
+                        outroStartMs = 0;
+                        outroEndMs = 0;
+                    }
+                    currentSkipTargetMs = 0;
 
                     if (!rawStreamUrl.isEmpty()) {
                         runOnUiThread(() -> {
@@ -2310,6 +2387,14 @@ public class PlayerActivity extends Activity {
         masterStreamUrl = "";
         subtitleTracks.clear();
         hasFallbackAttempted = false;
+        introStartMs = 0;
+        introEndMs = 0;
+        outroStartMs = 0;
+        outroEndMs = 0;
+        currentSkipTargetMs = 0;
+        if (btnSkipOpEd != null) {
+            btnSkipOpEd.setVisibility(View.GONE);
+        }
 
         if (player != null) {
             player.stop();

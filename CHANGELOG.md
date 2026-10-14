@@ -21,8 +21,15 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 2. **True Seamless Resolution Switching:** Menambahkan kapabilitas peralihan resolusi dinamis tanpa jeda layar hitam dan tanpa pemotongan audio pada Android TV.
 3. **Kapsul Navigasi Mengambang & Notifikasi Adaptif:** Menambahkan komponen UI floating bottom bar dan timer dinamis pada antarmuka Android.
 4. **GraphQL Query & Filter Baru:** Menambahkan kueri pencarian anime yang baru saja tamat (`recently_finished_page`) dan pengklasifikasi serial anime continuous otomatis.
+5. **Fitur Skip Opening & Ending Interaktif Multiplatform:** Menambahkan kapabilitas melompati intro (OP) dan outro (ED) anime melalui floating buttons interaktif, keyboard shortcut `S`, dan D-Pad remote TV dengan integrasi native MegaCloud & fallback AniSkip API.
 
 ### Ditambahkan
+- **Fitur Skip Opening dan Ending Anime Interaktif Multiplatform:**
+  - **Multi-Tier Skip Provider Engine:** Mengambil penanda waktu intro dan outro secara native langsung dari provider streaming (MegaCloud / MegaPlay `getSourcesNew`), dilengkapi fallback cerdas ke AniSkip API v2 komunitas open-source untuk sumber video alternatif.
+  - **Non-Breaking Database Persistence:** Migrasi kolom `intro` dan `outro` pada tabel `episode_cache` SQLite lokal dengan paritas 100% pada Chaquopy Android untuk cache waktu instan tanpa query jaringan berulang.
+  - **Floating Interactive Player Skip Buttons:**
+    - Desktop Web (`frontend/index.html` & `frontend/js/app.js`): Tombol mengambang cyber cyan `#pm-skip-btn` muncul otomatis di kanan bawah selama pemutaran intro/outro berlangsung, dengan dukungan shortcut keyboard `S` dan transisi fade-out halus di luar durasi OP/ED.
+    - Android Mobile & Android TV (`activity_player.xml` & `PlayerActivity.java`): Tombol mengambang `btn_skip_op_ed` berukuran 38dp dengan sudut melengkung 19dp dan border cyan di kanan bawah (72dp di atas timeline) tanpa menghalangi subtitle, terintegrasi penuh dengan navigasi fokus remote TV D-Pad.
 - **Fitur Bookmark / Favorit Anime Multiplatform:**
   - **Penyimpanan Persisten SQLite Lokal:** Menambahkan tabel SQLite mandiri `bookmarks` (`slug`, `title`, `poster`, `type`, `sub`, `eps`, `score`, `created_at`) di `backend/database/__init__.py` dan paritas Chaquopy Android. Tabel terisolasi dari riwayat tontonan agar pembersihan riwayat tidak menghapus koleksi favorit.
   - **REST API Endpoints:** Menyediakan endpoint `/api/bookmarks` (GET untuk daftar favorit terurut terbaru, POST untuk simpan), `/api/bookmarks/{slug}` (DELETE untuk hapus item), dan `/api/bookmarks/check` (GET status bookmark instan).

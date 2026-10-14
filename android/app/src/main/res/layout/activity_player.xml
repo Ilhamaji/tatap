@@ -139,6 +139,28 @@
         android:shadowRadius="4"
         android:visibility="gone" />
 
+    <!-- Floating Skip Opening / Ending Button -->
+    <Button
+        android:id="@+id/btn_skip_op_ed"
+        android:layout_width="wrap_content"
+        android:layout_height="38dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="72dp"
+        android:backgroundTint="#D90F172A"
+        app:strokeColor="#38BDF8"
+        app:strokeWidth="1.5dp"
+        app:cornerRadius="19dp"
+        android:paddingHorizontal="16dp"
+        android:text="⏭ Lewati Opening"
+        android:textColor="#38BDF8"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:focusable="true"
+        android:clickable="true"
+        android:visibility="gone" />
+
     <!-- Top Overlay Header (Back, Title, Subtitle Selector, Style, Quality, Aspect) -->
     <LinearLayout
         android:id="@+id/layout_top_bar"
