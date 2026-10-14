@@ -131,7 +131,7 @@ public class MainActivity extends Activity {
 
         etSearch = findViewById(R.id.et_search);
         btnClearSearch = findViewById(R.id.btn_clear_search);
-        pbLoading = findViewById(R.id.pb_loading);
+        pbLoading = findViewById(R.id.pb_central_loading);
         layoutLoadingState = findViewById(R.id.layout_loading_state);
         tvSectionTitle = findViewById(R.id.tv_section_title);
         tvItemCount = findViewById(R.id.tv_item_count);
