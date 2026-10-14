@@ -22,20 +22,25 @@ Kenaikan digit PATCH diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 3. **Pemberian Batas Timeout AniSkip:** Membatasi pemanggilan sinkron API AniSkip dengan timeout maksimal 1.2 detik sehingga episode langsung diputar tanpa tertahan jika server skip-times lambat atau mengalami latency.
 4. **Perbaikan Macet Streaming & URL Nesting Prefetch:** Memperbaiki bug pembungkusan URL bersarang (*nested proxy url*) pada Hls.js `FRAG_BUFFERED` yang sebelumnya memicu HTTP 400 Bad Request, menambahkan auto-nudge buffer stall recovery, serta mencegah keracunan cache host DPI pada CDN streaming normal.
 5. **Pencegahan Race Condition Episode Navigation:** Menambahkan token request unik `cur.playToken` pada navigasi episode dan pergantian subtitle agar respon episode lama tidak menimpa episode baru saat navigasi cepat.
+6. **Perbaikan Sistem Pagination (Next & Prev Page) Seluruh View Desktop & Web:** Memperbaiki bug parser AniList yang sebelumnya mengunci `lastPage` sama dengan `currentPage` sehingga pagination di tampilan *Musim Ini*, *Masih Tayang*, dan *Season Custom* terkunci di halaman 1; menambahkan tombol fisik navigasi `[⏮ Sebelumnya]` dan `[Berikutnya ⏭]` pada kontainer `#pager`; serta mengintegrasikan perpindahan hari rilis (*Kemarin* ↔ *Hari Ini* ↔ *Besok*) dan paging koleksi *Favorit*.
 
 ### Diperbaiki
-- **Frontend Player & Subtitle Dual-Layer (`frontend/js/app.js`):**
+- **Frontend Player, Terminal & Pager Navigation (`frontend/index.html`, `frontend/css/style.css`, `frontend/js/term.js`, `frontend/js/api.js`):**
+  - **Interactive Visual Pager Buttons:** Menambahkan tombol interaktif `#pg-prev` dan `#pg-next` bergaya Cyber Tatap pada kontainer `#pager` lengkap dengan state disabled dinamis, memungkinkan pengguna desktop/mouse berpindah halaman secara visual selain menggunakan pintasan keyboard `[` dan `]`.
+  - **Full-View Pagination Support:** Menghubungkan fungsi `pagePrev()` dan `pageNext()` untuk seluruh tampilan: beralih hari rilis pada view *Jadwal*, membagi 24 kartu per halaman pada view *Favorit*, meneruskan nomor halaman pada view *Season Custom*, dan melakukan smooth scroll otomatis ke atas halaman saat berpindah.
   - **Single-Layer Subtitle Display:** Menyetel `trackEl.default = false;` pada `syncNativeTextTrack` dan memperbarui `paintCue()` untuk menyembunyikan `#pm-subs-overlay` saat native video fullscreen aktif. Membersihkan seluruh cue sisa dari track lama saat transisi track.
   - **URL Nesting Prefetch Fix:** Memeriksa apakah fragmen Hls sudah berawalan `/api/player/video` sebelum memanggil prefetch, menghilangkan banjir error HTTP 400 Bad Request di latar belakang.
   - **Hls.js Auto-Nudge & Resilient Recovery:** Menambahkan `nudgeOffset: 0.1`, `nudgeMaxRetry: 5`, menangani `bufferStalledError` dengan micro-nudge `v.currentTime += 0.08`, serta mengimplementasikan multi-attempt retry (hingga 4 kali) yang direset setiap kali segmen berhasil dimuat (`FRAG_LOADED`).
   - **Episode Navigation Race Protection:** Menambahkan token `cur.playToken = ++_playTokenCounter;` di awal `openPlayer()` dan `switchSubtitleTrack()` untuk membatalkan callback lama jika pengguna berpindah episode secara cepat.
-- **Backend Resolving & Streaming Pipeline (`backend/api/hianime.py` & `backend/main.py`):**
+- **Backend Resolving, Pagination & Streaming Pipeline (`backend/api/anilist.py`, `backend/api/hianime.py` & `backend/main.py`):**
+  - **AniList GraphQL Pagination Fix:** Memperbaiki kalkulasi `lastPage` dan `hasNextPage` di `season_page()` dan `recently_finished_page()`, memastikan `total_pages` mengembalikan jumlah halaman riil saat masih ada data lanjutan.
+  - **Seasonal Route Multi-Page Protection:** Memperbarui cache key endpoint `/api/seasonal` ke `seasonal_v3` dan menambahkan penyesuaian otomatis `total_pages >= page + 1` saat `has_next` bernilai true.
   - **Single Master M3U8 Fetch:** Memangkas 3x pengunduhan berulang master m3u8 menjadi 1x pengunduhan terintegrasi di `_try_megaplay`, mempercepat waktu pembukaan video hingga 60-70%.
   - **Trusted CDN Subtitle Fast-Track:** Melewati download mendalam file subtitle WebVTT saat me-resolve stream dari CDN terpercaya (MegaPlay, MegaCloud, Rabbitstream) sehingga metadata stream selesai instan.
   - **AniSkip Non-Blocking Timeout:** Membungkus pencarian intro/outro AniSkip dengan batas waktu 1.2 detik menggunakan `asyncio.wait_for`, menjamin ketiadaan atau kelambatan respon server eksternal tidak menunda pemutaran.
   - **Anti Host Poisoning Protection:** Melindungi daftar host DPI (`_BLOCKED_DPI_HOSTS`) agar tidak tercemar oleh domain CDN umum saat terjadi timeout jaringan biasa.
-- **Automated Test Suite (`tests/test_desktop_perf_and_subs.py`):**
-  - Menambahkan pengujian otomatis untuk validasi cepat subtitle terpercaya, batas waktu AniSkip, dan proteksi anti host poisoning.
+- **Automated Test Suite (`tests/test_desktop_perf_and_subs.py` & `tests/test_pagination_all_views.py`):**
+  - Menambahkan pengujian otomatis komprehensif untuk pagination seluruh view (musim, airing, season custom, catalog, dan schedule), validasi subtitle terpercaya, batas waktu AniSkip, dan proteksi anti host poisoning.
 
 ## [2.6.1] - 2026-10-14
 

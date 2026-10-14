@@ -111,7 +111,7 @@ var Tui = (function () {
       case "terbaru":return window.Tatap.schedule(S.scheduleDay || "today");
       case "season-custom":{
         if(!S.seasonFilter)return null;
-        return window.Tatap.seasonBy(S.seasonFilter.season, S.seasonFilter.year);
+        return window.Tatap.seasonBy(S.seasonFilter.season, S.seasonFilter.year, S.page);
       }
       case "cari":return null;
     }
@@ -135,7 +135,23 @@ var Tui = (function () {
         return;
       }
       var d=r.data||{};
-      if(Array.isArray(d)){
+      if(S.view==="favorit" && Array.isArray(d)){
+        S.rawBookmarks = d;
+        var pageSize = 24;
+        S.total = Math.max(1, Math.ceil(d.length / pageSize));
+        if(S.page > S.total) S.page = S.total;
+        var start = (S.page - 1) * pageSize;
+        S.items = d.slice(start, start + pageSize);
+        S.sel = -1;
+      }else if(S.view==="terbaru"){
+        var days = ["yesterday", "today", "tomorrow"];
+        var curIdx = days.indexOf(S.scheduleDay || "today");
+        if(curIdx < 0) curIdx = 1;
+        S.page = curIdx + 1;
+        S.total = 3;
+        S.items = d.items || (Array.isArray(d) ? d : []);
+        S.sel = -1;
+      }else if(Array.isArray(d)){
         S.items=d;S.page=1;S.total=1;S.sel=-1;
       }else{
         S.items=d.items||[];S.page=d.page||1;S.total=d.total_pages||1;S.sel=-1;
@@ -367,7 +383,27 @@ var Tui = (function () {
     var show=S.view!=="cari";
     $("pager").classList.toggle("hidden",!show);
     if(!show)return;
-    $("pg-info").textContent=S.total>1?("hal "+S.page+"/"+S.total+" · ["+"] halaman"):(S.items.length+" item");
+
+    var prevBtn=$("pg-prev");
+    var nextBtn=$("pg-next");
+    var info=$("pg-info");
+
+    if(S.view === "terbaru"){
+      var days=["yesterday","today","tomorrow"];
+      var dayLabels={yesterday:"Kemarin",today:"Hari Ini",tomorrow:"Besok"};
+      var curIdx=days.indexOf(S.scheduleDay||"today");
+      if(curIdx<0) curIdx=1;
+      if(prevBtn) prevBtn.disabled=(curIdx<=0);
+      if(nextBtn) nextBtn.disabled=(curIdx>=days.length-1);
+      if(info) info.textContent=dayLabels[days[curIdx]]+" ("+(curIdx+1)+"/3) · "+S.items.length+" anime";
+      return;
+    }
+
+    if(prevBtn) prevBtn.disabled=(S.page<=1);
+    if(nextBtn) nextBtn.disabled=(S.page>=S.total);
+    if(info){
+      info.textContent=S.total>1?("Halaman "+S.page+" / "+S.total+" · ["+"]"): (S.items.length+" item");
+    }
   }
 
   function moveSel(d){
@@ -905,8 +941,63 @@ var Tui = (function () {
     var ord=["cari","musim","terbaru","lanjutan","katalog"];
     var idx=ord.indexOf(S.view);setView(ord[(idx+1)%ord.length]);
   }
-  function pagePrev(){if(S.page>1){S.page--;loadView();}}
-  function pageNext(){if(S.page<S.total){S.page++;loadView();}}
+  function pagePrev(){
+    if(S.view==="terbaru"){
+      var days=["yesterday","today","tomorrow"];
+      var curIdx=days.indexOf(S.scheduleDay||"today");
+      if(curIdx>0){
+        S.scheduleDay=days[curIdx-1];
+        updateScheduleChips();
+        loadView();
+      }
+      return;
+    }
+    if(S.view==="favorit" && S.rawBookmarks){
+      if(S.page>1){
+        S.page--;
+        var pageSize=24;
+        var start=(S.page-1)*pageSize;
+        S.items=S.rawBookmarks.slice(start,start+pageSize);
+        renderResults();renderPager();
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+      }
+      return;
+    }
+    if(S.page>1){
+      S.page--;
+      loadView();
+      try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+    }
+  }
+
+  function pageNext(){
+    if(S.view==="terbaru"){
+      var days=["yesterday","today","tomorrow"];
+      var curIdx=days.indexOf(S.scheduleDay||"today");
+      if(curIdx<days.length-1){
+        S.scheduleDay=days[curIdx+1];
+        updateScheduleChips();
+        loadView();
+      }
+      return;
+    }
+    if(S.view==="favorit" && S.rawBookmarks){
+      if(S.page<S.total){
+        S.page++;
+        var pageSize=24;
+        var start=(S.page-1)*pageSize;
+        S.items=S.rawBookmarks.slice(start,start+pageSize);
+        renderResults();renderPager();
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+      }
+      return;
+    }
+    if(S.page<S.total){
+      S.page++;
+      loadView();
+      try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+    }
+  }
 
   function onPromptFocus(){S.promptFoc=true;$("cmd").classList.add("focus");}
   function onPromptBlur(){S.promptFoc=false;$("cmd").classList.remove("focus");setTimeout(function(){if($("cmd").value.trim()&&S.items.length){/* keep sel visible */}},50);}
@@ -992,6 +1083,10 @@ var Tui = (function () {
         setView("terbaru");
       });
     });
+    var btnPgPrev = $("pg-prev");
+    if(btnPgPrev) btnPgPrev.addEventListener("click", function(e){ e.preventDefault(); pagePrev(); });
+    var btnPgNext = $("pg-next");
+    if(btnPgNext) btnPgNext.addEventListener("click", function(e){ e.preventDefault(); pageNext(); });
     $("sb-view").textContent="view: "+S.view;
     renderRecents();
   }

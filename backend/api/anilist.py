@@ -102,11 +102,16 @@ def season_page(name, year, page=1, per_page=25, status_in=None):
         d.setdefault("pageInfo", {})
         d.setdefault("media", [])
         # AniList PageInfo untuk season-filter sering over-report (total=5000, lastPage=200).
-        # Batas hanya didasarkan pada item terisi — kalau page ini < per_page, tidak ada next.
+        # Batas didasarkan pada item terisi — kalau page ini < per_page, tidak ada next.
         items = d.get("media") or []
         pi = d.get("pageInfo") or {}
-        pi["hasNextPage"] = bool(pi.get("hasNextPage")) and len(items) >= per_page
-        pi["lastPage"] = max(1, pi.get("currentPage") or page)
+        has_next = bool(pi.get("hasNextPage")) and len(items) >= per_page
+        pi["hasNextPage"] = has_next
+        if has_next:
+            raw_last = pi.get("lastPage") or 1
+            pi["lastPage"] = max(page + 1, min(raw_last, 20))
+        else:
+            pi["lastPage"] = max(1, page)
         pi["perPage"] = per_page
         d["pageInfo"] = pi
         return d
@@ -131,8 +136,13 @@ def recently_finished_page(page=1, per_page=20):
         d.setdefault("media", [])
         items = d.get("media") or []
         pi = d.get("pageInfo") or {}
-        pi["hasNextPage"] = bool(pi.get("hasNextPage")) and len(items) >= per_page
-        pi["lastPage"] = max(1, pi.get("currentPage") or page)
+        has_next = bool(pi.get("hasNextPage")) and len(items) >= per_page
+        pi["hasNextPage"] = has_next
+        if has_next:
+            raw_last = pi.get("lastPage") or 1
+            pi["lastPage"] = max(page + 1, min(raw_last, 15))
+        else:
+            pi["lastPage"] = max(1, page)
         pi["perPage"] = per_page
         d["pageInfo"] = pi
         return d

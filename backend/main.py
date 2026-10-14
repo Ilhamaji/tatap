@@ -371,12 +371,14 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 season_name, season_year = name_cur, year_cur
             cache_id = which or "now"
 
-        key = f"seasonal_v2|{cache_id}|page={page}"
+        key = f"seasonal_v3|{cache_id}|page={page}"
         hit = await get_browse_cache(key)
         if hit:
             hit["cached"] = True
             hit["season"] = season_name
             hit["year"] = season_year
+            if hit.get("has_next") and hit.get("total_pages", 1) <= page:
+                hit["total_pages"] = page + 1
             return ok(hit)
 
         status_in = None if is_future else ["RELEASING", "FINISHED"]
@@ -433,15 +435,19 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 items_out = hi_data.get("items")
 
         page_info = (page_data or {}).get("pageInfo") or {}
+        has_next = bool(page_info.get("hasNextPage"))
+        total_p = max(1, page_info.get("lastPage") or 1)
+        if has_next and total_p <= page:
+            total_p = page + 1
         result = {
             "season": season_name,
             "year": season_year,
             "which": which,
             "items": items_out,
             "page": page,
-            "total_pages": max(1, page_info.get("lastPage") or 1),
+            "total_pages": total_p,
             "total_items": len(items_out),
-            "has_next": bool(page_info.get("hasNextPage")),
+            "has_next": has_next,
             "cached": False,
         }
         await set_browse_cache(key, result)
