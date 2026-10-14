@@ -75,6 +75,10 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - **Animasi TV D-Pad Ringan (Android TV):** Menyetel durasi transisi fokus remote TV menjadi 90ms dan skala kartu 1.04x di `TvFocusHelper.java`, mengeliminasi lag shadow software pada chipset Android TV hemat daya.
 
 ### Diperbaiki
+- **Pencegahan Kebocoran Metadata Sidebar HiAnime pada Kartu Terakhir:**
+  - Mengisolasi batas kontainer kartu anime di `_parse_browse_cards` pada `backend/api/hianime.py` agar berhenti pada `<div class="clearfix">` dan memangkas blok sidebar sebelum parsing HTML dijalankan.
+  - Mencegah kartu anime di posisi paling bawah halaman katalog (seperti *Yani Neko*) menyerap metadata episode widget sidebar (*Black Clover* `eps: 170`), yang sebelumnya memicu salah klasifikasi ke dalam seksi *Anime Panjang Berkelanjutan* (*Serial Panjang*).
+  - Menambahkan guard defensif rasio episode pada `_is_long_running` dan menaikkan cache key airing ke `airing_lanes_v4` untuk mensterilkan cache lama secara otomatis.
 - **Eliminasi Stuttering & Patah-Patah Pemutaran Video 1080p (Android & Android TV):**
   - **Pencegahan Loop Rekonfigurasi Decoder di `onTracksChanged`:** Memasang guard boolean `hasAppliedTrackSelectionForStream` pada listener `onTracksChanged` agar seleksi track HLS hanya dieksekusi sekali saat manifest track pertama kali selesai di-resolve. Menghindari pemanggilan rekursif `setTrackSelectionParameters` yang memicu flush decoder dan micro-stuttering berulang kali saat pemutaran video sedang berlangsung.
   - **Ekspansi Buffer Video 1080p Aman (`min: 25s`, `max: 50s`):** Menyesuaikan buffer durasi `DefaultLoadControl` dari 8s/15s menjadi 25s minimum dan 50s maksimum dengan buffer mulai 2s dan rebuffer 4s serta menonaktifkan `prioritizeTimeOverSizeThresholds`. Menjamin buffer video 1080p tidak pernah mengalami starvation pada jaringan dinamis dengan alokasi RAM native yang tetap hemat (~10–15 MB).

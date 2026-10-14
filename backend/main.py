@@ -204,6 +204,9 @@ def _is_long_running(title: str, episodes: int = 0, start_year: int = 0, sub_cou
              "dragon ball", "naruto")
     if any(k in t or k in s for k in known):
         return True
+    # Guard: jika sub_count kecil (<= 24 ep) tapi episodes tinggi tanpa kecocokan serial legendaris
+    if sub_count and sub_count <= 24 and episodes and episodes > 50 and not any(k in t or k in s for k in known):
+        return False
     if sub_count > 30:
         return True
     if episodes and episodes > 30:
@@ -226,7 +229,7 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
 
         # Kasus khusus: Masih Tayang / Airing Ongoing dengan Dual-Lane (Musiman vs Panjang)
         if which == "airing":
-            key = f"airing_lanes_v3|page={page}"
+            key = f"airing_lanes_v4|page={page}"
             hit = await get_browse_cache(key, ttl=3600)
             if hit:
                 hit["cached"] = True

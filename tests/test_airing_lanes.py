@@ -59,3 +59,25 @@ async def test_seasonal_airing_dual_lane_structure():
 
     # Verifikasi serial panjang memuat badge SERIAL PANJANG
     assert all(x.get("is_long_running") is True for x in long_running_items)
+
+
+@pytest.mark.asyncio
+async def test_yani_neko_classified_as_seasonal():
+    # Pastikan Yani Neko tidak masuk ke long_running
+    assert _is_long_running("Yani Neko", 0, 0, 12, "chainsmoker-cat-121") is False
+    assert _is_long_running("Yani Neko", 170, 0, 12, "chainsmoker-cat-121") is False
+
+    res = await seasonal(which="airing", page=1)
+    data = res.get("data", {})
+    seasonal_items = data.get("seasonal", [])
+    long_running_items = data.get("long_running", [])
+
+    # Jika Yani Neko ada di respons, pastikan berada di seasonal, bukan long_running
+    yani_in_long = [x for x in long_running_items if "yani" in x.get("title", "").lower() or "chainsmoker" in x.get("id", "").lower()]
+    assert len(yani_in_long) == 0, f"Yani Neko bocor ke long_running: {yani_in_long}"
+
+    yani_in_seasonal = [x for x in seasonal_items if "yani" in x.get("title", "").lower() or "chainsmoker" in x.get("id", "").lower()]
+    if yani_in_seasonal:
+        it = yani_in_seasonal[0]
+        assert it.get("lane") == "seasonal"
+        assert it.get("is_long_running") is False

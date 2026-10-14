@@ -170,7 +170,8 @@ def browse(params: dict = None, page: int = 1):
         return {"items": [], "page": clean["page"], "total_pages": 1, "params": clean}
     url = BROWSE_API + "?" + urlencode(clean)
     page_html = _fetch(url)
-    items = _parse_browse_cards(page_html)
+    clean_html = page_html.split('id="sidebar"')[0].split('class="sidebar"')[0].split('id="main-sidebar"')[0]
+    items = _parse_browse_cards(clean_html)
     last = 1
     for m in re.finditer(r"page=(\d+)", page_html):
         try:
@@ -181,9 +182,13 @@ def browse(params: dict = None, page: int = 1):
 
 
 def _parse_browse_cards(html: str):
-    blocks = html.split("flw-item")
+    # Pangkas sidebar agar kartu anime terakhir tidak menyerap metadata widget sidebar
+    clean_html = html.split('id="sidebar"')[0].split('class="sidebar"')[0].split('id="main-sidebar"')[0]
+    blocks = clean_html.split("flw-item")
     out = []
-    for b in blocks[1:]:
+    for raw_b in blocks[1:]:
+        c_end = raw_b.find('<div class="clearfix">')
+        b = raw_b[:c_end] if c_end != -1 else raw_b[:3000]
         m = re.search(r"film-name.*?href=\"[^\"]*/([^\"]+)\"[^>]*title=\"([^\"]*)\"", b, re.S)
         if not m:
             continue
