@@ -164,8 +164,15 @@ public class MainActivity extends Activity {
         btnClearHistoryAll = findViewById(R.id.btn_clear_history_all);
 
         int spanCount = getResources().getInteger(R.integer.anime_grid_columns);
-        rvGrid.setLayoutManager(new GridLayoutManager(this, spanCount));
+        GridLayoutManager glm = new GridLayoutManager(this, spanCount);
         adapter = new AnimeAdapter(this);
+        glm.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+            @Override
+            public int getSpanSize(int position) {
+                return (adapter != null && adapter.isHeader(position)) ? glm.getSpanCount() : 1;
+            }
+        });
+        rvGrid.setLayoutManager(glm);
         rvGrid.setAdapter(adapter);
         // Performance tuning: bedakan antara Android TV (ramah low-RAM STB) dan Mobile
         rvGrid.setHasFixedSize(true);

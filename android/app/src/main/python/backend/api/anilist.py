@@ -28,6 +28,29 @@ query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int, $statusIn: [
 }
 """
 
+RECENTLY_FINISHED_QUERY = """
+query AiringFinished($page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo { total perPage currentPage lastPage hasNextPage }
+    media(format: TV, status: FINISHED, type: ANIME, sort: [END_DATE_DESC, POPULARITY_DESC]) {
+      id
+      status
+      title { romaji english }
+      format
+      episodes
+      duration
+      averageScore
+      season
+      seasonYear
+      startDate { year month day }
+      endDate { year month day }
+      coverImage { large medium }
+      siteUrl
+    }
+  }
+}
+"""
+
 def current_season():
     """Return (year, season_name) untuk bulan hari ini."""
     import datetime as _dt
@@ -80,6 +103,32 @@ def season_page(name, year, page=1, per_page=25, status_in=None):
         d.setdefault("media", [])
         # AniList PageInfo untuk season-filter sering over-report (total=5000, lastPage=200).
         # Batas hanya didasarkan pada item terisi — kalau page ini < per_page, tidak ada next.
+        items = d.get("media") or []
+        pi = d.get("pageInfo") or {}
+        pi["hasNextPage"] = bool(pi.get("hasNextPage")) and len(items) >= per_page
+        pi["lastPage"] = max(1, pi.get("currentPage") or page)
+        pi["perPage"] = per_page
+        d["pageInfo"] = pi
+        return d
+    except Exception:
+        return {"pageInfo": {"total": 0, "perPage": per_page, "currentPage": page,
+                             "lastPage": 1, "hasNextPage": False}, "media": []}
+
+
+def recently_finished_page(page=1, per_page=20):
+    """Fetch anime musiman yang baru saja tamat dari AniList, diurutkan dari yang paling baru tamat."""
+    try:
+        c = _get_al_client()
+        r = c.post(ANILIST_URL, json={
+            "query": RECENTLY_FINISHED_QUERY,
+            "variables": {"page": page, "perPage": per_page}
+        })
+        if r.status_code != 200:
+            return {"pageInfo": {"total": 0, "perPage": per_page, "currentPage": page,
+                                 "lastPage": 1, "hasNextPage": False}, "media": []}
+        d = r.json().get("data", {}).get("Page", {})
+        d.setdefault("pageInfo", {})
+        d.setdefault("media", [])
         items = d.get("media") or []
         pi = d.get("pageInfo") or {}
         pi["hasNextPage"] = bool(pi.get("hasNextPage")) and len(items) >= per_page

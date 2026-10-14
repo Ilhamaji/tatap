@@ -15,6 +15,16 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 
 ## [2.4.3] - 2026-10-14
 
+### Ditambahkan
+- **Dual-Lane View & Pemisahan Anime Musiman vs Serial Panjang (Semua Platform):**
+  - **Pemisahan Jalur Adaptif:** Memisahkan katalog anime yang masih tayang (`which=airing` / `:lanjutan` / Tab `MASIH TAYANG`) menjadi dua seksi terpisah dalam satu halaman:
+    1. *Anime Musiman (Baru Tamat / Berjalan):* Menampilkan anime musiman reguler dan memprioritaskan anime yang baru saja tamat di bagian paling atas berdasarkan tanggal berakhir riil (`sort: [END_DATE_DESC, POPULARITY_DESC]` via AniList GraphQL) dengan badge `TAMAT` berwarna emerald.
+    2. *Anime Panjang Berkelanjutan (Continuous On-Going):* Mengelompokkan anime yang tayang berkelanjutan antar musim (*One Piece*, *Detective Conan*, *Pokemon*, *Crayon Shin-chan*, *Doraemon*, *Chibi Maruko-chan*, *Boruto*) ke jalur khusus dengan badge `SERIAL PANJANG` berwarna amber.
+  - **Banner Pembatas Jalur Full-Width:** Menambahkan komponen section header adaptif dengan aksen indikator visual (cyan untuk musiman, amber untuk serial panjang) yang membentang penuh di atas baris grid kartu.
+  - **Android TV & Mobile Multi-View Type Adapter:** Mengimplementasikan `GridLayoutManager.SpanSizeLookup` pada `MainActivity.java` dan multi-view type pada `AnimeAdapter.java` (`VIEW_TYPE_HEADER` dan `VIEW_TYPE_ANIME`). Banner header secara otomatis membentang selebar seluruh kolom grid dan dikecualikan dari remote focus (`itemView.setFocusable(false)`) agar navigasi D-Pad Android TV berpindah mulus antar kartu tanpa macet di header.
+  - **Desktop Web UI Parity:** Memperbarui `frontend/js/api.js` (mengarahkan `stillAiring` ke `which=airing`) dan `frontend/js/term.js` untuk merender banner pembatas jalur melintasi grid CSS (`grid-column: 1 / -1`) serta melompati header saat navigasi panah keyboard.
+  - **Sinkronisasi Paritas Chaquopy Android:** Menjaga sinkronisasi 100% kode backend embedded di `android/app/src/main/python/backend/` bersama backend utama.
+
 ### Ditingkatkan
 - **True Seamless Quality Switching Khusus Android TV (Terisolasi Penuh):**
   - Meniadakan pemanggilan disruptif `player.stop()` dan `player.prepare()` saat pengguna mengganti resolusi video (misalnya dari 360p ke 1080p) pada Android TV (`TvFocusHelper.isTv()`).

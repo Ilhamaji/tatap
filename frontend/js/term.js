@@ -282,11 +282,31 @@ var Tui = (function () {
       var grid=document.createElement("div");grid.className="poster-grid";
       for(var j=0;j<S.items.length;j++){
         (function(a,idx){
+          if(a.is_header){
+            var h=document.createElement("div");
+            h.className="lane-header-banner";
+            var isLong = a.lane === "long_running";
+            var col = isLong ? "#F59E0B" : "#38BDF8";
+            h.style.cssText="grid-column:1 / -1;width:100%;margin:16px 0 8px 0;padding:8px 12px;background:rgba(15,23,42,0.8);border-left:4px solid "+col+";border-radius:4px;display:flex;align-items:center;justify-content:space-between;user-select:none;box-sizing:border-box;";
+            h.innerHTML="<span style='font-weight:bold;font-size:12px;letter-spacing:0.04em;color:"+col+"'>"+(a.header_title||a.title||"")+"</span><span style='font-family:monospace;font-size:10px;color:#64748B'>"+(isLong?"[CONTINUOUS]":"[SEASONAL]")+"</span>";
+            grid.appendChild(h);
+            return;
+          }
           var isUnavail=!a.id;
           var d=document.createElement("div");
           d.className="poster-card"+(idx===S.sel?" sel":"")+(isUnavail?" unmapped":"");
           d.tabIndex=0;
           var idxSpan=document.createElement("span");idxSpan.className="pc-idx";idxSpan.textContent=String(idx+1).padStart(2,"0");d.appendChild(idxSpan);
+          if(a.badge){
+            var bgTag=document.createElement("span");
+            var isTam = a.badge === "TAMAT" || a.is_finished;
+            var isLongB = a.badge === "SERIAL PANJANG" || a.is_long_running;
+            var bgCol = isTam ? "rgba(5,150,105,0.92)" : (isLongB ? "rgba(217,119,6,0.92)" : "rgba(15,23,42,0.85)");
+            bgTag.className="pc-badge-tag";
+            bgTag.style.cssText="position:absolute;bottom:6px;left:6px;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:3px;background:"+bgCol+";color:#fff;z-index:2;pointer-events:none;";
+            bgTag.textContent=a.badge;
+            d.appendChild(bgTag);
+          }
           if(isUnavail){var bad=document.createElement("span");bad.className="pc-bad";bad.textContent="?";bad.title="Tidak ada di hianime";d.appendChild(bad);}
           if(a.poster){var im=document.createElement("img");im.loading="lazy";im.decoding="async";im.alt=a.title;im.src=a.poster;im.onerror=function(){this.style.display="none";};d.appendChild(im);}
           var body=document.createElement("div");body.className="poster-body";
@@ -313,8 +333,16 @@ var Tui = (function () {
 
   function moveSel(d){
     if(!S.items.length)return;
-    S.sel=(S.sel+d+S.items.length)%S.items.length;
-    renderSel();
+    var count=S.items.length;
+    var next=S.sel;
+    for(var step=0;step<count;step++){
+      next=(next+d+count)%count;
+      if(!S.items[next]||!S.items[next].is_header){
+        S.sel=next;
+        renderSel();
+        return;
+      }
+    }
   }
   function renderSel(){
     var box=$("results");
@@ -326,9 +354,10 @@ var Tui = (function () {
     if(all[S.sel])all[S.sel].scrollIntoView({block:"nearest"});
   }
   function openSelected(){
-    if(!S.items.length)return;
+    if(!S.items.length||S.sel<0)return;
     var a=S.items[S.sel];
-    if(!a||!a.id){log("judul ini belum tersedia di hianime","err");return;}
+    if(!a||a.is_header)return;
+    if(!a.id){log("judul ini belum tersedia di hianime","err");return;}
     App.openTitle(a.id,a.title);
   }
 

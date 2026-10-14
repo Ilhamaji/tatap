@@ -195,6 +195,24 @@ async def genres():
     except Exception as e:
         return fail(str(e))
 
+def _is_long_running(title: str, episodes: int = 0, start_year: int = 0, sub_count: int = 0, slug: str = "") -> bool:
+    """Klasifikasi apakah anime tergolong serial panjang kontinu (non-musiman)."""
+    t = (title or "").lower()
+    s = (slug or "").lower()
+    known = ("one-piece", "one piece", "detective conan", "case closed", "pokemon", "crayon shin-chan",
+             "shin-chan", "doraemon", "chibi maruko-chan", "chibi-maruko", "boruto", "sazae-san", "sazae",
+             "dragon ball", "naruto")
+    if any(k in t or k in s for k in known):
+        return True
+    if sub_count > 30:
+        return True
+    if episodes and episodes > 30:
+        return True
+    if (episodes is None or episodes == 0) and start_year and start_year < 2024:
+        return True
+    return False
+
+
 @app.get("/api/seasonal")
 async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                    season: str = Query("", pattern="^(winter|spring|summer|fall)$|^$"),
@@ -206,19 +224,126 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
     try:
         loop = asyncio.get_running_loop()
 
-        # Kasus khusus: Masih Tayang / Airing Ongoing
+        # Kasus khusus: Masih Tayang / Airing Ongoing dengan Dual-Lane (Musiman vs Panjang)
         if which == "airing":
-            key = f"airing_v2|page={page}"
+            key = f"airing_lanes_v3|page={page}"
             hit = await get_browse_cache(key, ttl=3600)
             if hit:
                 hit["cached"] = True
                 return ok(hit)
-            hi_data = await loop.run_in_executor(None, lambda: hi.browse({"status": "releasing"}, page))
-            if hi_data and hi_data.get("items"):
-                hi_data["which"] = "airing"
-                await set_browse_cache(key, hi_data)
-                hi_data["cached"] = False
-                return ok(hi_data)
+
+            # 1. Ambil anime musiman yang baru saja tamat dari AniList (diurutkan paling baru tamat)
+            finished_data = await loop.run_in_executor(None, lambda: al.recently_finished_page(page, 16))
+            finished_media = (finished_data or {}).get("media") or []
+
+            title_pairs = []
+            finished_by_title = {}
+            for m in finished_media:
+                t_en = (m.get("title") or {}).get("english") or ""
+                t_ro = (m.get("title") or {}).get("romaji") or ""
+                primary_title = t_en or t_ro or ""
+                if not primary_title or "hentai" in primary_title.lower():
+                    continue
+                alt_title = t_ro if primary_title != t_ro else ""
+                title_pairs.append((primary_title, alt_title))
+                finished_by_title[primary_title] = m
+
+            slug_pairs = await _match_slug_batch(title_pairs) if title_pairs else []
+            slug_by_title = {t: s for t, s in slug_pairs}
+
+            seasonal_items = []
+            seen_slugs = set()
+            for title, m in finished_by_title.items():
+                slug = slug_by_title.get(title)
+                if not slug or slug in seen_slugs:
+                    continue
+                seen_slugs.add(slug)
+                cover = (m.get("coverImage") or {})
+                seasonal_items.append({
+                    "id": slug,
+                    "title": title,
+                    "poster": cover.get("large") or cover.get("medium") or "",
+                    "type": _format_to_type(m.get("format")),
+                    "eps": m.get("episodes") or 0,
+                    "sub": m.get("episodes") or 0,
+                    "duration": (str(m.get("duration") or "") + "m") if m.get("duration") else "",
+                    "score": (m.get("averageScore") or 0) / 10.0 if m.get("averageScore") else 0,
+                    "status": "finished",
+                    "badge": "TAMAT",
+                    "is_finished": True,
+                    "is_long_running": False,
+                    "lane": "seasonal",
+                    "anilist_id": m.get("id"),
+                    "matched": True,
+                })
+
+            # 2. Ambil data releasing dari HiAnime (diurutkan sort=latest untuk episode terbaru)
+            hi_data = await loop.run_in_executor(None, lambda: hi.browse({"status": "releasing", "sort": "latest"}, page))
+            hi_items = (hi_data or {}).get("items") or []
+
+            long_running_items = []
+            for item in hi_items:
+                slug = item.get("id", "")
+                if not slug or slug in seen_slugs:
+                    continue
+                title = item.get("title", "")
+                if "hentai" in title.lower() or "hentai" in slug.lower():
+                    continue
+                eps = item.get("eps") or 0
+                sub = item.get("sub") or 0
+
+                if _is_long_running(title, eps, 0, sub, slug):
+                    item_copy = dict(item)
+                    item_copy["badge"] = "SERIAL PANJANG"
+                    item_copy["is_long_running"] = True
+                    item_copy["is_finished"] = False
+                    item_copy["lane"] = "long_running"
+                    seen_slugs.add(slug)
+                    long_running_items.append(item_copy)
+                else:
+                    item_copy = dict(item)
+                    item_copy["badge"] = "ONGOING"
+                    item_copy["is_long_running"] = False
+                    item_copy["is_finished"] = False
+                    item_copy["lane"] = "seasonal"
+                    seen_slugs.add(slug)
+                    seasonal_items.append(item_copy)
+
+            # 3. Rakit items dengan section headers pembatas dua jalur
+            items_dual_lane = []
+            if seasonal_items:
+                items_dual_lane.append({
+                    "is_header": True,
+                    "id": "header-seasonal",
+                    "title": "ANIME MUSIMAN (BARU TAMAT / BERJALAN)",
+                    "header_title": "ANIME MUSIMAN (BARU TAMAT / BERJALAN)",
+                    "lane": "seasonal",
+                    "matched": False
+                })
+                items_dual_lane.extend(seasonal_items)
+
+            if long_running_items:
+                items_dual_lane.append({
+                    "is_header": True,
+                    "id": "header-long-running",
+                    "title": "ANIME PANJANG BERKELANJUTAN (CONTINUOUS ON-GOING)",
+                    "header_title": "ANIME PANJANG BERKELANJUTAN (CONTINUOUS ON-GOING)",
+                    "lane": "long_running",
+                    "matched": False
+                })
+                items_dual_lane.extend(long_running_items)
+
+            response_payload = {
+                "which": "airing",
+                "page": page,
+                "total_pages": max((hi_data or {}).get("total_pages", 1), 5),
+                "seasonal": seasonal_items,
+                "long_running": long_running_items,
+                "items": items_dual_lane,
+                "cached": False
+            }
+            await set_browse_cache(key, response_payload)
+            return ok(response_payload)
 
         is_future = False
         if season and year >= 1900:
