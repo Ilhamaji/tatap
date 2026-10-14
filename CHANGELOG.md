@@ -13,7 +13,14 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
-## [2.4.3] - 2026-10-14
+## [2.5.0] - 2026-10-14
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.4.2 -> 2.5.0)
+Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan fungsionalitas dan antarmuka baru yang kompatibel ke belakang (*backward-compatible new features*):
+1. **Dual-Lane View & Pemisahan Anime Musiman vs Serial Panjang:** Menambahkan seksi jalur ganda mandiri pada halaman katalog dan tab anime masih tayang (`which=airing`) di seluruh platform (Android TV, Mobile, dan Desktop Web).
+2. **True Seamless Resolution Switching:** Menambahkan kapabilitas peralihan resolusi dinamis tanpa jeda layar hitam dan tanpa pemotongan audio pada Android TV.
+3. **Kapsul Navigasi Mengambang & Notifikasi Adaptif:** Menambahkan komponen UI floating bottom bar dan timer dinamis pada antarmuka Android.
+4. **GraphQL Query & Filter Baru:** Menambahkan kueri pencarian anime yang baru saja tamat (`recently_finished_page`) dan pengklasifikasi serial anime continuous otomatis.
 
 ### Ditambahkan
 - **Dual-Lane View & Pemisahan Anime Musiman vs Serial Panjang (Semua Platform):**
