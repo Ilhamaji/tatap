@@ -27,6 +27,11 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 8. **Automated Regression Suite (`tests/test_android_ui_icons.py`):** Menambahkan unit test otomatis yang memverifikasi 0 emoji dan 0 simbol mentah pada seluruh layout dan kode Java Android, validitas 13 berkas vektor, batas proporsi ukuran intrinsik 14dp–16dp, serta dimensi aset mipmap dan TV banner.
 9. **Penyelarasan Presisi Proporsi Ikon & Sistem Desain Android (*Optical Cap-Height Hierarchy*):** Menyesuaikan intrinsic dimensions ke-13 berkas vector drawable dari 24dp menjadi ukuran optik proporsional 14dp–15dp (tetap dengan `viewportWidth="24"` dan `viewportHeight="24"`). Mengeliminasi kesan ikon kebesaran (*oversized*), memberikan ruang napas vertikal 8.5dp pada pill kategori 32dp yang bersanding anggun dan seimbang dengan tipografi font 11.5sp bold (rasio ideal ~1.6:1 cap-height).
 10. **Harmonisasi Spasi, Padding & Tombol Interaktif Seluruh Aplikasi:** Menstandarkan `drawablePadding="5dp"` pada tab dan input search, menyelaraskan tombol close modal dialog (`30dp x 30dp` dengan padding `8dp`), tombol bookmark detail, dan tombol lewati opening/ending player (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
+11. **Penyempurnaan Terisolasi 100% Khusus Android TV (10-Foot UI):**
+    - Memulihkan dan menormalkan tab "Jadwal" pada remote D-Pad Android TV sehingga navigasi horizontal mengalir mulus tanpa ter-skip (`Musim <-> Airing <-> Favorit <-> Katalog <-> Jadwal <-> Genre`) dengan 6 tab seragam berbobot seimbang (`weight=1.0f`, tinggi 38dp, font 13sp).
+    - Menghidupkan fungsionalitas kolom pencarian (*searchbox*) pada Android TV via aktivasi klik/`DPAD_CENTER`, perbaikan arah navigasi atas tab ke searchbox, dan pemunculan terprogram keyboard virtual Android TV (IME) via `InputMethodManager.showSoftInput`.
+    - Mengimplementasikan `CenteredImageSpan` (`TvFocusHelper.java`) untuk memusatkan ikon dan teks tab secara simetris di tengah tombol berbobot layar lebar 16:9, melenyapkan rongga kosong tepi kiri akibat `drawableStart` XML.
+    - Membatasi lebar seluruh jendela dialog modal TV menjadi maksimum 700dp (Card Center Layout) agar tidak meregang penuh di layar televisi.
 
 ### Ditambahkan
 - **Identitas Visual Maskot Anime Tatap (`assets/`, `frontend/assets/`, `launcher/` & `android/`):**
@@ -37,6 +42,8 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - Berkas `drawable/ic_launcher_background.xml`, `ic_launcher_foreground.png` (432x432 px, centered safe zone), dan `ic_launcher_monochrome.xml` (Material You).
 - **13 Android Vector Drawables Ramping & Proporsional (`res/drawable/`):**
   - `ic_tab_season.xml` (15dp), `ic_tab_airing.xml` (15dp), `ic_tab_favorite.xml` (15dp), `ic_tab_catalog.xml` (15dp), `ic_tab_schedule.xml` (15dp), `ic_tab_genre.xml` (15dp), `ic_filter.xml` (14dp), `ic_search.xml` (15dp), `ic_more_vert.xml` (15dp), `ic_close.xml` (14dp), `ic_star_outline.xml` (15dp), `ic_star_filled.xml` (15dp), `ic_skip_next.xml` (15dp).
+- **Komponen Perataan Optik Teks & Ikon TV (`TvFocusHelper.CenteredImageSpan`):**
+  - `CenteredImageSpan` untuk memposisikan ikon secara matematis tepat di tengah vertikal baris teks pada layout Android TV.
 - **Skrip Pembuatan Aset Ikonik Mandiri (`tools/generate_android_icons.py`):**
   - Otomasi supersampling 4x dengan filter resampling Lanczos untuk menghasilkan seluruh densitas mipmap Android dan banner TV 16:9 beresolusi tinggi.
 - **Unit Test Pencegahan Regresi (`tests/test_android_ui_icons.py`):**
@@ -51,7 +58,15 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - 6 tab beranda menggunakan compound drawables vektor terkalibrasi (15dp) dengan `drawablePadding="5dp"` dan pewarnaan dinamis.
   - Tombol bookmark pada halaman detail menggunakan `ic_star_outline` dan `ic_star_filled` (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
   - Tombol lewati opening/ending player menggunakan `ic_skip_next` (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
-- **Logika Java Native (`MainActivity.java`, `DetailActivity.java`, `PlayerActivity.java`):**
+- **Logika & Antarmuka Android TV Terisolasi 100% (`MainActivity.java`, `TvFocusHelper.java`, `dimens.xml`):**
+  - Normalisasi 6 tab beranda TV: seluruh tab diukur seragam (`weight=1.0f`, tinggi 38dp, font 13sp).
+  - Penyambungan rantai navigasi remote D-Pad penuh tanpa skip: `Musim <-> Airing <-> Favorit <-> Katalog <-> Jadwal <-> Genre`.
+  - Penghubungan panah bawah dari tab Jadwal ke baris pemilih 7 hari (`btnDaySenin` s/d `btnDayMinggu`), dan sebaliknya panah atas dari chip hari ke tab Jadwal.
+  - Aktivasi pencarian dan pemunculan terprogram on-screen keyboard (IME) TV saat searchbox diklik, difokuskan, atau ditekan tombol `DPAD_CENTER` / Enter remote.
+  - Penggunaan `updateTvTabSpannable` dengan `CenteredImageSpan` pada TV untuk menggantikan compound drawables XML agar ikon dan teks memusat secara proporsional.
+  - Pembatasan lebar jendela seluruh modal dialog TV menjadi maksimal 700dp (`setupDialogWindowBounds`).
+  - Penyesuaian token dimensi TV: `tv_search_height` (34dp) dan `tv_tab_height` (38dp).
+- **Logika Java Native Ponsel & Pemutar Video (`MainActivity.java`, `DetailActivity.java`, `PlayerActivity.java`):**
   - Penambahan helper `setTabAppearance` untuk tinting dinamis icon dan teks tab beranda.
   - Pembersihan emoji pada teks bookmark detail dan toast notifikasi.
   - Pembersihan emoji pada tombol dan toast lompat intro/outro player.
