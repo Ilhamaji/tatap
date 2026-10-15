@@ -45,6 +45,11 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
    - **Integrasi Penuh Android TV 10-Foot UI:** Seluruh 7 tab dibagikan rata (`weight=1.0f`) membentang 100% di layar TV, dengan integrasi D-Pad spasial dua arah (kiri, kanan, atas ke header, bawah ke konten/grid) tanpa dead-end atau lompatan fokus yang terputus.
    - **Respon Fokus Interaktif:** Mengikat `TvFocusHelper.attachFocusScale` dan highlight warna aktif/inaktif dinamis untuk tab Riwayat.
    - Menambahkan unit test otomatis `tests/test_horizontal_tab_menu.py` (3 unit test).
+5. **Penambahan Parameter Musim (Season) pada Filter Katalog Multiplatform (`dialog_catalog_filter.xml`, `MainActivity.java`, `index.html`, `term.js`):**
+   - Menambahkan seksi baru **Musim Penayangan (Season)** pada dialog cross-filter katalog Android dan modal Web Desktop, tepat setelah seksi Tahun Rilis dan sebelum Bulan Rilis.
+   - Pilihan filter musim mencakup: *Semua Musim* (`""`), *Musim Semi / Spring* (`"spring"`), *Musim Panas / Summer* (`"summer"`), *Musim Gugur / Fall* (`"fall"`), dan *Musim Dingin / Winter* (`"winter"`).
+   - Dilengkapi dukungan visual chip interaktif dengan ikon vektor `ic_tab_season.xml` di Android, respon D-pad remote TV (`TvFocusHelper.attachFocusScale`), serta sinkronisasi dinamis pada header ringkasan filter katalog dan cache in-memory.
+   - Menambahkan unit test otomatis pada [`tests/test_catalog_filter.py`](file:///home/b-ict/tatap/tests/test_catalog_filter.py) (6 unit test).
 
 ## [2.7.1] - 2026-10-15
 

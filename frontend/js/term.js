@@ -112,6 +112,10 @@ var Tui = (function () {
       parts.push(sNames[f.sort] || f.sort);
     }
     if(f.year) parts.push(f.year);
+    if(f.season) {
+      var seasonNames = {spring: "Musim Semi", summer: "Musim Panas", fall: "Musim Gugur", winter: "Musim Dingin"};
+      parts.push(seasonNames[f.season] || f.season);
+    }
     if(f.month) {
       var mNames = ["", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
       var mi = parseInt(f.month);
@@ -130,7 +134,7 @@ var Tui = (function () {
       case "favorit":return window.Tatap.bookmarks();
       case "katalog":{
         var f = S.catalogFilter || {};
-        var hasFilter = (f.sort && f.sort !== "popularity") || f.year || f.month || f.type || f.status || f.genre;
+        var hasFilter = (f.sort && f.sort !== "popularity") || f.year || f.season || f.month || f.type || f.status || f.genre;
         if(hasFilter) {
           return window.Tatap.browse(f, S.page);
         }
@@ -562,9 +566,10 @@ var Tui = (function () {
     if(m) m.classList.add("hidden");
   }
   function syncCatalogFilterUI(){
-    var f = S.catalogFilter || {sort: "popularity", year: "", month: "", type: "", status: "", genre: ""};
+    var f = S.catalogFilter || {sort: "popularity", year: "", season: "", month: "", type: "", status: "", genre: ""};
     setGroupActive("cf-chips-sort", f.sort || "popularity");
     setGroupActive("cf-chips-year", f.year || "");
+    setGroupActive("cf-chips-season", f.season || "");
     setGroupActive("cf-chips-month", f.month || "");
     setGroupActive("cf-chips-type", f.type || "");
     setGroupActive("cf-chips-status", f.status || "");
@@ -658,7 +663,7 @@ var Tui = (function () {
     if(s==="hentai"||s.indexOf("hentai")>=0){
       log("genre 'hentai' tidak didukung / diblokir","err");return;
     }
-    if(!S.catalogFilter) S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: ""};
+    if(!S.catalogFilter) S.catalogFilter = {sort: "popularity", year: "", season: "", month: "", type: "", status: ""};
     S.catalogFilter.genre = slug;
     S.genreFilter = slug;
     S.filter = {genre: slug};
@@ -1208,7 +1213,7 @@ var Tui = (function () {
     var cfReset = $("cf-reset-btn");
     if(cfReset){
       cfReset.addEventListener("click", function(){
-        S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: "", genre: ""};
+        S.catalogFilter = {sort: "popularity", year: "", season: "", month: "", type: "", status: "", genre: ""};
         delete S.genreFilter;
         if(S.filter && S.filter.genre) delete S.filter.genre;
         syncCatalogFilterUI();
@@ -1223,6 +1228,7 @@ var Tui = (function () {
         S.catalogFilter = {
           sort: getGroupActive("cf-chips-sort") || "popularity",
           year: getGroupActive("cf-chips-year"),
+          season: getGroupActive("cf-chips-season"),
           month: getGroupActive("cf-chips-month"),
           type: getGroupActive("cf-chips-type"),
           status: getGroupActive("cf-chips-status"),

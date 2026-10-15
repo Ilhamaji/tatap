@@ -135,9 +135,10 @@ public class MainActivity extends Activity {
     private int currentPage = 1;
     private int totalPages = 1;
 
-    // State Cross Filter Katalog (Urutan + Tahun + Bulan + Tipe + Status)
+    // State Cross Filter Katalog (Urutan + Tahun + Musim + Bulan + Tipe + Status)
     private String filterCatalogSort = "popularity";
     private String filterCatalogYear = "";
+    private String filterCatalogSeason = "";
     private String filterCatalogMonth = "";
     private String filterCatalogType = "";
     private String filterCatalogStatus = "";
@@ -761,6 +762,7 @@ public class MainActivity extends Activity {
     private boolean isCatalogFilterActive() {
         return !"popularity".equals(filterCatalogSort) ||
                 !filterCatalogYear.isEmpty() ||
+                !filterCatalogSeason.isEmpty() ||
                 !filterCatalogMonth.isEmpty() ||
                 !filterCatalogType.isEmpty() ||
                 !filterCatalogStatus.isEmpty();
@@ -775,6 +777,13 @@ public class MainActivity extends Activity {
         else if ("most_favorite".equals(filterCatalogSort)) parts.add("FAVORIT");
 
         if (!filterCatalogYear.isEmpty()) parts.add(filterCatalogYear.toUpperCase());
+        if (!filterCatalogSeason.isEmpty()) {
+            if ("spring".equals(filterCatalogSeason)) parts.add("SEMI (SPRING)");
+            else if ("summer".equals(filterCatalogSeason)) parts.add("PANAS (SUMMER)");
+            else if ("fall".equals(filterCatalogSeason)) parts.add("GUGUR (FALL)");
+            else if ("winter".equals(filterCatalogSeason)) parts.add("DINGIN (WINTER)");
+            else parts.add(filterCatalogSeason.toUpperCase());
+        }
         if (!filterCatalogMonth.isEmpty()) {
             String[] mNames = {"", "JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"};
             try {
@@ -801,6 +810,7 @@ public class MainActivity extends Activity {
     private void resetCatalogFilterState() {
         filterCatalogSort = "popularity";
         filterCatalogYear = "";
+        filterCatalogSeason = "";
         filterCatalogMonth = "";
         filterCatalogType = "";
         filterCatalogStatus = "";
@@ -1144,6 +1154,7 @@ public class MainActivity extends Activity {
 
         final String[] tempSort = new String[]{filterCatalogSort};
         final String[] tempYear = new String[]{filterCatalogYear};
+        final String[] tempSeason = new String[]{filterCatalogSeason};
         final String[] tempMonth = new String[]{filterCatalogMonth};
         final String[] tempType = new String[]{filterCatalogType};
         final String[] tempStatus = new String[]{filterCatalogStatus};
@@ -1161,6 +1172,9 @@ public class MainActivity extends Activity {
                     boolean selected = values[i].equals(current);
                     chip.setBackgroundResource(selected ? R.drawable.bg_chip_selected : R.drawable.bg_tab_inactive);
                     chip.setTextColor(selected ? 0xFFFFFFFF : 0xFF8892B0);
+                    if (chip.getCompoundDrawables()[0] != null) {
+                        chip.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(selected ? 0xFFFFFFFF : 0xFF8892B0));
+                    }
                     chip.setOnClickListener(v -> {
                         for (int j = 0; j < ids.length; j++) {
                             TextView c = dialog.findViewById(ids[j]);
@@ -1168,6 +1182,9 @@ public class MainActivity extends Activity {
                                 boolean nowSel = (j == idx);
                                 c.setBackgroundResource(nowSel ? R.drawable.bg_chip_selected : R.drawable.bg_tab_inactive);
                                 c.setTextColor(nowSel ? 0xFFFFFFFF : 0xFF8892B0);
+                                if (c.getCompoundDrawables()[0] != null) {
+                                    c.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(nowSel ? 0xFFFFFFFF : 0xFF8892B0));
+                                }
                             }
                         }
                         action.onSelect(values[idx]);
@@ -1198,7 +1215,15 @@ public class MainActivity extends Activity {
         };
         helper.bind(yearIds, yearVals, tempYear[0], val -> tempYear[0] = val);
 
-        // 3. Month
+        // 3. Season
+        int[] seasonIds = new int[]{
+            R.id.chip_season_all, R.id.chip_season_spring, R.id.chip_season_summer,
+            R.id.chip_season_fall, R.id.chip_season_winter
+        };
+        String[] seasonVals = new String[]{"", "spring", "summer", "fall", "winter"};
+        helper.bind(seasonIds, seasonVals, tempSeason[0], val -> tempSeason[0] = val);
+
+        // 4. Month
         int[] monthIds = new int[]{
             R.id.chip_month_all, R.id.chip_month_1, R.id.chip_month_2, R.id.chip_month_3,
             R.id.chip_month_4, R.id.chip_month_5, R.id.chip_month_6, R.id.chip_month_7,
@@ -1207,7 +1232,7 @@ public class MainActivity extends Activity {
         String[] monthVals = new String[]{"", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"};
         helper.bind(monthIds, monthVals, tempMonth[0], val -> tempMonth[0] = val);
 
-        // 4. Type
+        // 5. Type
         int[] typeIds = new int[]{
             R.id.chip_type_all, R.id.chip_type_tv, R.id.chip_type_movie,
             R.id.chip_type_ova, R.id.chip_type_ona, R.id.chip_type_special
@@ -1215,7 +1240,7 @@ public class MainActivity extends Activity {
         String[] typeVals = new String[]{"", "tv", "movie", "ova", "ona", "special"};
         helper.bind(typeIds, typeVals, tempType[0], val -> tempType[0] = val);
 
-        // 5. Status
+        // 6. Status
         int[] statusIds = new int[]{
             R.id.chip_status_all, R.id.chip_status_airing, R.id.chip_status_completed
         };
@@ -1250,6 +1275,7 @@ public class MainActivity extends Activity {
                 dialog.dismiss();
                 filterCatalogSort = tempSort[0];
                 filterCatalogYear = tempYear[0];
+                filterCatalogSeason = tempSeason[0];
                 filterCatalogMonth = tempMonth[0];
                 filterCatalogType = tempType[0];
                 filterCatalogStatus = tempStatus[0];
@@ -2136,6 +2162,7 @@ public class MainActivity extends Activity {
             if (isCatalogFilterActive()) {
                 StringBuilder ep = new StringBuilder("/api/browse?sort=").append(URLEncoder.encode(filterCatalogSort));
                 if (!filterCatalogYear.isEmpty()) ep.append("&year=").append(URLEncoder.encode(filterCatalogYear));
+                if (!filterCatalogSeason.isEmpty()) ep.append("&season=").append(URLEncoder.encode(filterCatalogSeason));
                 if (!filterCatalogMonth.isEmpty()) ep.append("&month=").append(URLEncoder.encode(filterCatalogMonth));
                 if (!filterCatalogType.isEmpty()) ep.append("&type=").append(URLEncoder.encode(filterCatalogType));
                 if (!filterCatalogStatus.isEmpty()) ep.append("&status=").append(URLEncoder.encode(filterCatalogStatus));
@@ -2172,7 +2199,7 @@ public class MainActivity extends Activity {
             layoutPagination.setVisibility("riwayat".equals(currentView) || "jadwal".equals(currentView) || "favorit".equals(currentView) ? View.GONE : View.VISIBLE);
         }
 
-        final String cacheKey = currentView + ":" + currentPage + ":" + currentGenre + ":" + currentSeasonName + ":" + currentSeasonYear + ":" + currentScheduleDay + ":" + filterCatalogSort + ":" + filterCatalogYear + ":" + filterCatalogMonth + ":" + filterCatalogType + ":" + filterCatalogStatus;
+        final String cacheKey = currentView + ":" + currentPage + ":" + currentGenre + ":" + currentSeasonName + ":" + currentSeasonYear + ":" + currentScheduleDay + ":" + filterCatalogSort + ":" + filterCatalogYear + ":" + filterCatalogSeason + ":" + filterCatalogMonth + ":" + filterCatalogType + ":" + filterCatalogStatus;
         final boolean canCache = !"cari".equals(currentView) && !"riwayat".equals(currentView) && !"favorit".equals(currentView);
 
         // 1. Cek In-Memory Cache untuk peralihan instan (<1ms)

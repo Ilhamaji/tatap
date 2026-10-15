@@ -428,7 +428,7 @@
     <div class="sheet-head">
       <div>
         <div class="eyebrow">FILTER KATALOG ANIME</div>
-        <h2>Cross Filter: Urutan, Tahun, Bulan, Tipe &amp; Status</h2>
+        <h2>Cross Filter: Urutan, Tahun, Musim, Bulan, Tipe &amp; Status</h2>
         <div class="dim small">Kombinasikan kriteria untuk menemukan anime spesifik</div>
       </div>
       <button class="icon-btn big" id="cf-close" title="Tutup (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
@@ -467,7 +467,19 @@
         </div>
       </div>
 
-      <!-- 3. Bulan (Month) -->
+      <!-- 3. Musim (Season) -->
+      <div class="cf-group">
+        <label class="cf-label">MUSIM PENAYANGAN (SEASON)</label>
+        <div class="cf-chips" id="cf-chips-season">
+          <button class="cf-chip active" data-val="">Semua Musim</button>
+          <button class="cf-chip" data-val="spring"><svg class="ui-icon"><use href="#icon-season"/></svg> Musim Semi (Spring)</button>
+          <button class="cf-chip" data-val="summer"><svg class="ui-icon"><use href="#icon-sun"/></svg> Musim Panas (Summer)</button>
+          <button class="cf-chip" data-val="fall"><svg class="ui-icon"><use href="#icon-season"/></svg> Musim Gugur (Fall)</button>
+          <button class="cf-chip" data-val="winter"><svg class="ui-icon"><use href="#icon-sparkles"/></svg> Musim Dingin (Winter)</button>
+        </div>
+      </div>
+
+      <!-- 4. Bulan (Month) -->
       <div class="cf-group">
         <label class="cf-label">BULAN RILIS</label>
         <div class="cf-chips" id="cf-chips-month">
@@ -487,7 +499,7 @@
         </div>
       </div>
 
-      <!-- 4. Format / Tipe -->
+      <!-- 5. Format / Tipe -->
       <div class="cf-group">
         <label class="cf-label">FORMAT / TIPE</label>
         <div class="cf-chips" id="cf-chips-type">
@@ -500,7 +512,7 @@
         </div>
       </div>
 
-      <!-- 5. Status -->
+      <!-- 6. Status -->
       <div class="cf-group">
         <label class="cf-label">STATUS PENAYANGAN</label>
         <div class="cf-chips" id="cf-chips-status">
@@ -510,7 +522,7 @@
         </div>
       </div>
 
-      <!-- 6. Genre -->
+      <!-- 7. Genre -->
       <div class="cf-group">
         <label class="cf-label">GENRE ANIME</label>
         <div class="cf-genre-bar">
