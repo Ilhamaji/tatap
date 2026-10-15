@@ -60,6 +60,13 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
     - Menghadirkan antarmuka modal genre `#genre-modal` yang disempurnakan: tombol *"Reset Genre"*, penanda status visual aktif (`.genre-list button.active` dengan border/glow cyan dan teks tebal), indikator status genre aktif di baris status, dan shortcut tombol `Enter` pada input pencarian untuk memilih genre pertama.
     - Mengintegrasikan pemilih genre langsung pada modal Cross-Filter (`#catalog-filter-modal`) dengan tombol pintas dan tombol hapus instan.
     - Menambahkan test suite otomatis `tests/test_genre_filter_web.py` dan memverifikasi direktori `android/` 100% tidak tersentuh.
+19. **Penyempurnaan Modal Interaktif Resume Watch pada Web dan Desktop (`frontend/js/app.js`, `frontend/index.html`, `frontend/css/style.css`, `frontend/js/term.js`):**
+    - Memperbaiki bug semantik tombol tutup `[×]` (`#rm-close`) yang sebelumnya keliru memanggil resume playback; kini tombol silang, klik backdrop luar, dan tombol `Escape` berfungsi murni sebagai pembatalan (modal tertutup bersih tanpa memutar video).
+    - Menghadirkan navigasi keyboard interaktif penuh: tombol panah (`ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown`) dan `Tab` untuk berpindah fokus dinamis antara *"Lanjutkan"* dan *"Mulai dari Awal"*, serta tombol `Enter` untuk mengeksekusi opsi aktif dengan outline glowing cyan kontras tinggi (`:focus-visible`).
+    - Memperkaya informasi visual modal: menampilkan judul anime (`cur.title`), badge nomor episode (`EP <n>`), serta bar progress cyber dengan persentase tontonan (`% selesai · MM:SS / Total`).
+    - Memperbaiki layering modal (`#resume-modal.overlay`) dengan `z-index: 160` dan `backdrop-filter: blur(5px)` agar tampil elegan dan berada di depan modal anime detail (`#title-modal`).
+    - Menambahkan deteksi `#resume-modal` pada fungsi `isModalOpen()` di `term.js` untuk mengeliminasi event leakage ke terminal background saat dialog resume watch sedang aktif.
+    - Menjamin isolasi ketat 100%: direktori `android/` sama sekali tidak dimodifikasi.
 
 ### Ditambahkan
 - **Fitur Pengingat Posisi Tontonan (*Resume Watch Position & Prompt Modal*):**

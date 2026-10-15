@@ -339,9 +339,18 @@ function recordWatchProgress(force){
   }).catch(function(){});
 }
 
+var _activeResumeCleanup = null;
 function closeResumeModal(){
+  if(_activeResumeCleanup){
+    _activeResumeCleanup();
+    _activeResumeCleanup = null;
+  }
   var rm = $("resume-modal");
   if(rm) rm.classList.add("hidden");
+}
+
+function dismissResumeModal(){
+  closeResumeModal();
 }
 
 function openPlayer(ep, resumeTime){
@@ -349,19 +358,58 @@ function openPlayer(ep, resumeTime){
     window.Tatap.getProgress(cur.slug, ep).then(function(r){
       if(r && r.success && r.data && r.data.should_resume && r.data.progress >= 15){
         var p = r.data.progress;
+        var dur = r.data.duration || 0;
         var fTime = r.data.formatted || formatTimeSec(p);
+        var fDur = (dur > 0) ? formatTimeSec(dur) : "--:--";
+        var pct = (dur > 0) ? Math.min(100, Math.max(1, Math.round((p / dur) * 100))) : 0;
         var modal = $("resume-modal");
         if(modal){
-          $("rm-sub").textContent = "Episode " + ep + " · Tersimpan pada " + fTime;
+          var animeTitle = cur.title || "Lanjutkan Menonton?";
+          var titleEl = $("rm-title");
+          if(titleEl){
+            titleEl.textContent = animeTitle;
+            titleEl.setAttribute("title", animeTitle);
+          }
+          $("rm-sub").innerHTML = "<span class='rm-badge-ep'>EP " + ep + "</span> Tersimpan pada " + fTime + (dur > 0 ? (" dari " + fDur) : "");
           $("rm-time").textContent = fTime;
           $("rm-resume-label").textContent = "Lanjutkan (" + fTime + ")";
 
+          var fillEl = $("rm-progress-fill");
+          if(fillEl) fillEl.style.width = pct + "%";
+          var curEl = $("rm-time-current");
+          if(curEl) curEl.textContent = fTime;
+          var totEl = $("rm-time-total");
+          if(totEl) totEl.textContent = (dur > 0) ? fDur : "";
+          var badgeEl = $("rm-percent-badge");
+          if(badgeEl){
+            badgeEl.textContent = (pct > 0) ? (pct + "% selesai") : "Tersimpan";
+          }
+
+          var keyHandler = function(e){
+            if(modal.classList.contains("hidden")) return;
+            if(e.key === "ArrowLeft" || e.key === "ArrowUp"){
+              e.preventDefault();
+              var b1 = $("rm-btn-resume");
+              if(b1) b1.focus();
+            } else if(e.key === "ArrowRight" || e.key === "ArrowDown"){
+              e.preventDefault();
+              var b2 = $("rm-btn-restart");
+              if(b2) b2.focus();
+            } else if(e.key === "Escape"){
+              e.preventDefault();
+              dismissResumeModal();
+            }
+          };
+
           var cleanupModal = function(){
             modal.classList.add("hidden");
+            window.removeEventListener("keydown", keyHandler);
             $("rm-btn-resume").onclick = null;
             $("rm-btn-restart").onclick = null;
             $("rm-close").onclick = null;
+            _activeResumeCleanup = null;
           };
+          _activeResumeCleanup = cleanupModal;
 
           $("rm-btn-resume").onclick = function(){
             cleanupModal();
@@ -370,15 +418,16 @@ function openPlayer(ep, resumeTime){
 
           $("rm-btn-restart").onclick = function(){
             cleanupModal();
-            window.Tatap.saveProgress(cur.slug, ep, 0, r.data.duration || 0).catch(function(){});
+            window.Tatap.saveProgress(cur.slug, ep, 0, dur).catch(function(){});
             openPlayer(ep, 0);
           };
 
-          $("rm-close").onclick = function(){
-            cleanupModal();
-            openPlayer(ep, p);
+          $("rm-close").onclick = function(e){
+            if(e) e.stopPropagation();
+            dismissResumeModal();
           };
 
+          window.addEventListener("keydown", keyHandler);
           modal.classList.remove("hidden");
           setTimeout(function(){
             var b = $("rm-btn-resume");
@@ -1670,6 +1719,7 @@ function onKeyPlayer(e){
       // Fullscreen will be closed natively by browser, keep player modal open
       return;
     }
+    if($("resume-modal") && !$("resume-modal").classList.contains("hidden")){dismissResumeModal();return;}
     if($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")){closeDrawer();return;}
     if($("update-modal") && !$("update-modal").classList.contains("hidden")){closeUpdateModal();return;}
     if(!$("player-modal").classList.contains("hidden"))closePlayer();
@@ -1883,6 +1933,7 @@ App = {
   openDrawer:openDrawer, closeDrawer:closeDrawer,
   openUpdateModal:openUpdateModal, closeUpdateModal:closeUpdateModal,
   checkForUpdate:checkForUpdate,
+  closeResumeModal:closeResumeModal, dismissResumeModal:dismissResumeModal,
   openGenreModal:function(){
     if(typeof window.Tui!=="undefined"&&window.Tui.openGenreModal){
       window.Tui.openGenreModal();
@@ -2100,10 +2151,10 @@ function init(){
   });
 
   var rmClose = $("rm-close");
-  if(rmClose) rmClose.addEventListener("click", closeResumeModal);
+  if(rmClose) rmClose.addEventListener("click", dismissResumeModal);
   var rm = $("resume-modal");
   if(rm) rm.addEventListener("click", function(e){
-    if(e.target === rm) closeResumeModal();
+    if(e.target === rm) dismissResumeModal();
   });
   window.addEventListener("beforeunload", function(){
     recordWatchProgress(true);

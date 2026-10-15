@@ -7,6 +7,9 @@ var Tui = (function () {
   function isModalOpen(){
     return (!$("title-modal").classList.contains("hidden")) ||
            (!$("player-modal").classList.contains("hidden")) ||
+           ($("resume-modal") && !$("resume-modal").classList.contains("hidden")) ||
+           ($("genre-modal") && !$("genre-modal").classList.contains("hidden")) ||
+           ($("catalog-filter-modal") && !$("catalog-filter-modal").classList.contains("hidden")) ||
            ($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")) ||
            ($("update-modal") && !$("update-modal").classList.contains("hidden"));
   }

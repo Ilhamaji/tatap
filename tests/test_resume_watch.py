@@ -148,3 +148,50 @@ def test_chaquopy_code_parity():
     main_android = os.path.join(base_dir, "android", "app", "src", "main", "python", "backend", "main.py")
     with open(main_root, "r", encoding="utf-8") as f1, open(main_android, "r", encoding="utf-8") as f2:
         assert f1.read() == f2.read(), "backend/main.py and Chaquopy copy must be 100% identical"
+
+
+def test_interactive_resume_modal_frontend():
+    """Memverifikasi berkas frontend memuat elemen interaktif, visual progress bar, dan keyboard handler resume modal."""
+    import subprocess
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    # 1. index.html checks
+    index_html_path = os.path.join(base_dir, "frontend", "index.html")
+    with open(index_html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    assert 'id="resume-modal"' in html, "index.html harus memuat dialog #resume-modal"
+    assert 'id="rm-progress-wrap"' in html, "index.html harus memuat #rm-progress-wrap"
+    assert 'id="rm-progress-fill"' in html, "index.html harus memuat #rm-progress-fill"
+    assert 'id="rm-percent-badge"' in html, "index.html harus memuat #rm-percent-badge"
+    assert 'id="rm-btn-resume"' in html, "index.html harus memuat tombol Lanjutkan"
+    assert 'id="rm-btn-restart"' in html, "index.html harus memuat tombol Mulai dari Awal"
+    assert 'id="rm-close"' in html, "index.html harus memuat tombol close Batal (Esc)"
+
+    # 2. style.css checks
+    style_css_path = os.path.join(base_dir, "frontend", "css", "style.css")
+    with open(style_css_path, "r", encoding="utf-8") as f:
+        css = f.read()
+    assert "#resume-modal.overlay" in css, "style.css harus mendefinisikan #resume-modal.overlay"
+    assert "z-index:160" in css or "z-index: 160" in css, "#resume-modal harus memiliki z-index 160"
+    assert ".rm-progress-track" in css, "style.css harus memuat .rm-progress-track"
+    assert ".rm-progress-fill" in css, "style.css harus memuat .rm-progress-fill"
+    assert ".btn-resume-primary:focus-visible" in css, "style.css harus memiliki indikator :focus-visible pada tombol resume"
+
+    # 3. app.js checks
+    app_js_path = os.path.join(base_dir, "frontend", "js", "app.js")
+    with open(app_js_path, "r", encoding="utf-8") as f:
+        app_js = f.read()
+    assert "dismissResumeModal" in app_js, "app.js harus mendefinisikan dismissResumeModal"
+    assert "rm-progress-fill" in app_js, "app.js harus memperbarui lebar rm-progress-fill"
+    assert "ArrowLeft" in app_js and "ArrowRight" in app_js, "app.js harus menangani navigasi panah kiri/kanan"
+
+    # 4. term.js checks
+    term_js_path = os.path.join(base_dir, "frontend", "js", "term.js")
+    with open(term_js_path, "r", encoding="utf-8") as f:
+        term_js = f.read()
+    assert 'resume-modal' in term_js, "term.js isModalOpen harus memeriksa resume-modal"
+
+    # 5. Strict Zero-Touch Android Check
+    diff_res = subprocess.run(["git", "diff", "--stat", "android/"], cwd=base_dir, capture_output=True, text=True)
+    assert diff_res.stdout.strip() == "", "Direktori android/ TIDAK BOLEH dimodifikasi sama sekali!"
+

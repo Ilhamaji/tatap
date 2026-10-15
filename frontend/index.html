@@ -364,21 +364,31 @@
 <div id="resume-modal" class="overlay hidden" role="dialog" aria-modal="true">
   <div class="sheet resume-sheet">
     <div class="sheet-head">
-      <div>
+      <div style="min-width:0;flex:1">
         <div class="eyebrow" id="rm-eyebrow">LANJUTKAN TONTONAN</div>
-        <h2 id="rm-title">Lanjutkan Menonton?</h2>
+        <h2 id="rm-title" class="rm-anime-title">Lanjutkan Menonton?</h2>
         <div class="dim small" id="rm-sub">Episode tersimpan pada posisi terakhir</div>
       </div>
-      <button class="icon-btn big" id="rm-close" title="Tutup (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+      <button class="icon-btn big" id="rm-close" title="Batal (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
     </div>
     <div class="resume-body">
-      <p id="rm-desc" class="dim">Anda sebelumnya menonton episode ini hingga menit <b id="rm-time">00:00</b>. Ingin melanjutkan dari posisi terakhir atau mulai dari awal?</p>
+      <div class="rm-progress-wrap" id="rm-progress-wrap">
+        <div class="rm-progress-track">
+          <div id="rm-progress-fill" class="rm-progress-fill" style="width: 0%"></div>
+        </div>
+        <div class="rm-progress-labels">
+          <span id="rm-time-current" class="rm-time-val">00:00</span>
+          <span id="rm-percent-badge" class="rm-percent-badge">0% selesai</span>
+          <span id="rm-time-total" class="rm-time-total dim small">00:00</span>
+        </div>
+      </div>
+      <p id="rm-desc" class="dim">Episode ini sebelumnya ditonton hingga menit <b id="rm-time" style="color:var(--txt)">00:00</b>. Pilih lanjutkan dari posisi terakhir atau putar ulang dari awal.</p>
       <div class="resume-actions">
-        <button id="rm-btn-resume" class="btn-resume-primary" autofocus>
+        <button id="rm-btn-resume" class="btn-resume-primary" tabindex="1" autofocus>
           <svg class="ui-icon"><use href="#icon-play"/></svg> <span id="rm-resume-label">Lanjutkan (00:00)</span>
         </button>
-        <button id="rm-btn-restart" class="btn-resume-secondary">
-          <svg class="ui-icon"><use href="#icon-rewind"/></svg> Mulai dari Awal (00:00)
+        <button id="rm-btn-restart" class="btn-resume-secondary" tabindex="2">
+          <svg class="ui-icon"><use href="#icon-rewind"/></svg> <span>Mulai dari Awal (00:00)</span>
         </button>
       </div>
     </div>
