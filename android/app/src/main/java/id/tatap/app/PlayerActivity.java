@@ -36,6 +36,7 @@ import androidx.media3.common.ForwardingPlayer;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
+import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -91,9 +92,13 @@ public class PlayerActivity extends Activity {
     private View btnExoFullscreen;
     private Button btnAspect;
     private Button btnQuality;
+    private Button btnSpeed;
     private Button btnSubStyle;
     private Button btnSubSelector;
     private Button btnSkipOpEd;
+    private float currentPlaybackSpeed = 1.0f;
+    private static final float[] PLAYBACK_SPEEDS = new float[]{0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
+    private static final String[] PLAYBACK_SPEED_LABELS = new String[]{"0.5x", "0.75x", "1.0x (Normal)", "1.25x", "1.5x", "1.75x", "2.0x"};
     private long introStartMs = 0;
     private long introEndMs = 0;
     private long outroStartMs = 0;
@@ -303,6 +308,13 @@ public class PlayerActivity extends Activity {
             btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
         }
 
+        btnSpeed = findViewById(R.id.btn_speed);
+        if (btnSpeed != null) {
+            btnSpeed.setOnClickListener(v -> showSpeedSelectorDialog());
+        }
+        currentPlaybackSpeed = 1.0f;
+        updateSpeedButtonLabel();
+
         btnSubStyle = findViewById(R.id.btn_sub_style);
         if (btnSubStyle != null) {
             btnSubStyle.setOnClickListener(v -> showSubtitleStyleDialog());
@@ -342,6 +354,7 @@ public class PlayerActivity extends Activity {
         TvFocusHelper.attachFocusScale(btnPlayerBack, 1.15f, 6f);
         TvFocusHelper.attachFocusScale(btnAspect, 1.08f, 6f);
         TvFocusHelper.attachFocusScale(btnQuality, 1.08f, 6f);
+        TvFocusHelper.attachFocusScale(btnSpeed, 1.08f, 6f);
         TvFocusHelper.attachFocusScale(btnSubStyle, 1.08f, 6f);
         TvFocusHelper.attachFocusScale(btnSubSelector, 1.08f, 6f);
 
@@ -1245,6 +1258,9 @@ public class PlayerActivity extends Activity {
 
             player.prepare();
             player.play();
+            try {
+                player.setPlaybackParameters(new PlaybackParameters(currentPlaybackSpeed));
+            } catch (Throwable ignored) {}
 
             applySubtitleSelection();
         } catch (Throwable t) {
@@ -1527,6 +1543,67 @@ public class PlayerActivity extends Activity {
             if (posMs <= c.endMs) return c;
         }
         return null;
+    }
+
+    private void showSpeedSelectorDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        builder.setTitle("Kecepatan Putar Video");
+
+        int checkedItem = 2; // Default 1.0x (index 2)
+        for (int i = 0; i < PLAYBACK_SPEEDS.length; i++) {
+            if (Math.abs(PLAYBACK_SPEEDS[i] - currentPlaybackSpeed) < 0.05f) {
+                checkedItem = i;
+                break;
+            }
+        }
+
+        builder.setSingleChoiceItems(PLAYBACK_SPEED_LABELS, checkedItem, (dialog, which) -> {
+            if (which >= 0 && which < PLAYBACK_SPEEDS.length) {
+                applyPlaybackSpeed(PLAYBACK_SPEEDS[which]);
+            }
+            dialog.dismiss();
+        });
+
+        builder.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
+        builder.setOnDismissListener(dialog -> {
+            if (playerView != null) {
+                playerView.showController();
+                if (btnSpeed != null && btnSpeed.getVisibility() == View.VISIBLE) {
+                    btnSpeed.requestFocus();
+                } else if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
+                    btnExoSettings.requestFocus();
+                }
+            }
+        });
+        builder.show();
+    }
+
+    private void applyPlaybackSpeed(float speed) {
+        currentPlaybackSpeed = speed;
+        if (player != null) {
+            try {
+                player.setPlaybackParameters(new PlaybackParameters(currentPlaybackSpeed));
+            } catch (Throwable ignored) {}
+        }
+        updateSpeedButtonLabel();
+        Toast.makeText(this, "Kecepatan: " + formatSpeedLabel(speed), Toast.LENGTH_SHORT).show();
+    }
+
+    private void updateSpeedButtonLabel() {
+        if (btnSpeed != null) {
+            btnSpeed.setText(formatSpeedLabel(currentPlaybackSpeed));
+        }
+    }
+
+    private String formatSpeedLabel(float speed) {
+        if (speed == 1.0f) return "1.0x";
+        if (speed == 0.5f) return "0.5x";
+        if (speed == 0.75f) return "0.75x";
+        if (speed == 1.25f) return "1.25x";
+        if (speed == 1.5f) return "1.5x";
+        if (speed == 1.75f) return "1.75x";
+        if (speed == 2.0f) return "2.0x";
+        return String.format(java.util.Locale.US, "%.2fx", speed);
     }
 
     private void showQualitySelectorDialog() {
@@ -2215,9 +2292,11 @@ public class PlayerActivity extends Activity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
         builder.setTitle("Pengaturan Pemutar");
 
+        String spdLabel = formatSpeedLabel(currentPlaybackSpeed);
         String qLabel = activeQuality != null && !activeQuality.isEmpty() ? activeQuality.toUpperCase() : "AUTO";
         String subLabel = !subEnabled ? "Mati" : (activeSubLang.toUpperCase() + " [" + activeEngine + "]");
         String[] menu = new String[]{
+                "Kecepatan Putar Video (" + spdLabel + ")",
                 "Pilihan Subtitle & Terjemahan (" + subLabel + ")",
                 "Pilihan Kualitas Video (" + qLabel + ")",
                 "Pengaturan Tampilan & Gaya Subtitle",
@@ -2226,12 +2305,14 @@ public class PlayerActivity extends Activity {
 
         builder.setItems(menu, (dialog, which) -> {
             if (which == 0) {
-                showSubtitleSelectorDialog();
+                showSpeedSelectorDialog();
             } else if (which == 1) {
-                showQualitySelectorDialog();
+                showSubtitleSelectorDialog();
             } else if (which == 2) {
-                showSubtitleStyleDialog();
+                showQualitySelectorDialog();
             } else if (which == 3) {
+                showSubtitleStyleDialog();
+            } else if (which == 4) {
                 cycleAspectRatio();
             }
         });
@@ -2242,6 +2323,8 @@ public class PlayerActivity extends Activity {
                 playerView.showController();
                 if (btnExoSettings != null && btnExoSettings.getVisibility() == View.VISIBLE) {
                     btnExoSettings.requestFocus();
+                } else if (btnSpeed != null && btnSpeed.getVisibility() == View.VISIBLE) {
+                    btnSpeed.requestFocus();
                 } else if (btnQuality != null && btnQuality.getVisibility() == View.VISIBLE) {
                     btnQuality.requestFocus();
                 }

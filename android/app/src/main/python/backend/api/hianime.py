@@ -105,7 +105,9 @@ def _probe_master(master_url, referer):
             raise RuntimeError(f"upstream {r.status_code} for {host}")
     except Exception as e:
         err_str = str(e).lower()
-        if any(w in err_str for w in ("reset", "ssl", "recv failure", "connect", "timeout")):
+        is_known_dpi = any(k in host for k in ("dramahot", "zokoanime"))
+        is_rst = any(w in err_str for w in ("reset", "ssl", "recv failure"))
+        if is_known_dpi or is_rst:
             _BLOCKED_DPI_HOSTS.add(host)
             try:
                 from api.desync import tls_desync_request
@@ -206,12 +208,26 @@ def _parse_browse_cards(html: str):
         typ = re.search(r"fdi-item\">(TV|Movie|OVA|ONA|Special|Music)<", b)
         dur = re.search(r"fdi-duration\">([^<]*)<", b)
         desc = re.search(r"class=\"description\">(.*?)</div>", b, re.S)
+        sub_cnt = int(sub.group(1)) if sub else 0
+        dub_cnt = int(dub.group(1)) if dub else 0
+        eps_cnt = int(eps.group(1)) if eps else 0
+        rel_cnt = sub_cnt if sub_cnt > 0 else (eps_cnt if eps_cnt > 0 else 0)
+        tot_cnt = eps_cnt if eps_cnt > 0 else 0
+        if tot_cnt > 0:
+            cnt_str = f"{rel_cnt}/{tot_cnt}"
+        elif rel_cnt > 0:
+            cnt_str = f"{rel_cnt}/?"
+        else:
+            cnt_str = ""
         out.append({
             "id": slug, "title": title,
             "poster": poster,
-            "sub": int(sub.group(1)) if sub else 0,
-            "dub": int(dub.group(1)) if dub else 0,
-            "eps": int(eps.group(1)) if eps else 0,
+            "sub": sub_cnt,
+            "dub": dub_cnt,
+            "eps": eps_cnt,
+            "eps_released": rel_cnt,
+            "eps_total": tot_cnt,
+            "eps_counter": cnt_str,
             "type": typ.group(1) if typ else "",
             "duration": _clean(dur.group(1)) if dur else "",
             "synopsis": _clean(re.sub(r"<[^>]+>", "", desc.group(1)))[:220] if desc else "",
@@ -655,8 +671,9 @@ def _try_megaplay(embed: str):
     sub_lang = default_track["label"] if default_track else None
 
     variants = []
+    text = ""
     try:
-        text = _fetch(master, referer=origin + "/")
+        text = _fetch_media(master, referer=origin + "/", timeout=8)
         base = master.rsplit("/", 1)[0] + "/"
         lines = text.splitlines()
         for i, ln in enumerate(lines):
@@ -668,22 +685,13 @@ def _try_megaplay(embed: str):
                     if not url.startswith("http"):
                         url = base + url
                     variants.append({"q": q, "url": url})
-    except Exception:
-        pass
+    except Exception as e:
+        raise RuntimeError(f"megaplay master: {e}")
     variants.sort(key=lambda v: int(re.sub(r"\D", "", v["q"]) or 0), reverse=True)
     if not variants:
         variants = [{"q": "auto", "url": master}]
-    # Probe master — kalau host mati, return None (bukan raise) supaya caller
-    # smart-fallback ke server berikutnya.
-    try:
-        _probe_master(master, referer=origin + "/")
-    except Exception as e:
-        raise RuntimeError(f"megaplay probe: {e}")
-    # Validasi playlist: minimal ada 1 segment/variant URL agar HLS.js tidak hang.
-    try:
-        variants = _validate_master_playlist(master, referer=origin + "/", variants=variants)
-    except Exception as e:
-        raise RuntimeError(f"megaplay playlist: {e}")
+    if "#EXTM3U" not in text:
+        raise RuntimeError("megaplay playlist: not m3u8")
 
     intro = cfg.get("intro") or {"start": 0, "end": 0}
     outro = cfg.get("outro") or {"start": 0, "end": 0}
@@ -797,34 +805,36 @@ def _validate_master_playlist(master_url: str, referer: str, variants: list):
 
 
 def _validate_sub_url(sub_url: str, referer: str):
-    """Soft-validasi subtitle URL: HEAD/GET kecil, kalau 4xx/5xx atau body
-    kosong → return None. Kalau 200 → return URL apa adanya.
-    Subtitle yang invalid jangan memblokir playback."""
+    """Soft-validasi subtitle URL:
+    Untuk CDN terpercaya (megaplay, broforgotsave, stellarfrontier, megacloud, dsb),
+    langsung return URL agar tidak menambah latency berlebih saat resolve.
+    Untuk host lainnya, lakukan validasi cepat."""
     if not sub_url or not sub_url.startswith("http"):
         return None
     try:
         host = _host_from(sub_url)
+        if any(k in host for k in ("megaplay", "broforgotsave", "stellarfrontier", "megacloud", "akamaized", "rabbitstream")):
+            return sub_url
         headers = {"User-Agent": HI_UA, **({"Referer": referer} if referer else {})}
         if host in _BLOCKED_DPI_HOSTS:
             from api.desync import tls_desync_request
-            b = tls_desync_request(sub_url, headers=headers, timeout=6.0)
+            b = tls_desync_request(sub_url, headers=headers, timeout=4.0)
             if b and len(b) >= 10:
                 return sub_url
             return None
         try:
             from curl_cffi import requests as creq
-            kw = dict(headers=headers, impersonate="chrome124", timeout=8)
+            kw = dict(headers=headers, impersonate="chrome124", timeout=5)
             r = creq.get(sub_url, **kw)
             if r.status_code == 200 and r.content and len(r.content) >= 10:
                 return sub_url
             return None
         except Exception:
             import httpx
-            with httpx.Client(timeout=8, follow_redirects=True, headers=headers) as c:
+            with httpx.Client(timeout=5, follow_redirects=True, headers=headers) as c:
                 r = c.get(sub_url)
                 if r.status_code == 200 and r.content and len(r.content) >= 10:
                     return sub_url
-                # Fallback khusus host Megaplay / CDN jika referer asal ditolak
                 if any(k in host for k in ("broforgotsave", "stellarfrontier", "megaplay")):
                     headers["Referer"] = "https://megaplay.buzz/"
                     r2 = c.get(sub_url, headers=headers)

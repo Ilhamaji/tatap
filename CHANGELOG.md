@@ -32,8 +32,21 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
     - Menghidupkan fungsionalitas kolom pencarian (*searchbox*) pada Android TV via aktivasi klik/`DPAD_CENTER`, perbaikan arah navigasi atas tab ke searchbox, dan pemunculan terprogram keyboard virtual Android TV (IME) via `InputMethodManager.showSoftInput`.
     - Mengimplementasikan `CenteredImageSpan` (`TvFocusHelper.java`) untuk memusatkan ikon dan teks tab secara simetris di tengah tombol berbobot layar lebar 16:9, melenyapkan rongga kosong tepi kiri akibat `drawableStart` XML.
     - Membatasi lebar seluruh jendela dialog modal TV menjadi maksimum 700dp (Card Center Layout) agar tidak meregang penuh di layar televisi.
+12. **Penambahan Pemilih Kecepatan Putar Video Multiplatform (*Multi-Speed Playback Selector*):** Menambahkan 7 opsi playback speed (`0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 1.75x, 2.0x`) pada Desktop Web dan Android (Mobile & TV), lengkap dengan tombol pintas keyboard `[` / `]` dan aturan deterministik reset otomatis ke `1.0x` pada setiap sesi judul anime baru.
+13. **Indikator Penghitung Episode Rilis Anime Sedang Tayang (*Released Ongoing Episode Counter*):** Menghitung rasio episode rilis aktif terhadap total proyeksi penayangan (`eps_released`, `eps_total`, `eps_counter`, misal: `8/12` atau `8/?`) pada backend scraper, lalu menyajikannya secara konsisten pada poster card katalog, badge status (`EP 8/12`), serta deskripsi jumlah episode detail anime di seluruh platform.
 
 ### Ditambahkan
+- **Pemilih Kecepatan Putar Video (*Video Playback Speed Selector*):**
+  - Desktop Web: Dropdown `<select id="pm-speed-select">` di player header bar dengan 7 opsi kecepatan (`0.5x`, `0.75x`, `1.0x (Normal)`, `1.25x`, `1.5x`, `1.75x`, `2.0x`), pintasan keyboard `[` (perlambat) dan `]` (percepat), status toast real-time, serta reset deterministik kembali ke `1.0x` saat membuka judul baru (`openTitle`).
+  - Android Mobile & Android TV: Tombol interaktif `btn_speed` pada top overlay player, dialog pilihan tunggal `showSpeedSelectorDialog`, integrasi pada `showPlayerUnifiedSettingsDialog`, navigasi D-Pad terintegrasi (`nextFocusLeft` ke `btn_quality`, `nextFocusRight` ke `btn_sub_style`), dan penerapan rate via `player.setPlaybackParameters(new PlaybackParameters(speed))`.
+- **Penghitung Episode Rilis Ongoing (*Ongoing Anime Episode Counter*):**
+  - AniList API (`backend/api/anilist.py` & Chaquopy): Menambahkan ekstraksi `nextAiringEpisode` dan helper `compute_episode_counts(m)` untuk mendeteksi jumlah episode rilis vs total proyeksi musim tayang.
+  - HiAnime API (`backend/api/hianime.py` & Chaquopy): Menghitung `eps_released`, `eps_total`, dan `eps_counter` (format `rel/tot` atau `rel/?`) dari browse cards dan pencarian.
+  - Backend API Gateway (`backend/main.py` & Chaquopy): Menyajikan field `eps_released`, `eps_total`, `eps_counter`, `badge`, dan `is_finished` pada endpoint `/api/seasonal` untuk kedua jalur (`seasonal` dan `long_running`).
+  - Desktop UI (`frontend/js/term.js` & `app.js`): Menampilkan badge `EP 8/12` pada poster card ongoing, teks `Ep 8/12` pada metadata baris, serta format `8/12 episode rilis` pada modal detail anime `#tm-count`.
+  - Android UI (`AnimeAdapter.java` & `DetailActivity.java`): Menampilkan badge `EP 8/12` pada poster card anime ongoing, metadata ringkasan `8/12 Ep`, serta deskripsi status `8/12 Episode Rilis (Sedang Tayang)` pada halaman detail.
+- **Unit Test Komprehensif Playback Speed & Episode Counter (`tests/test_play_speed_and_episode_counter.py`):**
+  - 5 test case otomatis memvalidasi perhitungan AniList next airing, parsing kartu HiAnime, audit paritas Chaquopy 100%, serta integrasi frontend dan native Android.
 - **Identitas Visual Maskot Anime Tatap (`assets/`, `frontend/assets/`, `launcher/` & `android/`):**
   - Mengadopsi ilustrasi maskot anime orisinal dengan tatapan fokus tajam, headphone streaming neon cyan, dan palet gelap cyberpunk yang menyatu sempurna di seluruh platform.
   - Menghasilkan aset pendukung: `assets/tatap_icon_master.png`, `tatap_icon_512.png`, `frontend/assets/icon.png`, `favicon.ico`, serta `launcher/icon.ico`.

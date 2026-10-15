@@ -263,13 +263,17 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     continue
                 seen_slugs.add(slug)
                 cover = (m.get("coverImage") or {})
+                tot = m.get("episodes") or 0
                 seasonal_items.append({
                     "id": slug,
                     "title": title,
                     "poster": cover.get("large") or cover.get("medium") or "",
                     "type": _format_to_type(m.get("format")),
-                    "eps": m.get("episodes") or 0,
-                    "sub": m.get("episodes") or 0,
+                    "eps": tot,
+                    "sub": tot,
+                    "eps_released": tot,
+                    "eps_total": tot,
+                    "eps_counter": f"{tot}/{tot}" if tot > 0 else "?/?",
                     "duration": (str(m.get("duration") or "") + "m") if m.get("duration") else "",
                     "score": (m.get("averageScore") or 0) / 10.0 if m.get("averageScore") else 0,
                     "status": "finished",
@@ -295,6 +299,14 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     continue
                 eps = item.get("eps") or 0
                 sub = item.get("sub") or 0
+                rel_cnt = item.get("eps_released") or (sub if sub > 0 else (eps if eps > 0 else 0))
+                tot_cnt = item.get("eps_total") or (eps if eps > 0 else 0)
+                if tot_cnt > 0:
+                    cnt_str = f"{rel_cnt}/{tot_cnt}"
+                elif rel_cnt > 0:
+                    cnt_str = f"{rel_cnt}/?"
+                else:
+                    cnt_str = ""
 
                 if _is_long_running(title, eps, 0, sub, slug):
                     item_copy = dict(item)
@@ -302,6 +314,9 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     item_copy["is_long_running"] = True
                     item_copy["is_finished"] = False
                     item_copy["lane"] = "long_running"
+                    item_copy["eps_released"] = rel_cnt
+                    item_copy["eps_total"] = tot_cnt
+                    item_copy["eps_counter"] = cnt_str
                     seen_slugs.add(slug)
                     long_running_items.append(item_copy)
                 else:
@@ -310,6 +325,9 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     item_copy["is_long_running"] = False
                     item_copy["is_finished"] = False
                     item_copy["lane"] = "seasonal"
+                    item_copy["eps_released"] = rel_cnt
+                    item_copy["eps_total"] = tot_cnt
+                    item_copy["eps_counter"] = cnt_str
                     seen_slugs.add(slug)
                     seasonal_items.append(item_copy)
 
@@ -409,15 +427,30 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
             if not slug:
                 continue
             cover = (m.get("coverImage") or {})
+            eps_rel, eps_tot = al.compute_episode_counts(m)
+            status_str = (m.get("status") or "").lower()
+            is_finished = status_str in ("finished", "completed")
+            if is_finished:
+                eps_cnt = f"{eps_tot}/{eps_tot}" if eps_tot > 0 else "?/?"
+                badge = "TAMAT"
+            else:
+                eps_cnt = f"{eps_rel}/{eps_tot}" if eps_tot > 0 else (f"{eps_rel}/?" if eps_rel > 0 else "")
+                badge = "ONGOING"
             items_out.append({
                 "id": slug,
                 "title": title,
                 "poster": cover.get("large") or cover.get("medium") or "",
                 "type": _format_to_type(m.get("format")),
-                "eps": m.get("episodes") or 0,
+                "eps": eps_tot,
+                "sub": eps_rel,
+                "eps_released": eps_rel,
+                "eps_total": eps_tot,
+                "eps_counter": eps_cnt,
                 "duration": (str(m.get("duration") or "") + "m") if m.get("duration") else "",
                 "score": (m.get("averageScore") or 0) / 10.0 if m.get("averageScore") else 0,
-                "status": (m.get("status") or "").lower(),
+                "status": status_str,
+                "badge": badge,
+                "is_finished": is_finished,
                 "anilist_id": m.get("id"),
                 "site": m.get("siteUrl") or "",
                 "matched": True,

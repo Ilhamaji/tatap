@@ -43,6 +43,7 @@ public class DetailActivity extends Activity {
     private String type;
     private String eps;
     private String sub;
+    private String epsCounter;
 
     private TextView tvTitle, tvTitleFull, tvSlug, tvTypeBadge;
     private ImageView ivPoster;
@@ -89,6 +90,7 @@ public class DetailActivity extends Activity {
         type = getIntent().getStringExtra("type");
         eps = getIntent().getStringExtra("eps");
         sub = getIntent().getStringExtra("sub");
+        epsCounter = getIntent().getStringExtra("eps_counter");
 
         prefs = getSharedPreferences("tatap_history", Context.MODE_PRIVATE);
 
@@ -110,7 +112,7 @@ public class DetailActivity extends Activity {
         tvTitleFull.setText(title != null ? title : "Anime");
 
         String badgeText = (type != null && !type.isEmpty() ? type : "ANIME")
-                + (eps != null && !eps.isEmpty() ? " · " + eps + " EP" : "")
+                + (epsCounter != null && !epsCounter.isEmpty() ? " · " + epsCounter + " EP" : (eps != null && !eps.isEmpty() ? " · " + eps + " EP" : ""))
                 + (sub != null && !sub.isEmpty() ? " · " + sub : "");
         tvTypeBadge.setText(badgeText);
         tvSlug.setText("Memuat episode...");
@@ -259,7 +261,18 @@ public class DetailActivity extends Activity {
                         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                         originalEpisodes.clear();
                         originalEpisodes.addAll(list);
-                        tvSlug.setText(list.size() + " Episode Tersedia");
+                        String countStr;
+                        if (epsCounter != null && !epsCounter.isEmpty()) {
+                            String[] parts = epsCounter.split("/");
+                            if (parts.length == 2 && !parts[1].equals("?")) {
+                                countStr = list.size() + "/" + parts[1] + " Episode Rilis (Sedang Tayang)";
+                            } else {
+                                countStr = list.size() + " Episode Rilis (Sedang Tayang)";
+                            }
+                        } else {
+                            countStr = list.size() + " Episode Tersedia";
+                        }
+                        tvSlug.setText(countStr);
                         setupEpisodeRanges(list);
                         updateEpisodeDisplay();
                         updateQuickPlayButton();

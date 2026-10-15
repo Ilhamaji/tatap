@@ -541,6 +541,15 @@
     <div class="player-head">
       <div class="player-title"><span id="pm-title">–</span><span id="pm-meta" class="dim"></span></div>
       <div class="player-head-btns">
+        <select id="pm-speed-select" class="speed-select" title="Kecepatan Putar Video ([ / ])" aria-label="Kecepatan">
+          <option value="0.5">0.5x</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1.0x</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="1.75">1.75x</option>
+          <option value="2">2.0x</option>
+        </select>
         <select id="pm-quality-select" class="quality-select hidden" title="Pilih Resolusi Video" aria-label="Resolusi"></select>
         <button id="pm-mpv" title="Putar di MPV (lokal)"><svg class="ui-icon"><use href="#icon-play"/></svg> MPV</button>
         <button id="pm-fs" title="Layar Penuh / Fullscreen (f)"><svg class="ui-icon"><use href="#icon-fullscreen"/></svg> FULL</button>
@@ -583,7 +592,7 @@
       </div>
       <button id="pm-next" title="Episode berikutnya (n)">NEXT <svg class="ui-icon"><use href="#icon-step-next"/></svg></button>
     </div>
-    <div class="player-hint dim small">Space play/pause · ←/→ seek 5 dtk · f fullscreen · n/p ganti episode · m mute · Esc tutup</div>
+    <div class="player-hint dim small">Space play/pause · ←/→ seek 5 dtk · f fullscreen · [ / ] kecepatan · n/p ganti episode · m mute · Esc tutup</div>
   </div>
 </div>
 

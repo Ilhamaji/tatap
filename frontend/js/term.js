@@ -291,7 +291,7 @@ var Tui = (function () {
 
             d.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title,a.poster,a.type);
+              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
             });
             frag.appendChild(d);
           } else {
@@ -341,9 +341,13 @@ var Tui = (function () {
             subMeta2.className="tr-meta";
             var sm2=[];
             if(a.type) sm2.push(a.type);
-            if(a.sub) sm2.push("SUB "+a.sub);
-            if(a.dub) sm2.push("DUB "+a.dub);
-            if(a.eps) sm2.push(a.eps+" ep");
+            if(a.eps_counter){
+              sm2.push("Ep " + a.eps_counter);
+            } else {
+              if(a.sub) sm2.push("SUB "+a.sub);
+              if(a.dub) sm2.push("DUB "+a.dub);
+              if(a.eps) sm2.push(a.eps+" ep");
+            }
             if(a.id) sm2.push(a.id);
             subMeta2.textContent=sm2.join(" · ");
             infoCol2.appendChild(subMeta2);
@@ -351,7 +355,7 @@ var Tui = (function () {
 
             d2.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title,a.poster,a.type);
+              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
             });
             frag.appendChild(d2);
           }
@@ -384,7 +388,11 @@ var Tui = (function () {
             var bgCol = isTam ? "rgba(5,150,105,0.92)" : (isLongB ? "rgba(217,119,6,0.92)" : "rgba(15,23,42,0.85)");
             bgTag.className="pc-badge-tag";
             bgTag.style.cssText="position:absolute;bottom:6px;left:6px;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:3px;background:"+bgCol+";color:#fff;z-index:2;pointer-events:none;";
-            bgTag.textContent=a.badge;
+            var bText = a.badge;
+            if(a.badge === "ONGOING" && a.eps_counter){
+              bText = "EP " + a.eps_counter;
+            }
+            bgTag.textContent=bText;
             d.appendChild(bgTag);
           }
           if(isUnavail){var bad=document.createElement("span");bad.className="pc-bad";bad.textContent="?";bad.title="Tidak ada di hianime";d.appendChild(bad);}
@@ -392,10 +400,22 @@ var Tui = (function () {
           var body=document.createElement("div");body.className="poster-body";
           var b=document.createElement("b");b.textContent=a.title;body.appendChild(b);
           var meta=document.createElement("div");meta.className="poster-meta";
-          var m=[];if(a.type)m.push(a.type);if(a.eps)m.push(a.eps+" ep");if(a.sub)m.push("SUB "+a.sub);if(a.dub)m.push("DUB "+a.dub);if(a.duration)m.push(a.duration);if(a.score)m.push(a.score.toFixed(1));meta.textContent=m.join(" · ");body.appendChild(meta);
+          var m=[];
+          if(a.type)m.push(a.type);
+          if(a.eps_counter){
+            m.push("Ep "+a.eps_counter);
+          }else{
+            if(a.eps)m.push(a.eps+" ep");
+            if(a.sub)m.push("SUB "+a.sub);
+            if(a.dub)m.push("DUB "+a.dub);
+          }
+          if(a.duration)m.push(a.duration);
+          if(a.score)m.push(a.score.toFixed(1));
+          meta.textContent=m.join(" · ");
+          body.appendChild(meta);
           d.appendChild(body);
           if(!isUnavail){
-            d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type);});
+            d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);});
           }
           grid.appendChild(d);
         })(S.items[j],j);
@@ -467,7 +487,7 @@ var Tui = (function () {
     var a=S.items[S.sel];
     if(!a||a.is_header)return;
     if(!a.id){log("judul ini belum tersedia di hianime","err");return;}
-    App.openTitle(a.id,a.title,a.poster,a.type);
+    App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
   }
 
   function startSearch(q){

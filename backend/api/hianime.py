@@ -208,12 +208,26 @@ def _parse_browse_cards(html: str):
         typ = re.search(r"fdi-item\">(TV|Movie|OVA|ONA|Special|Music)<", b)
         dur = re.search(r"fdi-duration\">([^<]*)<", b)
         desc = re.search(r"class=\"description\">(.*?)</div>", b, re.S)
+        sub_cnt = int(sub.group(1)) if sub else 0
+        dub_cnt = int(dub.group(1)) if dub else 0
+        eps_cnt = int(eps.group(1)) if eps else 0
+        rel_cnt = sub_cnt if sub_cnt > 0 else (eps_cnt if eps_cnt > 0 else 0)
+        tot_cnt = eps_cnt if eps_cnt > 0 else 0
+        if tot_cnt > 0:
+            cnt_str = f"{rel_cnt}/{tot_cnt}"
+        elif rel_cnt > 0:
+            cnt_str = f"{rel_cnt}/?"
+        else:
+            cnt_str = ""
         out.append({
             "id": slug, "title": title,
             "poster": poster,
-            "sub": int(sub.group(1)) if sub else 0,
-            "dub": int(dub.group(1)) if dub else 0,
-            "eps": int(eps.group(1)) if eps else 0,
+            "sub": sub_cnt,
+            "dub": dub_cnt,
+            "eps": eps_cnt,
+            "eps_released": rel_cnt,
+            "eps_total": tot_cnt,
+            "eps_counter": cnt_str,
             "type": typ.group(1) if typ else "",
             "duration": _clean(dur.group(1)) if dur else "",
             "synopsis": _clean(re.sub(r"<[^>]+>", "", desc.group(1)))[:220] if desc else "",

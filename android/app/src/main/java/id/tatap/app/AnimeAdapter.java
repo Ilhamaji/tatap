@@ -92,6 +92,7 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         String sub = item.optString("sub", "");
         String type = item.optString("type", "");
         String eps = item.optString("eps", "");
+        String epsCounter = item.optString("eps_counter", "");
         String slug = item.optString("id", item.optString("slug", ""));
         double score = item.optDouble("score", 0.0);
         String duration = item.optString("duration", "");
@@ -130,7 +131,9 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             holder.tvBadgeEp.setBackgroundResource(R.drawable.bg_badge_tamat);
             holder.tvBadgeEp.setTextColor(0xFFECFDF5);
         } else if ("SERIAL PANJANG".equalsIgnoreCase(badge) || isLongRunning) {
-            if (!eps.isEmpty() && !eps.equals("0")) {
+            if (!epsCounter.isEmpty()) {
+                holder.tvBadgeEp.setText("EP " + epsCounter);
+            } else if (!eps.isEmpty() && !eps.equals("0")) {
                 holder.tvBadgeEp.setText("EP " + eps);
             } else if (!sub.isEmpty()) {
                 holder.tvBadgeEp.setText("SUB " + sub.toUpperCase());
@@ -139,6 +142,10 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             }
             holder.tvBadgeEp.setBackgroundResource(R.drawable.bg_badge_long);
             holder.tvBadgeEp.setTextColor(0xFFFFFBEB);
+        } else if (!epsCounter.isEmpty()) {
+            holder.tvBadgeEp.setText("EP " + epsCounter);
+            holder.tvBadgeEp.setBackgroundResource(R.drawable.bg_badge_sub);
+            holder.tvBadgeEp.setTextColor(0xFFF1F5F9);
         } else if (!sub.isEmpty()) {
             holder.tvBadgeEp.setText("SUB " + sub.toUpperCase());
             holder.tvBadgeEp.setBackgroundResource(R.drawable.bg_badge_sub);
@@ -164,7 +171,9 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
                 metaStr.append(" · ").append(type);
             }
         } else {
-            if (!eps.isEmpty() && !eps.equals("0")) {
+            if (!epsCounter.isEmpty()) {
+                metaStr.append(epsCounter).append(" Ep");
+            } else if (!eps.isEmpty() && !eps.equals("0")) {
                 metaStr.append(eps).append(" Ep");
             }
             if (!duration.isEmpty()) {
@@ -187,6 +196,7 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             intent.putExtra("type", type);
             intent.putExtra("eps", eps);
             intent.putExtra("sub", sub);
+            intent.putExtra("eps_counter", epsCounter);
             context.startActivity(intent);
         });
     }

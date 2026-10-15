@@ -23,10 +23,29 @@ query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int, $statusIn: [
       seasonYear
       coverImage { large medium }
       siteUrl
+      nextAiringEpisode {
+        episode
+        airingAt
+        timeUntilAiring
+      }
     }
   }
 }
 """
+
+def compute_episode_counts(m: dict) -> tuple:
+    """Menghitung (eps_released, eps_total) dari objek media AniList.
+    Jika anime ongoing dan memiliki nextAiringEpisode, episode rilis = next_episode - 1."""
+    total = m.get("episodes") or 0
+    status = (m.get("status") or "").upper()
+    next_air = m.get("nextAiringEpisode")
+    if next_air and isinstance(next_air, dict) and next_air.get("episode"):
+        released = max(0, int(next_air.get("episode")) - 1)
+    elif status in ("FINISHED", "COMPLETED"):
+        released = total
+    else:
+        released = total
+    return released, total
 
 RECENTLY_FINISHED_QUERY = """
 query AiringFinished($page: Int, $perPage: Int) {
