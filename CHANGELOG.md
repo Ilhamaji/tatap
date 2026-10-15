@@ -53,6 +53,13 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 17. **Pengerasan & Kehandalan Startup Linux AppImage (`linux/AppRun`):**
     - Mengganti endpoint probe kesiapan server internal dari `/api/health` (yang memeriksa konektivitas upstream WAN HiAnime dengan timeout 10s) menjadi `/api/ping` (pemeriksaan port lokal murni instan), mengeliminasi kegagalan startup semu saat offline atau jaringan lambat.
     - Menambahkan penanganan graceful shutdown port 8767 via request HTTP `POST /api/shutdown` sebelum mengeksekusi launcher.
+18. **Perbaikan & Penguatan Filter Genre Terisolasi pada Web dan Desktop (`frontend/js/term.js`, `frontend/index.html`, `frontend/css/style.css`):**
+    - Memperbaiki bug kritis di mana pemanggilan API `apiCall("katalog")` mengabaikan filter genre dan hanya membaca filter umum (`hasFilter`), sehingga genre terpilih gagal menyaring anime.
+    - Menyatukan state filter katalog `S.catalogFilter.genre` dan meneruskannya ke `window.Tatap.browse(f, S.page)` dengan query `&genre=<slug>`.
+    - Memperbarui label judul baris katalog agar mencantumkan nama genre aktif (`Katalog (Genre: <Nama>)`) dan mendukung paginasi multi-halaman (`[` / `]`) tetap pada genre tersebut.
+    - Menghadirkan antarmuka modal genre `#genre-modal` yang disempurnakan: tombol *"Reset Genre"*, penanda status visual aktif (`.genre-list button.active` dengan border/glow cyan dan teks tebal), indikator status genre aktif di baris status, dan shortcut tombol `Enter` pada input pencarian untuk memilih genre pertama.
+    - Mengintegrasikan pemilih genre langsung pada modal Cross-Filter (`#catalog-filter-modal`) dengan tombol pintas dan tombol hapus instan.
+    - Menambahkan test suite otomatis `tests/test_genre_filter_web.py` dan memverifikasi direktori `android/` 100% tidak tersentuh.
 
 ### Ditambahkan
 - **Fitur Pengingat Posisi Tontonan (*Resume Watch Position & Prompt Modal*):**
@@ -115,6 +122,14 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - Mengganti eksekusi shell `cmd /c netstat` dan `taskkill` dengan Graceful HTTP Shutdown (`POST /api/shutdown`) dan terminasi Win32 API murni (`windows.OpenProcess` + `windows.TerminateProcess`) via file PID `cache/server.pid`.
   - Mengubah opsi kompilasi `-ldflags` Go dari `-s -w` menjadi `-w` saja agar tabel simbol Go tetap utuh demi transparansi modul resmi WebView2 di mata antivirus AI/ML.
   - Menambahkan catatan keamanan, integritas, dan open-source pada panduan `windows/README.txt`.
+
+### Diperbaiki
+- **Filter Genre Web & Desktop (`frontend/js/term.js`, `frontend/index.html`, `frontend/css/style.css`):**
+  - Mengatasi bug pemanggilan `apiCall("katalog")` yang sebelumnya mengabaikan `f.genre` dan menyebabkan filter genre gagal menyaring anime.
+  - Memadukan state filter katalog `S.catalogFilter.genre` dan `S.genreFilter` agar parameter `&genre=` selalu dikirimkan ke endpoint `/api/browse`.
+  - Memperbaiki judul baris katalog agar secara akurat mencerminkan genre aktif (`Katalog (Genre: <Nama>)`) dan memastikan paginasi multi-halaman (`[` / `]`) tetap membawa parameter genre.
+  - Menambahkan tombol *"Reset Genre"*, indikator teks status aktif, dan styling tombol aktif (`.genre-list button.active`) pada modal `#genre-modal`.
+  - Mengintegrasikan pemilih genre dan tombol pembersih cepat pada modal Cross-Filter (`#catalog-filter-modal`).
 
 ## [2.6.2] - 2026-10-14
 

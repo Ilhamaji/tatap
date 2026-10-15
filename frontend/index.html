@@ -394,8 +394,20 @@
 
 <div id="genre-modal" class="overlay hidden" role="dialog" aria-modal="true">
   <div class="genre-sheet">
-    <div class="sec-head"><h2>Pilih Genre</h2><button class="icon-btn" id="genre-close" title="Tutup (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button></div>
-    <input id="genre-search" placeholder="Cari genre… cth: isekai" autocapitalize="off" autocomplete="off" spellcheck="false">
+    <div class="sec-head">
+      <div>
+        <div class="eyebrow">FILTER GENRE ANIME</div>
+        <h2>Pilih Genre</h2>
+      </div>
+      <button class="icon-btn" id="genre-close" title="Tutup (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+    </div>
+    <div class="genre-search-row">
+      <input id="genre-search" placeholder="Cari genre… (cth: isekai, action, romance)" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <button class="btn btn-muted btn-genre-reset" id="genre-reset-btn" title="Hapus filter genre aktif">Reset Genre</button>
+    </div>
+    <div class="genre-status-bar">
+      <span id="genre-active-status" class="dim small">Tidak ada genre aktif (semua anime)</span>
+    </div>
     <div id="genre-list" class="genre-list"></div>
   </div>
 </div>
@@ -485,6 +497,19 @@
           <button class="cf-chip active" data-val="">Semua Status</button>
           <button class="cf-chip" data-val="releasing"><svg class="ui-icon"><use href="#icon-circle-dot"/></svg> Sedang Tayang</button>
           <button class="cf-chip" data-val="completed"><svg class="ui-icon"><use href="#icon-flag"/></svg> Sudah Tamat</button>
+        </div>
+      </div>
+
+      <!-- 6. Genre -->
+      <div class="cf-group">
+        <label class="cf-label">GENRE ANIME</label>
+        <div class="cf-genre-bar">
+          <button type="button" class="btn-cf-genre" id="cf-btn-pick-genre">
+            <svg class="ui-icon"><use href="#icon-tag"/></svg> <span id="cf-btn-genre-label">Semua Genre (Pilih...)</span>
+          </button>
+          <button type="button" class="btn-cf-genre-clear hidden" id="cf-btn-genre-clear" title="Reset Pilihan Genre">
+            <svg class="ui-icon"><use href="#icon-close"/></svg>
+          </button>
         </div>
       </div>
     </div>

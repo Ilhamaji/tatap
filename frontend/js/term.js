@@ -30,7 +30,9 @@ var Tui = (function () {
 
   function applyFilter(){
     if(S.view!=="katalog"){log("filter hanya di katalog","err");return;}
-    S.page=1;loadView();
+    S.page=1;
+    $("results-title").textContent=getCatalogFilterTitle();
+    loadView();
   }
 
   var SCHEDULE_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -85,10 +87,23 @@ var Tui = (function () {
     loadView();
   }
 
+  var _genreList=null;
+  function getGenreTitle(slug){
+    if(!slug) return "";
+    if(_genreList){
+      var g = _genreList.find(function(x){ return x.slug === slug; });
+      if(g) return g.title;
+    }
+    return slug.replace(/-/g, " ").replace(/\b\w/g, function(l){ return l.toUpperCase(); });
+  }
+
   function getCatalogFilterTitle(){
     if(!S.catalogFilter) return "Katalog Populer";
     var f = S.catalogFilter;
     var parts = [];
+    if(f.genre) {
+      parts.push("Genre: " + getGenreTitle(f.genre));
+    }
     if(f.sort && f.sort !== "popularity") {
       var sNames = {score: "Skor Tertinggi", latest: "Terbaru", trending: "Trending", az: "A-Z", most_favorite: "Favorit"};
       parts.push(sNames[f.sort] || f.sort);
@@ -112,7 +127,7 @@ var Tui = (function () {
       case "favorit":return window.Tatap.bookmarks();
       case "katalog":{
         var f = S.catalogFilter || {};
-        var hasFilter = (f.sort && f.sort !== "popularity") || f.year || f.month || f.type || f.status;
+        var hasFilter = (f.sort && f.sort !== "popularity") || f.year || f.month || f.type || f.status || f.genre;
         if(hasFilter) {
           return window.Tatap.browse(f, S.page);
         }
@@ -544,12 +559,27 @@ var Tui = (function () {
     if(m) m.classList.add("hidden");
   }
   function syncCatalogFilterUI(){
-    var f = S.catalogFilter || {sort: "popularity", year: "", month: "", type: "", status: ""};
+    var f = S.catalogFilter || {sort: "popularity", year: "", month: "", type: "", status: "", genre: ""};
     setGroupActive("cf-chips-sort", f.sort || "popularity");
     setGroupActive("cf-chips-year", f.year || "");
     setGroupActive("cf-chips-month", f.month || "");
     setGroupActive("cf-chips-type", f.type || "");
     setGroupActive("cf-chips-status", f.status || "");
+
+    var genreLabel = $("cf-btn-genre-label");
+    var btnGenre = $("cf-btn-pick-genre");
+    var btnClearGenre = $("cf-btn-genre-clear");
+    var curGenre = f.genre || S.genreFilter || "";
+    if(curGenre){
+      var gTitle = getGenreTitle(curGenre);
+      if(genreLabel) genreLabel.textContent = "Genre: " + gTitle;
+      if(btnGenre) btnGenre.classList.add("active");
+      if(btnClearGenre) btnClearGenre.classList.remove("hidden");
+    } else {
+      if(genreLabel) genreLabel.textContent = "Semua Genre (Pilih...)";
+      if(btnGenre) btnGenre.classList.remove("active");
+      if(btnClearGenre) btnClearGenre.classList.add("hidden");
+    }
   }
   function setGroupActive(containerId, activeVal){
     var box = $(containerId);
@@ -567,7 +597,6 @@ var Tui = (function () {
   }
 
   // ==== :genre ====
-  var _genreList=null;
   function slugifyGenre(s){
     return String(s||"").trim().toLowerCase()
       .replace(/&/g,"and").replace(/[^a-z0-9]+/g,"-")
@@ -586,18 +615,33 @@ var Tui = (function () {
     $("genre-modal").classList.remove("hidden");
     $("genre-search").value="";
     var list=await loadGenres();
+    updateGenreStatusUI();
     renderGenreList(list);
     setTimeout(function(){$("genre-search").focus();},30);
   }
   function closeGenreModal(){$("genre-modal").classList.add("hidden");}
+  function updateGenreStatusUI(){
+    var st = $("genre-active-status");
+    if(!st) return;
+    var activeSlug = (S.catalogFilter && S.catalogFilter.genre) || S.genreFilter || "";
+    if(activeSlug){
+      st.innerHTML = 'Genre aktif: <span class="active-label">' + esc(getGenreTitle(activeSlug)) + '</span>';
+    } else {
+      st.textContent = "Tidak ada genre aktif (semua anime)";
+    }
+  }
   function renderGenreList(list){
     var box=$("genre-list");box.innerHTML="";
     if(!list.length){
       var e=document.createElement("div");e.className="empty";e.textContent="(tidak ada hasil)";box.appendChild(e);return;
     }
+    var activeSlug = (S.catalogFilter && S.catalogFilter.genre) || S.genreFilter || "";
     for(var i=0;i<list.length;i++){
       (function(g){
         var b=document.createElement("button");
+        if(activeSlug && g.slug === activeSlug){
+          b.className = "active";
+        }
         b.innerHTML='<span class="g-slug">'+esc(g.slug)+'</span><span class="g-title">'+esc(g.title)+'</span>';
         b.addEventListener("click",function(){
           applyGenreFilter(g.slug);closeGenreModal();
@@ -611,20 +655,37 @@ var Tui = (function () {
     if(s==="hentai"||s.indexOf("hentai")>=0){
       log("genre 'hentai' tidak didukung / diblokir","err");return;
     }
-    S.filter={genre:slug};S.page=1;
-    log("genre: "+slug,"ok");
+    if(!S.catalogFilter) S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: ""};
+    S.catalogFilter.genre = slug;
+    S.genreFilter = slug;
+    S.filter = {genre: slug};
+    S.page = 1;
+    log("genre: "+getGenreTitle(slug),"ok");
     setViewSilent("katalog");
-    $("results-title").textContent="Genre: "+slug;
-    $("empty-state").style.display="none";
+    var cfBtn = $("btn-catalog-filter");
+    if(cfBtn) cfBtn.classList.remove("hidden");
+    syncCatalogFilterUI();
+    $("results-title").textContent = getCatalogFilterTitle();
+    $("empty-state").style.display = "none";
+    loadView();
+  }
+  function clearGenreFilter(){
+    if(S.catalogFilter) delete S.catalogFilter.genre;
+    delete S.genreFilter;
+    if(S.filter && S.filter.genre) delete S.filter.genre;
+    S.page = 1;
+    log("genre filter dihapus","ok");
+    syncCatalogFilterUI();
+    updateGenreStatusUI();
+    $("results-title").textContent = getCatalogFilterTitle();
     loadView();
   }
   async function cmdGenre(parts){
     if(parts.length<=1){openGenreModal();return;}
     var a=parts.slice(1);
     if(a[0]==="reset"){
-      if(S.filter&&S.filter.genre){delete S.filter.genre;S.page=1;
-        log("genre filter dihapus","ok");applyFilter();}
-      else log("tidak ada genre filter aktif","err");return;
+      clearGenreFilter();
+      return;
     }
     if(a[0]==="--list"||a[0]==="list"){
       var kw=a[1]&&a[1]!=="--search"?a[1]:(a[2]||"");
@@ -1081,15 +1142,36 @@ var Tui = (function () {
     // Genre modal listeners
     $("genre-close").addEventListener("click",closeGenreModal);
     $("genre-modal").addEventListener("click",function(e){if(e.target===$("genre-modal"))closeGenreModal();});
-    $("genre-search").addEventListener("input",function(){
-      var kw=this.value.trim().toLowerCase();
+    var btnGenreReset = $("genre-reset-btn");
+    if(btnGenreReset){
+      btnGenreReset.addEventListener("click", function(){
+        clearGenreFilter();
+        closeGenreModal();
+      });
+    }
+    var genreInput = $("genre-search");
+    if(genreInput){
+      genreInput.addEventListener("input", function(){
+        var kw = this.value.trim().toLowerCase();
         loadGenres().then(function(list){
-          var filtered=kw?list.filter(function(g){
-            return (g.title+" "+g.slug).toLowerCase().indexOf(kw)>=0;
-          }):list;
+          var filtered = kw ? list.filter(function(g){
+            return (g.title + " " + g.slug).toLowerCase().indexOf(kw) >= 0;
+          }) : list;
           renderGenreList(filtered);
         });
       });
+      genreInput.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          e.preventDefault();
+          var firstBtn = $("genre-list").querySelector("button");
+          if(firstBtn) firstBtn.click();
+        } else if(e.key === "Escape"){
+          e.preventDefault();
+          closeGenreModal();
+        }
+      });
+    }
+
     // Catalog filter modal listeners
     var cfClose = $("cf-close");
     if(cfClose) cfClose.addEventListener("click", closeCatalogFilterModal);
@@ -1103,10 +1185,29 @@ var Tui = (function () {
         chip.classList.add("active");
       });
     });
+    var btnPickGenre = $("cf-btn-pick-genre");
+    if(btnPickGenre){
+      btnPickGenre.addEventListener("click", function(){
+        closeCatalogFilterModal();
+        openGenreModal();
+      });
+    }
+    var btnClearCfGenre = $("cf-btn-genre-clear");
+    if(btnClearCfGenre){
+      btnClearCfGenre.addEventListener("click", function(e){
+        e.stopPropagation();
+        if(S.catalogFilter) delete S.catalogFilter.genre;
+        delete S.genreFilter;
+        if(S.filter && S.filter.genre) delete S.filter.genre;
+        syncCatalogFilterUI();
+      });
+    }
     var cfReset = $("cf-reset-btn");
     if(cfReset){
       cfReset.addEventListener("click", function(){
-        S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: ""};
+        S.catalogFilter = {sort: "popularity", year: "", month: "", type: "", status: "", genre: ""};
+        delete S.genreFilter;
+        if(S.filter && S.filter.genre) delete S.filter.genre;
         syncCatalogFilterUI();
         closeCatalogFilterModal();
         setView("katalog");
@@ -1115,12 +1216,14 @@ var Tui = (function () {
     var cfApply = $("cf-apply-btn");
     if(cfApply){
       cfApply.addEventListener("click", function(){
+        var prevGenre = (S.catalogFilter && S.catalogFilter.genre) || S.genreFilter || "";
         S.catalogFilter = {
           sort: getGroupActive("cf-chips-sort") || "popularity",
           year: getGroupActive("cf-chips-year"),
           month: getGroupActive("cf-chips-month"),
           type: getGroupActive("cf-chips-type"),
-          status: getGroupActive("cf-chips-status")
+          status: getGroupActive("cf-chips-status"),
+          genre: prevGenre
         };
         closeCatalogFilterModal();
         setView("katalog");
