@@ -101,7 +101,7 @@ public class MainActivity extends Activity {
     // Scrollable Category Pills & Pagination
     private View layoutTabsSegmented;
     private LinearLayout layoutTabsContainer;
-    private TextView btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabJadwal, btnTabGenre;
+    private TextView btnTabMusim, btnTabAiring, btnTabJadwal, btnTabRiwayat, btnTabFavorit, btnTabKatalog, btnTabGenre;
     private View layoutScheduleDays;
     private TextView btnDaySenin, btnDaySelasa, btnDayRabu, btnDayKamis, btnDayJumat, btnDaySabtu, btnDayMinggu;
     private String currentScheduleDay = "today"; // "monday".."sunday" | "today" | "yesterday" | "tomorrow"
@@ -170,9 +170,10 @@ public class MainActivity extends Activity {
         layoutTabsContainer = findViewById(R.id.layout_tabs_container);
         btnTabMusim = findViewById(R.id.btn_tab_musim);
         btnTabAiring = findViewById(R.id.btn_tab_airing);
+        btnTabJadwal = findViewById(R.id.btn_tab_jadwal);
+        btnTabRiwayat = findViewById(R.id.btn_tab_riwayat);
         btnTabFavorit = findViewById(R.id.btn_tab_favorit);
         btnTabKatalog = findViewById(R.id.btn_tab_katalog);
-        btnTabJadwal = findViewById(R.id.btn_tab_jadwal);
         btnTabGenre = findViewById(R.id.btn_tab_genre);
         layoutScheduleDays = findViewById(R.id.layout_schedule_days);
         btnDaySenin = findViewById(R.id.btn_day_senin);
@@ -183,11 +184,17 @@ public class MainActivity extends Activity {
         btnDaySabtu = findViewById(R.id.btn_day_sabtu);
         btnDayMinggu = findViewById(R.id.btn_day_minggu);
 
-        // Tab Jadwal aktif untuk APK Mobile dan Android TV
+        // Tab Jadwal & Riwayat aktif untuk APK Mobile dan Android TV
         if (btnTabJadwal != null) {
             btnTabJadwal.setVisibility(View.VISIBLE);
             if (TvFocusHelper.isTv(this)) {
                 TvFocusHelper.attachFocusScale(btnTabJadwal, 1.05f, 4f);
+            }
+        }
+        if (btnTabRiwayat != null) {
+            btnTabRiwayat.setVisibility(View.VISIBLE);
+            if (TvFocusHelper.isTv(this)) {
+                TvFocusHelper.attachFocusScale(btnTabRiwayat, 1.05f, 4f);
             }
         }
         if (TvFocusHelper.isTv(this)) {
@@ -312,9 +319,9 @@ public class MainActivity extends Activity {
                 layoutTabsContainer.setLayoutParams(clp);
             }
         }
-        // Pada Android TV, seluruh 6 tab (Musim Ini, Masih Tayang, Favorit, Katalog, Jadwal, Genre)
+        // Pada Android TV, seluruh 7 tab (Musim Ini, Masih Tayang, Jadwal, Riwayat, Favorit, Katalog, Genre)
         // dibagikan rata (weight=1.0f) membentang penuh 100% menyesuaikan lebar layar TV (10-Foot UI)
-        TextView[] tvTabs = new TextView[]{btnTabMusim, btnTabAiring, btnTabFavorit, btnTabKatalog, btnTabJadwal, btnTabGenre};
+        TextView[] tvTabs = new TextView[]{btnTabMusim, btnTabAiring, btnTabJadwal, btnTabRiwayat, btnTabFavorit, btnTabKatalog, btnTabGenre};
         for (int i = 0; i < tvTabs.length; i++) {
             TextView tab = tvTabs[i];
             if (tab != null) {
@@ -338,7 +345,7 @@ public class MainActivity extends Activity {
         if (btnStatusPower != null) {
             btnStatusPower.setNextFocusLeftId(R.id.layout_search_box);
             btnStatusPower.setNextFocusRightId(R.id.btn_toggle_menu);
-            btnStatusPower.setNextFocusDownId(R.id.btn_tab_jadwal);
+            btnStatusPower.setNextFocusDownId(R.id.btn_tab_riwayat);
         }
         if (btnToggleMenu != null) {
             btnToggleMenu.setNextFocusLeftId(R.id.btn_status_power);
@@ -348,34 +355,39 @@ public class MainActivity extends Activity {
         // Hubungkan panah ATAS dari tab ke elemen header yang tepat:
         if (btnTabMusim != null) btnTabMusim.setNextFocusUpId(R.id.layout_search_box);
         if (btnTabAiring != null) btnTabAiring.setNextFocusUpId(R.id.layout_search_box);
-        if (btnTabFavorit != null) btnTabFavorit.setNextFocusUpId(R.id.layout_search_box);
-        if (btnTabKatalog != null) btnTabKatalog.setNextFocusUpId(R.id.layout_search_box);
-        if (btnTabJadwal != null) btnTabJadwal.setNextFocusUpId(R.id.btn_status_power);
+        if (btnTabJadwal != null) btnTabJadwal.setNextFocusUpId(R.id.layout_search_box);
+        if (btnTabRiwayat != null) btnTabRiwayat.setNextFocusUpId(R.id.btn_status_power);
+        if (btnTabFavorit != null) btnTabFavorit.setNextFocusUpId(R.id.btn_status_power);
+        if (btnTabKatalog != null) btnTabKatalog.setNextFocusUpId(R.id.btn_toggle_menu);
         if (btnTabGenre != null) btnTabGenre.setNextFocusUpId(R.id.btn_toggle_menu);
 
-        // Sambungkan rantai D-Pad horizontal penuh 6 tab tanpa ada yang ter-skip:
+        // Sambungkan rantai D-Pad horizontal penuh 7 tab tanpa ada yang ter-skip:
         if (btnTabMusim != null) {
             btnTabMusim.setNextFocusLeftId(R.id.btn_tab_musim);
             btnTabMusim.setNextFocusRightId(R.id.btn_tab_airing);
         }
         if (btnTabAiring != null) {
             btnTabAiring.setNextFocusLeftId(R.id.btn_tab_musim);
-            btnTabAiring.setNextFocusRightId(R.id.btn_tab_favorit);
+            btnTabAiring.setNextFocusRightId(R.id.btn_tab_jadwal);
+        }
+        if (btnTabJadwal != null) {
+            btnTabJadwal.setNextFocusLeftId(R.id.btn_tab_airing);
+            btnTabJadwal.setNextFocusRightId(R.id.btn_tab_riwayat);
+        }
+        if (btnTabRiwayat != null) {
+            btnTabRiwayat.setNextFocusLeftId(R.id.btn_tab_jadwal);
+            btnTabRiwayat.setNextFocusRightId(R.id.btn_tab_favorit);
         }
         if (btnTabFavorit != null) {
-            btnTabFavorit.setNextFocusLeftId(R.id.btn_tab_airing);
+            btnTabFavorit.setNextFocusLeftId(R.id.btn_tab_riwayat);
             btnTabFavorit.setNextFocusRightId(R.id.btn_tab_katalog);
         }
         if (btnTabKatalog != null) {
             btnTabKatalog.setNextFocusLeftId(R.id.btn_tab_favorit);
-            btnTabKatalog.setNextFocusRightId(R.id.btn_tab_jadwal);
-        }
-        if (btnTabJadwal != null) {
-            btnTabJadwal.setNextFocusLeftId(R.id.btn_tab_katalog);
-            btnTabJadwal.setNextFocusRightId(R.id.btn_tab_genre);
+            btnTabKatalog.setNextFocusRightId(R.id.btn_tab_genre);
         }
         if (btnTabGenre != null) {
-            btnTabGenre.setNextFocusLeftId(R.id.btn_tab_jadwal);
+            btnTabGenre.setNextFocusLeftId(R.id.btn_tab_katalog);
             btnTabGenre.setNextFocusRightId(R.id.btn_tab_genre);
         }
 
@@ -487,6 +499,18 @@ public class MainActivity extends Activity {
             resetFiltersToTab("airing");
         });
 
+        if (btnTabJadwal != null) {
+            btnTabJadwal.setOnClickListener(v -> {
+                resetFiltersToTab("jadwal");
+            });
+        }
+
+        if (btnTabRiwayat != null) {
+            btnTabRiwayat.setOnClickListener(v -> {
+                resetFiltersToTab("riwayat");
+            });
+        }
+
         if (btnTabFavorit != null) {
             btnTabFavorit.setOnClickListener(v -> {
                 resetFiltersToTab("favorit");
@@ -500,12 +524,6 @@ public class MainActivity extends Activity {
                 resetFiltersToTab("katalog");
             }
         });
-
-        if (btnTabJadwal != null) {
-            btnTabJadwal.setOnClickListener(v -> {
-                resetFiltersToTab("jadwal");
-            });
-        }
 
         if (btnTabGenre != null) {
             btnTabGenre.setOnClickListener(v -> {
@@ -575,7 +593,7 @@ public class MainActivity extends Activity {
 
         if (btnHeaderHistory != null) {
             btnHeaderHistory.setOnClickListener(v -> {
-                switchView("riwayat");
+                resetFiltersToTab("riwayat");
             });
         }
 
@@ -633,9 +651,10 @@ public class MainActivity extends Activity {
         if (layoutSearchBox != null) TvFocusHelper.attachFocusScale(layoutSearchBox, 1.03f, 4f);
         TvFocusHelper.attachFocusScale(btnTabMusim, 1.06f, 6f);
         TvFocusHelper.attachFocusScale(btnTabAiring, 1.06f, 6f);
+        if (btnTabJadwal != null) TvFocusHelper.attachFocusScale(btnTabJadwal, 1.06f, 6f);
+        if (btnTabRiwayat != null) TvFocusHelper.attachFocusScale(btnTabRiwayat, 1.06f, 6f);
         if (btnTabFavorit != null) TvFocusHelper.attachFocusScale(btnTabFavorit, 1.06f, 6f);
         TvFocusHelper.attachFocusScale(btnTabKatalog, 1.06f, 6f);
-        if (btnTabJadwal != null) TvFocusHelper.attachFocusScale(btnTabJadwal, 1.06f, 6f);
         if (btnTabGenre != null) TvFocusHelper.attachFocusScale(btnTabGenre, 1.06f, 6f);
         TvFocusHelper.attachFocusScale(btnPrevPage, 1.1f, 6f);
         TvFocusHelper.attachFocusScale(btnNextPage, 1.1f, 6f);
@@ -965,8 +984,7 @@ public class MainActivity extends Activity {
                 if (args.equalsIgnoreCase("clear") || args.equalsIgnoreCase("hapus") || args.equalsIgnoreCase("reset")) {
                     clearWatchHistory();
                 } else {
-                    switchView("riwayat");
-                    showCommandOutput("> tatap$ :riwayat [Menampilkan Riwayat Tontonan]", false);
+                    resetFiltersToTab("riwayat");
                 }
                 break;
 
@@ -1863,9 +1881,10 @@ public class MainActivity extends Activity {
         int id = tab.getId();
         if (id == R.id.btn_tab_musim) return R.drawable.ic_tab_season;
         if (id == R.id.btn_tab_airing) return R.drawable.ic_tab_airing;
+        if (id == R.id.btn_tab_jadwal) return R.drawable.ic_tab_schedule;
+        if (id == R.id.btn_tab_riwayat) return R.drawable.ic_tab_history;
         if (id == R.id.btn_tab_favorit) return R.drawable.ic_tab_favorite;
         if (id == R.id.btn_tab_katalog) return R.drawable.ic_tab_catalog;
-        if (id == R.id.btn_tab_jadwal) return R.drawable.ic_tab_schedule;
         if (id == R.id.btn_tab_genre) return R.drawable.ic_tab_genre;
         return 0;
     }
@@ -1875,9 +1894,10 @@ public class MainActivity extends Activity {
         int id = tab.getId();
         if (id == R.id.btn_tab_musim) return "Musim Ini";
         if (id == R.id.btn_tab_airing) return "Masih Tayang";
+        if (id == R.id.btn_tab_jadwal) return "Jadwal";
+        if (id == R.id.btn_tab_riwayat) return "Riwayat";
         if (id == R.id.btn_tab_favorit) return "Favorit";
         if (id == R.id.btn_tab_katalog) return "Katalog";
-        if (id == R.id.btn_tab_jadwal) return "Jadwal";
         if (id == R.id.btn_tab_genre) return "Genre";
         CharSequence txt = tab.getText();
         return txt != null ? txt.toString().trim() : "";
@@ -1909,17 +1929,18 @@ public class MainActivity extends Activity {
     private void updateTabButtons() {
         boolean isMusim = "musim".equals(currentView);
         boolean isAiring = "airing".equals(currentView);
+        boolean isJadwal = "jadwal".equals(currentView);
+        boolean isRiwayat = "riwayat".equals(currentView);
         boolean isFavorit = "favorit".equals(currentView);
         boolean isKatalog = "katalog".equals(currentView);
-        boolean isJadwal = "jadwal".equals(currentView);
         boolean isGenre = "genre".equals(currentView);
-        boolean isRiwayat = "riwayat".equals(currentView);
 
         setTabAppearance(btnTabMusim, isMusim);
         setTabAppearance(btnTabAiring, isAiring);
+        setTabAppearance(btnTabJadwal, isJadwal);
+        setTabAppearance(btnTabRiwayat, isRiwayat);
         setTabAppearance(btnTabFavorit, isFavorit);
         setTabAppearance(btnTabKatalog, isKatalog);
-        setTabAppearance(btnTabJadwal, isJadwal);
         setTabAppearance(btnTabGenre, isGenre);
 
         if (btnTabJadwal != null && TvFocusHelper.isTv(this)) {

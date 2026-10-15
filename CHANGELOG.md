@@ -32,6 +32,19 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
    - **Isolasi Penuh Android Mobile:** Fitur ini 100% terisolasi untuk perangkat ponsel/tablet dan disembunyikan otomatis (`View.GONE`) pada perangkat Android TV via `TvFocusHelper.isTv(this)` sehingga alur navigasi D-Pad TV tetap steril dan tidak berubah.
    - **Propagasi & Fallback Metadata:** Menambahkan penerusan `synopsis` pada intent `AnimeAdapter.java`, dukungan `synopsis` pada endpoint `/api/anime/{slug}/episodes`, dan penambahan deskripsi AniList pada backend dengan kepatuhan Chaquopy dual-copy parity.
    - Menambahkan automated test suite baru `tests/test_detail_folded_synopsis.py` (4 unit test).
+4. **Penataan Ulang Menu Kategori Horizontal & Penambahan Tombol Riwayat (`activity_main.xml`, `MainActivity.java`):**
+   - Menata ulang tata letak menu horizontal slide di bawah header menjadi urutan navigasi yang lebih ergonomis dan intuitif:
+     1. **Musim Ini** (`btn_tab_musim`)
+     2. **Masih Tayang** (`btn_tab_airing`)
+     3. **Jadwal** (`btn_tab_jadwal`)
+     4. **Riwayat** (`btn_tab_riwayat`) - tombol baru untuk akses instan ke riwayat tontonan pengguna
+     5. **Favorit** (`btn_tab_favorit`)
+     6. **Katalog** (`btn_tab_katalog`)
+     7. **Genre** (`btn_tab_genre`)
+   - **Vektor Resmi `ic_tab_history.xml`:** Membuat ikon vektor jam riwayat (15dp x 15dp) yang tajam, proporsional, dan selaras dengan gaya visual kategori lainnya.
+   - **Integrasi Penuh Android TV 10-Foot UI:** Seluruh 7 tab dibagikan rata (`weight=1.0f`) membentang 100% di layar TV, dengan integrasi D-Pad spasial dua arah (kiri, kanan, atas ke header, bawah ke konten/grid) tanpa dead-end atau lompatan fokus yang terputus.
+   - **Respon Fokus Interaktif:** Mengikat `TvFocusHelper.attachFocusScale` dan highlight warna aktif/inaktif dinamis untuk tab Riwayat.
+   - Menambahkan unit test otomatis `tests/test_horizontal_tab_menu.py` (3 unit test).
 
 ## [2.7.1] - 2026-10-15
 

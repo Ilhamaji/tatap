@@ -230,6 +230,7 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
 
+            <!-- 1. Tab Musim Ini -->
             <TextView
                 android:id="@+id/btn_tab_musim"
                 android:layout_width="wrap_content"
@@ -237,8 +238,9 @@
                 android:background="@drawable/bg_tab_active"
                 android:clickable="true"
                 android:focusable="true"
-                android:nextFocusUp="@+id/btn_toggle_menu"
+                android:nextFocusUp="@+id/layout_search_box"
                 android:nextFocusDown="@+id/rv_anime_grid"
+                android:nextFocusLeft="@+id/btn_tab_musim"
                 android:nextFocusRight="@+id/btn_tab_airing"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
@@ -251,6 +253,7 @@
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
+            <!-- 2. Tab Masih Tayang -->
             <TextView
                 android:id="@+id/btn_tab_airing"
                 android:layout_width="wrap_content"
@@ -258,10 +261,10 @@
                 android:background="@drawable/bg_tab_inactive"
                 android:clickable="true"
                 android:focusable="true"
-                android:nextFocusUp="@+id/btn_toggle_menu"
+                android:nextFocusUp="@+id/layout_search_box"
                 android:nextFocusDown="@+id/rv_anime_grid"
                 android:nextFocusLeft="@+id/btn_tab_musim"
-                android:nextFocusRight="@+id/btn_tab_favorit"
+                android:nextFocusRight="@+id/btn_tab_jadwal"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_airing"
@@ -273,6 +276,53 @@
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
+            <!-- 3. Tab Jadwal -->
+            <TextView
+                android:id="@+id/btn_tab_jadwal"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_tab_inactive"
+                android:clickable="true"
+                android:focusable="true"
+                android:nextFocusUp="@+id/btn_status_power"
+                android:nextFocusDown="@+id/rv_anime_grid"
+                android:nextFocusLeft="@+id/btn_tab_airing"
+                android:nextFocusRight="@+id/btn_tab_riwayat"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:drawableStart="@drawable/ic_tab_schedule"
+                android:drawablePadding="5dp"
+                android:drawableTint="#8892B0"
+                android:text="Jadwal"
+                android:textColor="#8892B0"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:layout_marginEnd="6dp" />
+
+            <!-- 4. Tab Riwayat -->
+            <TextView
+                android:id="@+id/btn_tab_riwayat"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:background="@drawable/bg_tab_inactive"
+                android:clickable="true"
+                android:focusable="true"
+                android:nextFocusUp="@+id/btn_status_power"
+                android:nextFocusDown="@+id/rv_anime_grid"
+                android:nextFocusLeft="@+id/btn_tab_jadwal"
+                android:nextFocusRight="@+id/btn_tab_favorit"
+                android:gravity="center"
+                android:paddingHorizontal="12dp"
+                android:drawableStart="@drawable/ic_tab_history"
+                android:drawablePadding="5dp"
+                android:drawableTint="#8892B0"
+                android:text="Riwayat"
+                android:textColor="#8892B0"
+                android:textSize="11.5sp"
+                android:textStyle="bold"
+                android:layout_marginEnd="6dp" />
+
+            <!-- 5. Tab Favorit -->
             <TextView
                 android:id="@+id/btn_tab_favorit"
                 android:layout_width="wrap_content"
@@ -282,7 +332,7 @@
                 android:focusable="true"
                 android:nextFocusUp="@+id/btn_toggle_menu"
                 android:nextFocusDown="@+id/rv_anime_grid"
-                android:nextFocusLeft="@+id/btn_tab_airing"
+                android:nextFocusLeft="@+id/btn_tab_riwayat"
                 android:nextFocusRight="@+id/btn_tab_katalog"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
@@ -295,6 +345,7 @@
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
+            <!-- 6. Tab Katalog -->
             <TextView
                 android:id="@+id/btn_tab_katalog"
                 android:layout_width="wrap_content"
@@ -305,7 +356,7 @@
                 android:nextFocusUp="@+id/btn_toggle_menu"
                 android:nextFocusDown="@+id/rv_anime_grid"
                 android:nextFocusLeft="@+id/btn_tab_favorit"
-                android:nextFocusRight="@+id/btn_tab_jadwal"
+                android:nextFocusRight="@+id/btn_tab_genre"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_catalog"
@@ -317,30 +368,7 @@
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
-            <!-- Tab Jadwal -->
-            <TextView
-                android:id="@+id/btn_tab_jadwal"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:background="@drawable/bg_tab_inactive"
-                android:clickable="true"
-                android:focusable="true"
-                android:nextFocusUp="@+id/btn_toggle_menu"
-                android:nextFocusDown="@+id/rv_anime_grid"
-                android:nextFocusLeft="@+id/btn_tab_katalog"
-                android:nextFocusRight="@+id/btn_tab_genre"
-                android:gravity="center"
-                android:paddingHorizontal="12dp"
-                android:drawableStart="@drawable/ic_tab_schedule"
-                android:drawablePadding="5dp"
-                android:drawableTint="#8892B0"
-                android:text="Jadwal"
-                android:textColor="#8892B0"
-                android:textSize="11.5sp"
-                android:textStyle="bold"
-                android:layout_marginEnd="6dp" />
-
-            <!-- Tab Genre -->
+            <!-- 7. Tab Genre -->
             <TextView
                 android:id="@+id/btn_tab_genre"
                 android:layout_width="wrap_content"
@@ -350,7 +378,8 @@
                 android:focusable="true"
                 android:nextFocusUp="@+id/btn_toggle_menu"
                 android:nextFocusDown="@+id/rv_anime_grid"
-                android:nextFocusLeft="@+id/btn_tab_jadwal"
+                android:nextFocusLeft="@+id/btn_tab_katalog"
+                android:nextFocusRight="@+id/btn_tab_genre"
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_genre"

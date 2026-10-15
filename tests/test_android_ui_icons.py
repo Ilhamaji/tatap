@@ -46,6 +46,7 @@ def test_vector_drawables_exist_and_valid():
         "ic_tab_favorite.xml",
         "ic_tab_catalog.xml",
         "ic_tab_schedule.xml",
+        "ic_tab_history.xml",
         "ic_tab_genre.xml",
         "ic_filter.xml",
         "ic_search.xml",
