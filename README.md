@@ -127,39 +127,6 @@ Perintah utilitas:
 
 ---
 
-## Bagikan ke Media Sosial
-
-Bantu perkenalkan Tatap kepada teman dan komunitas penonton anime:
-
-### 1. Instagram Story
-Untuk membagikan Tatap ke Instagram Story:
-1. Unduh atau simpan logo/gambar aplikasi: [tatap_icon_512.png](assets/tatap_icon_512.png).
-2. Buat Story baru di Instagram dan unggah gambar tersebut.
-3. Tambahkan **Stiker Tautan (Link Sticker)** dengan URL: `https://github.com/asfaraguest/tatap`.
-
-### 2. Berbagi Cepat 1-Klik
-Bagikan tautan repositori secara instan ke jejaring media sosial:
-
-<p align="left">
-  <a href="https://www.threads.net/intent/post?text=Tatap%20-%20Pemutar%20Anime%20Mandiri%20Multiplatform%20Bebas%20Iklan%20https%3A%2F%2Fgithub.com%2Fasfaraguest%2Ftatap" target="_blank">
-    <img src="https://img.shields.io/badge/Share-Threads-000000?style=for-the-badge&logo=threads&logoColor=white" height="32" alt="Share Threads">
-  </a>
-  &nbsp;
-  <a href="https://api.whatsapp.com/send?text=Tatap%20-%20Pemutar%20Anime%20Mandiri%20Multiplatform%20Bebas%20Iklan%20https%3A%2F%2Fgithub.com%2Fasfaraguest%2Ftatap" target="_blank">
-    <img src="https://img.shields.io/badge/Share-WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" height="32" alt="Share WhatsApp">
-  </a>
-  &nbsp;
-  <a href="https://t.me/share/url?url=https%3A%2F%2Fgithub.com%2Fasfaraguest%2Ftatap&text=Tatap%20-%20Pemutar%20Anime%20Mandiri%20Multiplatform%20Bebas%20Iklan" target="_blank">
-    <img src="https://img.shields.io/badge/Share-Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" height="32" alt="Share Telegram">
-  </a>
-  &nbsp;
-  <a href="https://twitter.com/intent/tweet?text=Tatap%20-%20Pemutar%20Anime%20Mandiri%20Multiplatform%20Bebas%20Iklan&url=https%3A%2F%2Fgithub.com%2Fasfaraguest%2Ftatap" target="_blank">
-    <img src="https://img.shields.io/badge/Share-X-000000?style=for-the-badge&logo=x&logoColor=white" height="32" alt="Share X">
-  </a>
-</p>
-
----
-
 ## Dukungan dan Donasi
 
 Jika Anda merasa aplikasi ini bermanfaat, dukung pengembangan Tatap agar tetap aktif, bebas iklan, dan terus diperbarui:
