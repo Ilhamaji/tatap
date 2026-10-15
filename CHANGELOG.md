@@ -34,6 +34,10 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
     - Membatasi lebar seluruh jendela dialog modal TV menjadi maksimum 700dp (Card Center Layout) agar tidak meregang penuh di layar televisi.
 12. **Penambahan Pemilih Kecepatan Putar Video Multiplatform (*Multi-Speed Playback Selector*):** Menambahkan 7 opsi playback speed (`0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 1.75x, 2.0x`) pada Desktop Web dan Android (Mobile & TV), lengkap dengan tombol pintas keyboard `[` / `]` dan aturan deterministik reset otomatis ke `1.0x` pada setiap sesi judul anime baru.
 13. **Indikator Penghitung Episode Rilis Anime Sedang Tayang (*Released Ongoing Episode Counter*):** Menghitung rasio episode rilis aktif terhadap total proyeksi penayangan (`eps_released`, `eps_total`, `eps_counter`, misal: `8/12` atau `8/?`) pada backend scraper, lalu menyajikannya secara konsisten pada poster card katalog, badge status (`EP 8/12`), serta deskripsi jumlah episode detail anime di seluruh platform.
+14. **Mitigasi False Positive VirusTotal pada Tatap Windows Portable (`Tatap.exe`):**
+    - Refaktor `launcher/main.go`: Mengganti fungsi `killPortOccupant` (yang mengeksekusi `cmd /c netstat -ano` dan `taskkill /F /PID`) dengan mekanisme **Graceful HTTP Shutdown** (`POST /api/shutdown`) dan manajemen file PID terisolasi (`cache/server.pid`) via Win32 API murni (`windows.OpenProcess` + `windows.TerminateProcess`). Menghapus 100% jejak string shell `cmd`, `netstat`, dan `taskkill` dari biner Windows.
+    - Tuning Linker Flag Go di `tools/build_windows_portable.py`: Mengubah `-ldflags "-H=windowsgui -s -w"` menjadi `-ldflags "-H=windowsgui -w"` untuk mempertahankan tabel simbol Go (`pclntab`), memungkinkan antivirus AI/ML memverifikasi integritas modul resmi WebView2 & standard library tanpa dicurigai sebagai obfuscated trojan.
+    - Penambahan catatan transparansi integritas & open-source pada `windows/README.txt`.
 
 ### Ditambahkan
 - **Pemilih Kecepatan Putar Video (*Video Playback Speed Selector*):**
@@ -83,6 +87,10 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - Penambahan helper `setTabAppearance` untuk tinting dinamis icon dan teks tab beranda.
   - Pembersihan emoji pada teks bookmark detail dan toast notifikasi.
   - Pembersihan emoji pada tombol dan toast lompat intro/outro player.
+- **Launcher Native Windows Portable (`launcher/main.go`, `tools/build_windows_portable.py`, `windows/README.txt`):**
+  - Mengganti eksekusi shell `cmd /c netstat` dan `taskkill` dengan Graceful HTTP Shutdown (`POST /api/shutdown`) dan terminasi Win32 API murni (`windows.OpenProcess` + `windows.TerminateProcess`) via file PID `cache/server.pid`.
+  - Mengubah opsi kompilasi `-ldflags` Go dari `-s -w` menjadi `-w` saja agar tabel simbol Go tetap utuh demi transparansi modul resmi WebView2 di mata antivirus AI/ML.
+  - Menambahkan catatan keamanan, integritas, dan open-source pada panduan `windows/README.txt`.
 
 ## [2.6.2] - 2026-10-14
 
