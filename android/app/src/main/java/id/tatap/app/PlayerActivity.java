@@ -104,6 +104,7 @@ public class PlayerActivity extends Activity {
     private long outroStartMs = 0;
     private long outroEndMs = 0;
     private long currentSkipTargetMs = 0;
+    private boolean autoSkipOpEd = false;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
 
@@ -202,12 +203,29 @@ public class PlayerActivity extends Activity {
         if (player != null && currentSkipTargetMs > 0) {
             player.seekTo(currentSkipTargetMs);
             if (btnSkipOpEd != null) {
+                if (TvFocusHelper.isTv(this) && (btnSkipOpEd.isFocused() || getCurrentFocus() == btnSkipOpEd)) {
+                    if (playerView != null) {
+                        playerView.requestFocus();
+                    }
+                }
                 btnSkipOpEd.setVisibility(View.GONE);
             }
             long sec = currentSkipTargetMs / 1000;
             currentSkipTargetMs = 0;
             String timeStr = String.format("%02d:%02d", sec / 60, sec % 60);
             Toast.makeText(this, "Melompat ke " + timeStr, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateSkipButtonLabel(boolean isIntro) {
+        if (btnSkipOpEd == null) return;
+        boolean isTv = TvFocusHelper.isTv(this);
+        String action = isIntro ? "Lewati Opening" : "Lewati Ending";
+        if (isTv) {
+            boolean focused = btnSkipOpEd.isFocused() || getCurrentFocus() == btnSkipOpEd;
+            btnSkipOpEd.setText(focused ? (action + " [OK]") : ("[▼] " + action));
+        } else {
+            btnSkipOpEd.setText(action);
         }
     }
 
@@ -218,21 +236,41 @@ public class PlayerActivity extends Activity {
         boolean inOutro = (outroEndMs > outroStartMs && (outroEndMs - outroStartMs) >= 10_000
                 && posMs >= outroStartMs && posMs < outroEndMs);
 
+        if (autoSkipOpEd && (inIntro || inOutro)) {
+            currentSkipTargetMs = (inIntro ? introEndMs : outroEndMs) + 500;
+            doSkipOpEd();
+            return;
+        }
+
+        boolean isTv = TvFocusHelper.isTv(this);
         if (inIntro) {
             currentSkipTargetMs = introEndMs + 500;
-            btnSkipOpEd.setText("Lewati Opening");
+            updateSkipButtonLabel(true);
             if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
                 btnSkipOpEd.setVisibility(View.VISIBLE);
+                if (isTv) {
+                    btnSkipOpEd.requestFocus();
+                    updateSkipButtonLabel(true);
+                }
             }
         } else if (inOutro) {
             currentSkipTargetMs = outroEndMs + 500;
-            btnSkipOpEd.setText("Lewati Ending");
+            updateSkipButtonLabel(false);
             if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
                 btnSkipOpEd.setVisibility(View.VISIBLE);
+                if (isTv) {
+                    btnSkipOpEd.requestFocus();
+                    updateSkipButtonLabel(false);
+                }
             }
         } else {
             currentSkipTargetMs = 0;
             if (btnSkipOpEd.getVisibility() == View.VISIBLE) {
+                if (isTv && (btnSkipOpEd.isFocused() || getCurrentFocus() == btnSkipOpEd)) {
+                    if (playerView != null) {
+                        playerView.requestFocus();
+                    }
+                }
                 btnSkipOpEd.setVisibility(View.GONE);
             }
         }
@@ -329,12 +367,18 @@ public class PlayerActivity extends Activity {
         if (btnSkipOpEd != null) {
             btnSkipOpEd.setOnClickListener(v -> doSkipOpEd());
             if (TvFocusHelper.isTv(this)) {
-                TvFocusHelper.attachFocusScale(btnSkipOpEd, 1.08f, 4f);
+                TvFocusHelper.attachFocusScale(btnSkipOpEd, 1.10f, 6f);
+                btnSkipOpEd.setOnFocusChangeListener((v, hasFocus) -> {
+                    boolean inIntro = (introEndMs > introStartMs && player != null
+                            && player.getCurrentPosition() >= introStartMs && player.getCurrentPosition() < introEndMs);
+                    updateSkipButtonLabel(inIntro);
+                });
             }
         }
 
         try {
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+            autoSkipOpEd = sp.getBoolean("auto_skip_op_ed", false);
             currentResizeMode = TvFocusHelper.isTv(this)
                     ? AspectRatioFrameLayout.RESIZE_MODE_FIT
                     : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -788,6 +832,8 @@ public class PlayerActivity extends Activity {
             int keyCode = event.getKeyCode();
             boolean isTopBarActive = (layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE);
             boolean hasFocusOnTopBar = isTopBarActive && isViewOrChildFocused(layoutTopBar);
+            boolean isSkipVisible = (btnSkipOpEd != null && btnSkipOpEd.getVisibility() == View.VISIBLE);
+            boolean isSkipFocused = isSkipVisible && (btnSkipOpEd.isFocused() || getCurrentFocus() == btnSkipOpEd);
 
             switch (keyCode) {
                 case KeyEvent.KEYCODE_MENU:
@@ -798,6 +844,10 @@ public class PlayerActivity extends Activity {
 
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER:
+                    if (isSkipFocused) {
+                        doSkipOpEd();
+                        return true;
+                    }
                     if (hasFocusOnTopBar) {
                         View focused = getCurrentFocus();
                         if (focused != null && isChildOf(focused, layoutTopBar)) {
@@ -868,6 +918,9 @@ public class PlayerActivity extends Activity {
                     break;
 
                 case KeyEvent.KEYCODE_DPAD_LEFT:
+                    if (isSkipFocused && playerView != null) {
+                        playerView.requestFocus();
+                    }
                     if (hasFocusOnTopBar) {
                         showTopBarBriefly();
                         break; // Jangan seek, biarkan navigasi fokus antar tombol
@@ -884,6 +937,9 @@ public class PlayerActivity extends Activity {
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    if (isSkipFocused && playerView != null) {
+                        playerView.requestFocus();
+                    }
                     if (hasFocusOnTopBar) {
                         showTopBarBriefly();
                         break; // Jangan seek, biarkan navigasi fokus antar tombol
@@ -894,12 +950,26 @@ public class PlayerActivity extends Activity {
                     return true;
 
                 case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                case KeyEvent.KEYCODE_BUTTON_R1:
+                    if (isSkipVisible) {
+                        doSkipOpEd();
+                        return true;
+                    }
                     seekRelative(5000);
                     showRipple(tvRippleRight);
                     vibrate(15);
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_UP:
+                    if (isSkipFocused) {
+                        showTopBarBriefly();
+                        if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
+                            btnSubSelector.requestFocus();
+                        } else if (playerView != null) {
+                            playerView.requestFocus();
+                        }
+                        return true;
+                    }
                     showTopBarBriefly();
                     if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
                         btnSubSelector.requestFocus();
@@ -911,6 +981,27 @@ public class PlayerActivity extends Activity {
                     break;
 
                 case KeyEvent.KEYCODE_DPAD_DOWN:
+                    if (TvFocusHelper.isTv(this) && isSkipVisible && !isSkipFocused) {
+                        if (isTopBarActive) {
+                            hideTopBar();
+                        }
+                        btnSkipOpEd.requestFocus();
+                        boolean inIntro = (introEndMs > introStartMs && player != null
+                                && player.getCurrentPosition() >= introStartMs && player.getCurrentPosition() < introEndMs);
+                        updateSkipButtonLabel(inIntro);
+                        return true;
+                    }
+                    if (isSkipFocused) {
+                        if (playerView != null) playerView.requestFocus();
+                        if (playerView != null) {
+                            if (playerView.isControllerFullyVisible()) {
+                                playerView.hideController();
+                            } else {
+                                playerView.showController();
+                            }
+                        }
+                        return true;
+                    }
                     if (isTopBarActive) {
                         hideTopBar();
                         return true;
@@ -926,6 +1017,13 @@ public class PlayerActivity extends Activity {
                     break;
 
                 case KeyEvent.KEYCODE_BACK:
+                    if (isSkipFocused) {
+                        if (playerView != null) playerView.requestFocus();
+                        boolean inIntro = (introEndMs > introStartMs && player != null
+                                && player.getCurrentPosition() >= introStartMs && player.getCurrentPosition() < introEndMs);
+                        updateSkipButtonLabel(inIntro);
+                        return true;
+                    }
                     if (isTopBarActive) {
                         hideTopBar();
                         return true;
@@ -2292,15 +2390,19 @@ public class PlayerActivity extends Activity {
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
         builder.setTitle("Pengaturan Pemutar");
 
+        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+        boolean autoSkip = sp.getBoolean("auto_skip_op_ed", false);
         String spdLabel = formatSpeedLabel(currentPlaybackSpeed);
         String qLabel = activeQuality != null && !activeQuality.isEmpty() ? activeQuality.toUpperCase() : "AUTO";
         String subLabel = !subEnabled ? "Mati" : (activeSubLang.toUpperCase() + " [" + activeEngine + "]");
+        String autoSkipLabel = autoSkip ? "Aktif" : "Mati";
         String[] menu = new String[]{
                 "Kecepatan Putar Video (" + spdLabel + ")",
                 "Pilihan Subtitle & Terjemahan (" + subLabel + ")",
                 "Pilihan Kualitas Video (" + qLabel + ")",
                 "Pengaturan Tampilan & Gaya Subtitle",
-                "Skala Layar / Rasio Aspek (" + getAspectLabel() + ")"
+                "Skala Layar / Rasio Aspek (" + getAspectLabel() + ")",
+                "Otomatis Lewati Opening & Ending (" + autoSkipLabel + ")"
         };
 
         builder.setItems(menu, (dialog, which) -> {
@@ -2314,6 +2416,11 @@ public class PlayerActivity extends Activity {
                 showSubtitleStyleDialog();
             } else if (which == 4) {
                 cycleAspectRatio();
+            } else if (which == 5) {
+                boolean newAutoSkip = !autoSkip;
+                sp.edit().putBoolean("auto_skip_op_ed", newAutoSkip).apply();
+                autoSkipOpEd = newAutoSkip;
+                Toast.makeText(this, "Otomatis Lewati OP/ED: " + (newAutoSkip ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
             }
         });
 

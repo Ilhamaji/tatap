@@ -38,6 +38,12 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
     - Refaktor `launcher/main.go`: Mengganti fungsi `killPortOccupant` (yang mengeksekusi `cmd /c netstat -ano` dan `taskkill /F /PID`) dengan mekanisme **Graceful HTTP Shutdown** (`POST /api/shutdown`) dan manajemen file PID terisolasi (`cache/server.pid`) via Win32 API murni (`windows.OpenProcess` + `windows.TerminateProcess`). Menghapus 100% jejak string shell `cmd`, `netstat`, dan `taskkill` dari biner Windows.
     - Tuning Linker Flag Go di `tools/build_windows_portable.py`: Mengubah `-ldflags "-H=windowsgui -s -w"` menjadi `-ldflags "-H=windowsgui -w"` untuk mempertahankan tabel simbol Go (`pclntab`), memungkinkan antivirus AI/ML memverifikasi integritas modul resmi WebView2 & standard library tanpa dicurigai sebagai obfuscated trojan.
     - Penambahan catatan transparansi integritas & open-source pada `windows/README.txt`.
+15. **Akses Cepat & Navigasi D-Pad Tombol Lewati Opening/Ending Khusus Android TV (`PlayerActivity.java` & `activity_player.xml`):**
+    - Menyambungkan event remote D-Pad TV ke tombol mengambang `btn_skip_op_ed`: tombol otomatis difokuskan (*auto-focus*) dengan skala 1.10x dan border glow cyan `#38BDF8` saat intro/outro dimulai, sehingga pengguna TV dapat melompati opening/ending cukup dengan menekan 1 tombol **`OK` (`DPAD_CENTER`)**.
+    - Navigasi D-Pad terintegrasi: menekan `DPAD_DOWN` memfokuskan kembali tombol skip jika sempat beralih fokus, `DPAD_UP` mengembalikan fokus ke bar kontrol atas, dan tombol `BACK` melepas fokus tanpa menutup video.
+    - Pintasan 1-klik remote: tombol `>>` (`MEDIA_FAST_FORWARD` dan `BUTTON_R1`) langsung mengeksekusi lompat opening/ending tanpa memindahkan kursor.
+    - Panduan visual remote TV dinamis: menampilkan label `Lewati Opening [OK]` saat fokus dan `[▼] Lewati Opening` saat unfocused pada layar TV.
+    - Opsi preferensi baru pada dialog pengaturan pemutar: *"Otomatis Lewati Opening & Ending (Aktif/Mati)"* yang tersimpan persisten di `SharedPreferences`.
 
 ### Ditambahkan
 - **Pemilih Kecepatan Putar Video (*Video Playback Speed Selector*):**
@@ -87,6 +93,7 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
   - Penambahan helper `setTabAppearance` untuk tinting dinamis icon dan teks tab beranda.
   - Pembersihan emoji pada teks bookmark detail dan toast notifikasi.
   - Pembersihan emoji pada tombol dan toast lompat intro/outro player.
+  - Khusus Android TV: Auto-focus tombol `btn_skip_op_ed` saat intro/outro dimulai, penyesuaian label dinamis (`Lewati Opening [OK]` vs `[▼] Lewati Opening`), navigasi `DPAD_DOWN` / `DPAD_UP`, pintasan remote `>>` (`MEDIA_FAST_FORWARD` dan `BUTTON_R1`), dan opsi pengaturan *"Otomatis Lewati Opening & Ending"*.
 - **Launcher Native Windows Portable (`launcher/main.go`, `tools/build_windows_portable.py`, `windows/README.txt`):**
   - Mengganti eksekusi shell `cmd /c netstat` dan `taskkill` dengan Graceful HTTP Shutdown (`POST /api/shutdown`) dan terminasi Win32 API murni (`windows.OpenProcess` + `windows.TerminateProcess`) via file PID `cache/server.pid`.
   - Mengubah opsi kompilasi `-ldflags` Go dari `-s -w` menjadi `-w` saja agar tabel simbol Go tetap utuh demi transparansi modul resmi WebView2 di mata antivirus AI/ML.

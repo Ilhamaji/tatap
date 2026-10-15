@@ -163,6 +163,7 @@
         android:letterSpacing="0.02"
         android:focusable="true"
         android:clickable="true"
+        android:nextFocusUp="@+id/btn_sub_selector"
         android:visibility="gone" />
 
     <!-- Top Overlay Header (Back, Title, Subtitle Selector, Style, Quality, Aspect) -->
