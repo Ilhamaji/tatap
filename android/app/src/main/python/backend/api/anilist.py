@@ -23,6 +23,7 @@ query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int, $statusIn: [
       seasonYear
       coverImage { large medium }
       siteUrl
+      description(asHtml: false)
       nextAiringEpisode {
         episode
         airingAt
@@ -65,6 +66,7 @@ query AiringFinished($page: Int, $perPage: Int) {
       endDate { year month day }
       coverImage { large medium }
       siteUrl
+      description(asHtml: false)
     }
   }
 }

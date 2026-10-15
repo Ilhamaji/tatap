@@ -24,6 +24,14 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
 2. **Pembersihan Aset Usang & Pengujian Otomatis:**
    - Menghapus berkas vektor lama `ic_power.xml` dari direktori drawable untuk menjaga integritas dan kebersihan codebase (*zero bloat*).
    - Menambahkan unit test otomatis `tests/test_server_indicator_icon.py` untuk memvalidasi keberadaan `ic_server.xml`, dimensi proporsional 20dp, penghapusan `ic_power.xml`, dan pengikatan deskripsi aksesibilitas `"Status Backend Server"` pada `activity_main.xml`.
+3. **Mekanisme Folded Sinopsis Anime Terisolasi Android Mobile (`activity_detail.xml`, `DetailActivity.java`, `AnimeAdapter.java`):**
+   - Menambahkan kontainer sinopsis cerita anime pada Hero Card dengan mekanisme *folded/expandable* 2-state:
+     - **Default (Ringkas):** Sinopsis dibatasi 2 baris (`maxLines="2"`) dengan elipsis di ujung dan tombol `"Selengkapnya ▼"`. Area pemilihan episode (`rv_episodes`) tetap luas dan lapang.
+     - **Expanded (Terbuka Penuh):** Saat tombol atau teks sinopsis diketuk, sinopsis terbuka penuh dan tombol berubah menjadi `"Lipat ke Judul ▲"`.
+     - **Fold to Title (Lipat ke Judul):** Saat tombol `"Lipat ke Judul ▲"` diketuk, sinopsis melipat kembali secara mulus (*smooth layout animation* via `animateLayoutChanges="true"`) ke ukuran ringkas 2 baris di bawah judul, secara instan mengembalikan ruang vertikal agar area episode list kembali melebar maksimal.
+   - **Isolasi Penuh Android Mobile:** Fitur ini 100% terisolasi untuk perangkat ponsel/tablet dan disembunyikan otomatis (`View.GONE`) pada perangkat Android TV via `TvFocusHelper.isTv(this)` sehingga alur navigasi D-Pad TV tetap steril dan tidak berubah.
+   - **Propagasi & Fallback Metadata:** Menambahkan penerusan `synopsis` pada intent `AnimeAdapter.java`, dukungan `synopsis` pada endpoint `/api/anime/{slug}/episodes`, dan penambahan deskripsi AniList pada backend dengan kepatuhan Chaquopy dual-copy parity.
+   - Menambahkan automated test suite baru `tests/test_detail_folded_synopsis.py` (4 unit test).
 
 ## [2.7.1] - 2026-10-15
 

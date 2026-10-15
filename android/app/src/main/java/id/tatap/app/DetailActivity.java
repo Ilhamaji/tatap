@@ -44,8 +44,12 @@ public class DetailActivity extends Activity {
     private String eps;
     private String sub;
     private String epsCounter;
+    private String synopsis;
 
     private TextView tvTitle, tvTitleFull, tvSlug, tvTypeBadge;
+    private View layoutSynopsis;
+    private TextView tvSynopsis, btnToggleSynopsis;
+    private boolean isSynopsisExpanded = false;
     private ImageView ivPoster;
     private Button btnQuickPlay, btnBookmark, btnSortOrder;
     private boolean isBookmarked = false;
@@ -91,6 +95,7 @@ public class DetailActivity extends Activity {
         eps = getIntent().getStringExtra("eps");
         sub = getIntent().getStringExtra("sub");
         epsCounter = getIntent().getStringExtra("eps_counter");
+        synopsis = getIntent().getStringExtra("synopsis");
 
         prefs = getSharedPreferences("tatap_history", Context.MODE_PRIVATE);
 
@@ -98,6 +103,9 @@ public class DetailActivity extends Activity {
         tvTitleFull = findViewById(R.id.tv_detail_title_full);
         tvSlug = findViewById(R.id.tv_detail_slug);
         tvTypeBadge = findViewById(R.id.tv_detail_type_badge);
+        layoutSynopsis = findViewById(R.id.layout_detail_synopsis);
+        tvSynopsis = findViewById(R.id.tv_detail_synopsis);
+        btnToggleSynopsis = findViewById(R.id.btn_toggle_synopsis);
         ivPoster = findViewById(R.id.iv_detail_poster);
         btnQuickPlay = findViewById(R.id.btn_quick_play);
         btnSortOrder = findViewById(R.id.btn_sort_order);
@@ -110,6 +118,7 @@ public class DetailActivity extends Activity {
 
         tvTitle.setText(title != null ? title : "Detail Anime");
         tvTitleFull.setText(title != null ? title : "Anime");
+        setupSynopsis(synopsis);
 
         String badgeText = (type != null && !type.isEmpty() ? type : "ANIME")
                 + (epsCounter != null && !epsCounter.isEmpty() ? " · " + epsCounter + " EP" : (eps != null && !eps.isEmpty() ? " · " + eps + " EP" : ""))
@@ -251,7 +260,9 @@ public class DetailActivity extends Activity {
 
                 JSONObject res = new JSONObject(sb.toString());
                 if (res.optBoolean("success")) {
-                    JSONArray epsArr = res.getJSONObject("data").getJSONArray("episodes");
+                    JSONObject dataObj = res.getJSONObject("data");
+                    JSONArray epsArr = dataObj.getJSONArray("episodes");
+                    String apiSynopsis = dataObj.optString("synopsis", "");
                     List<Integer> list = new ArrayList<>();
                     for (int i = 0; i < epsArr.length(); i++) {
                         list.add(epsArr.getJSONObject(i).getInt("ep"));
@@ -261,6 +272,10 @@ public class DetailActivity extends Activity {
                         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                         originalEpisodes.clear();
                         originalEpisodes.addAll(list);
+                        if ((synopsis == null || synopsis.trim().isEmpty()) && !apiSynopsis.trim().isEmpty()) {
+                            synopsis = apiSynopsis;
+                            setupSynopsis(apiSynopsis);
+                        }
                         String countStr;
                         if (epsCounter != null && !epsCounter.isEmpty()) {
                             String[] parts = epsCounter.split("/");
@@ -291,6 +306,38 @@ public class DetailActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private void setupSynopsis(String synopsisText) {
+        if (TvFocusHelper.isTv(this) || layoutSynopsis == null || tvSynopsis == null || btnToggleSynopsis == null) {
+            if (layoutSynopsis != null) layoutSynopsis.setVisibility(View.GONE);
+            return;
+        }
+
+        if (synopsisText == null || synopsisText.trim().isEmpty()) {
+            layoutSynopsis.setVisibility(View.GONE);
+            return;
+        }
+
+        layoutSynopsis.setVisibility(View.VISIBLE);
+        tvSynopsis.setText(synopsisText.trim());
+        isSynopsisExpanded = false;
+        tvSynopsis.setMaxLines(2);
+        btnToggleSynopsis.setText("Selengkapnya ▼");
+
+        View.OnClickListener toggleListener = v -> {
+            isSynopsisExpanded = !isSynopsisExpanded;
+            if (isSynopsisExpanded) {
+                tvSynopsis.setMaxLines(Integer.MAX_VALUE);
+                btnToggleSynopsis.setText("Lipat ke Judul ▲");
+            } else {
+                tvSynopsis.setMaxLines(2);
+                btnToggleSynopsis.setText("Selengkapnya ▼");
+            }
+        };
+
+        btnToggleSynopsis.setOnClickListener(toggleListener);
+        tvSynopsis.setOnClickListener(toggleListener);
     }
 
     private void setupEpisodeRanges(List<Integer> list) {

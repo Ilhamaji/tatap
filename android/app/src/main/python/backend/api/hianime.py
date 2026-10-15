@@ -234,6 +234,23 @@ def _parse_browse_cards(html: str):
         })
     return out
 
+def hianime_synopsis(slug: str) -> str:
+    """Ambil sinopsis anime dari halaman detail HiAnime jika ada."""
+    try:
+        if not slug or "hentai" in slug.lower():
+            return ""
+        html_txt = _fetch(HI_BASE + "/" + slug)
+        m = re.search(r'class="film-description[^\"]*"[^>]*>(.*?)</div>', html_txt, re.S)
+        if not m:
+            m = re.search(r'class="description[^\"]*"[^>]*>(.*?)</div>', html_txt, re.S)
+        if m:
+            import html as _html
+            clean = re.sub(r"<[^>]+>", "", m.group(1)).strip()
+            return _html.unescape(" ".join(clean.split()))
+    except Exception:
+        pass
+    return ""
+
 def _failover_proxies():
     """Direct dulu, warp proxy hanya failover. Urutan: [tanpa proxy, warp proxy]."""
     import os

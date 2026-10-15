@@ -281,6 +281,7 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     "is_finished": True,
                     "is_long_running": False,
                     "lane": "seasonal",
+                    "synopsis": _clean(re.sub(r"<[^>]+>", "", m.get("description") or ""))[:280] if m.get("description") else "",
                     "anilist_id": m.get("id"),
                     "matched": True,
                 })
@@ -451,6 +452,7 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 "status": status_str,
                 "badge": badge,
                 "is_finished": is_finished,
+                "synopsis": _clean(re.sub(r"<[^>]+>", "", m.get("description") or ""))[:280] if m.get("description") else "",
                 "anilist_id": m.get("id"),
                 "site": m.get("siteUrl") or "",
                 "matched": True,
@@ -870,7 +872,13 @@ async def episodes(slug: str):
                 pass
         if not eps:
             return fail("Daftar episode tidak ditemukan")
-        data = {"slug": slug, "episodes": eps, "total": len(eps)}
+        syn_val = ""
+        try:
+            if not slug.startswith("otakudesu:"):
+                syn_val = await loop.run_in_executor(None, lambda: hi.hianime_synopsis(slug))
+        except Exception:
+            pass
+        data = {"slug": slug, "episodes": eps, "total": len(eps), "synopsis": syn_val}
         await set_browse_cache(cache_key, data)
         data["cached"] = False
         return ok(data)

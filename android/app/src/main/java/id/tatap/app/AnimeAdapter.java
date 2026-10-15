@@ -188,6 +188,8 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
 
         ImageLoader.load(poster, holder.ivPoster);
 
+        String synopsis = item.optString("synopsis", "");
+
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, DetailActivity.class);
             intent.putExtra("slug", slug);
@@ -197,6 +199,7 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             intent.putExtra("eps", eps);
             intent.putExtra("sub", sub);
             intent.putExtra("eps_counter", epsCounter);
+            intent.putExtra("synopsis", synopsis);
             context.startActivity(intent);
         });
     }
