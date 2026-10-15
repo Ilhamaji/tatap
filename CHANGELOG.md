@@ -13,6 +13,18 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.7.2] - 2026-10-16
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.7.1 -> 2.7.2)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk penyempurnaan aset visual antarmuka pengguna Android yang backward-compatible tanpa memodifikasi kontrak runtime maupun arsitektur aplikasi:
+1. **Pembaruan Ikon Indikator Backend Online Android (`activity_main.xml`):**
+   - Menggantikan ikon tombol power (`ic_power.xml`) yang ambigu dengan vektor resmi Google Material Design **Dual-Tier Server Rack** (`ic_server.xml`) lengkap dengan lampu status LED.
+   - Memberikan visualisasi yang jelas dan akurat bahwa tombol tersebut merepresentasikan status kesehatan engine backend Python lokal (port 8767), bukan tombol untuk mematikan perangkat atau mematikan aplikasi.
+   - Mempertahankan siklus pewarnaan status dinamis pada `MainActivity.java`: Hijau (`#10B981`) saat Online, Kuning/Amber (`#F59E0B`) saat Booting/Memeriksa, dan Merah (`#EF4444`) saat Offline/Error.
+2. **Pembersihan Aset Usang & Pengujian Otomatis:**
+   - Menghapus berkas vektor lama `ic_power.xml` dari direktori drawable untuk menjaga integritas dan kebersihan codebase (*zero bloat*).
+   - Menambahkan unit test otomatis `tests/test_server_indicator_icon.py` untuk memvalidasi keberadaan `ic_server.xml`, dimensi proporsional 20dp, penghapusan `ic_power.xml`, dan pengikatan deskripsi aksesibilitas `"Status Backend Server"` pada `activity_main.xml`.
+
 ## [2.7.1] - 2026-10-15
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.7.0 -> 2.7.1)

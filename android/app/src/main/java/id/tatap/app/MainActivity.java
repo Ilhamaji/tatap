@@ -396,7 +396,7 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Mengupdate warna dan background indikator icon power.
+     * Mengupdate warna dan background indikator icon server backend.
      * @param state 1 = Online (Hijau), 0 = Checking / Booting (Kuning), 2 = Offline / Error (Merah)
      */
     private void updateBackendStatusUI(int state) {
