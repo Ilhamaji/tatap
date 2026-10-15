@@ -20,132 +20,73 @@
 
 ---
 
-## Fitur
+## Fitur Utama
 
-- **Bebas Iklan & Tanpa Akun:** Akses streaming langsung tanpa pelacak analitik, iklan banner, maupun keharusan registrasi akun.
-- **Runtime Mandiri Multiplatform:** Berjalan mandiri di Android Mobile, Android TV, Windows Portable, dan Linux AppImage menggunakan server backend localhost terisolasi (`127.0.0.1:8767`).
-- **Resume Watch Multiplatform:** Menyimpan progres menit dan detik terakhir penayangan per episode secara persisten pada basis data SQLite lokal (`watch_progress`), dilengkapi dialog interaktif (*Lanjutkan* atau *Mulai dari Awal*) dengan navigasi keyboard dan remote TV.
-- **Pemutar Video & Kontrol Pemutaran:** Mendukung pemilih kecepatan putar (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 1.75x, 2.0x) dengan reset otomatis ke 1.0x pada judul baru, pemilih resolusi adaptif HLS (360p s/d 1080p), Ambient Stage Light, penyesuaian rasio layar, dan filter CRT scanline.
-- **Deteksi Opening & Ending (AniSkip):** Mendeteksi durasi opening dan ending secara otomatis, menyediakan tombol lewati intro/outro satu klik untuk keyboard desktop (`S`) maupun remote Android TV (`OK` / `>>`), serta opsi lewati otomatis pada dialog pengaturan.
-- **Subtitle Multi-Tier:** Mendukung subtitle bawaan (softsub WEBVTT/ASS), terjemahan cepat AIGTX dengan leksikon 500+ istilah anime, kustomisasi tipografi (ukuran, posisi margin, transparansi latar), dan integrasi model bahasa AI opsional (BYOK: Gemini, Groq, OpenAI, Ollama).
-- **Agregasi Ganda & Anti-DPI Terintegrasi:** Mendukung sumber stream ganda (HiAnime dan Otakudesu sub Indo) dengan verifikasi konsistensi nomor musim, dilengkapi mitigasi DPI bawaan via desinkronisasi TLS ClientHello dan DNS-over-HTTPS (DoH) tanpa memerlukan VPN tambahan.
-- **Katalog, Indikator Ongoing & Jadwal:** Penjelajahan katalog berdasarkan musim tayang, anime populer, filter genre terintegrasi, indikator rasio episode rilis aktif (`Ep X/Y`), penanda status tamat, dan jadwal rilis harian (Senin s/d Minggu).
-- **Privasi Penyimpanan Lokal:** Riwayat tontonan, bookmark anime, preferensi pemutar, dan riwayat posisi tersimpan penuh di penyimpanan lokal (`anime.db`).
+- **Agregasi Multi-Sumber & Anti-DPI:** Menghubungkan katalog stream (HiAnime & Otakudesu) dengan modul desinkronisasi TLS dan DNS-over-HTTPS (DoH) bawaan untuk menjaga konektivitas stream tanpa VPN pihak ketiga.
+- **Deteksi Opening & Ending (AniSkip):** Mendeteksi durasi intro/outro otomatis dengan opsi lewati satu klik pada remote TV (`OK` / `>>`) maupun keyboard desktop (`S`).
+- **Resume Watch Multiplatform:** Menyimpan posisi tontonan per episode secara otomatis dan menyajikan dialog konfirmasi untuk melanjutkan atau memutar dari awal.
+- **Rasio Episode Ongoing & Katalog:** Menampilkan jumlah episode rilis terhadap total proyeksi musim (`Ep X/Y`), penanda status tamat, filter genre, serta jadwal rilis mingguan.
+- **Navigasi TV (10-Foot UI):** Antarmuka Leanback Android TV yang dioptimalkan penuh untuk remote kontrol D-pad tanpa memerlukan mouse pointer.
+
+---
+
+## Subtitle Engine
+
+Tatap menyediakan sistem takarir multi-tier yang dapat dipilih langsung dari pemutar:
+
+| Subtitle Engine | Nama di Pemutar | Keterangan |
+| :--- | :--- | :--- |
+| **AIGTX Smart Fansub** | `Indonesian (GTX+)` | Engine bawaan tanpa API key, dilengkapi kamus 500+ istilah khas anime & fansub Indonesia. |
+| **AI Fansub LLM** | `Indonesian (AI Fansub)` | Terjemahan kontekstual berbasis AI model bawaan kunci sendiri (BYOK: Gemini, Groq, OpenAI, Ollama). |
+| **Google Translate RPC** | `Indonesian (Google GTX)` | Penerjemahan cepat standar via Google Translate RPC (tanpa API key). |
+| **Track Asli (Softsub)** | `English` / Bahasa Asli | Takarir bawaan video resmi dalam format WebVTT/ASS. |
+| **Sumber Sub Indo** | `Otakudesu` | Pilihan beralih sumber ke rilisan takarir Bahasa Indonesia langsung. |
+
+### Konfigurasi AI Fansub (BYOK)
+
+Untuk menggunakan model bahasa kustom pada pemutar, ketik perintah berikut pada kolom input pencarian:
+
+| Perintah | Layanan / Provider |
+| :--- | :--- |
+| `:gemini <api_key>` | Google AI Studio (Gemini 2.0 Flash) |
+| `:groq <api_key>` | Groq Cloud (Llama 3.3) |
+| `:openai <api_key>` | OpenAI |
+| `:ollama <api_key>` | Ollama (Lokal / Cloud) |
+
+Perintah manajemen: `:apikey` (cek status kunci), `:apikey clear` (hapus kunci), `:model <nama_model>` (ganti model).
 
 ---
 
 ## Unduh dan Instalasi
 
-### Unduhan Langsung Versi Terbaru
-
-Pilih paket instalasi resmi sesuai dengan sistem operasi dan perangkat Anda:
+Pilih paket instalasi resmi sesuai perangkat Anda:
 
 | Platform Perangkat | Tombol Unduh Langsung | Format Berkas | Keterangan & Kompatibilitas |
 | :--- | :---: | :---: | :--- |
-| **Android Ponsel / Tablet** | [![Unduh Android APK](https://img.shields.io/badge/Download-Android%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-release-v2.7.0.apk) | `.apk` (~35 MB) | Signed Production APK (Android 7.0 s/d 16, 16KB-page aligned, Adaptive Icons & Material You) |
-| **Android TV / Google TV** | [![Unduh Android TV APK](https://img.shields.io/badge/Download-Android%20TV%20APK-0081C9?style=for-the-badge&logo=android&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-tv-release-v2.7.0.apk) | `.apk` (~35 MB) | Signed Production APK khusus TV (antarmuka Leanback 10-foot UI, D-pad remote, Card Center Layout) |
-| **Windows (x64)** | [![Unduh Windows Portable](https://img.shields.io/badge/Download-Windows%20Portable-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-windows-x64-portable.zip) | `.zip` (~26 MB) | Standalone Portable (Python 3.11 embed + Go launcher Tatap.exe, WebView2 terintegrasi) |
-| **Linux (x86_64)** | [![Unduh Linux AppImage](https://img.shields.io/badge/Download-Linux%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/asfaraguest/tatap/releases/latest/download/Tatap-x86_64.AppImage) | `.AppImage` (~58 MB) | Standalone AppImage (CPython 3.11 standalone runtime, berikan izin `chmod +x` dan jalankan) |
-
-Seluruh arsip versi rilis sebelumnya tersedia di [Halaman Rilis GitHub](https://github.com/asfaraguest/tatap/releases).
-
-### Panduan Tambahan
-
-#### Android Ponsel & Android TV
-Unduh berkas APK bertanda tangan resmi dari tabel di atas atau [GitHub Releases](https://github.com/asfaraguest/tatap/releases), kemudian pasang pada perangkat (mendukung Android 7.0 hingga Android 16):
-- **Android TV / Google TV:** Pasang `tatap-tv-release-v*.apk` untuk navigasi remote D-pad, tata letak dialog terpusat 700dp, dan banner Leanback standar TV.
-- **Android Ponsel / Tablet:** Pasang `tatap-release-v*.apk` untuk tata letak layar sentuh, gesture swipe volume dan kecerahan, serta ikon adaptif Material You.
-
-#### Windows (x64)
-1. Unduh paket zip portable melalui tombol unduh di atas.
-2. Ekstrak arsip ke folder yang diinginkan, kemudian jalankan `Tatap.exe`.
-3. Aplikasi berjalan mandiri tanpa instalasi Python terpisah dan memanfaatkan runtime Edge WebView2 bawaan Windows.
-
-#### Linux (x86_64)
-
-**Paket AppImage Mandiri:**
-```bash
-chmod +x Tatap-x86_64.AppImage
-./Tatap-x86_64.AppImage
-```
-
-**Menjalankan dari Source Code:**
-```bash
-git clone https://github.com/asfaraguest/tatap.git
-cd tatap
-./install.sh
-./manage.sh start
-```
-Buka peramban di `http://127.0.0.1:8767`. Untuk menghentikan server: `./manage.sh stop`.
+| **Android Ponsel / Tablet** | [![Unduh Android APK](https://img.shields.io/badge/Download-Android%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-release-v2.7.0.apk) | `.apk` (~35 MB) | Signed Production APK (Android 7.0 s/d 16, Adaptive Icons) |
+| **Android TV / Google TV** | [![Unduh Android TV APK](https://img.shields.io/badge/Download-Android%20TV%20APK-0081C9?style=for-the-badge&logo=android&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-tv-release-v2.7.0.apk) | `.apk` (~35 MB) | Signed Production APK khusus TV (Leanback 10-foot UI & Remote D-pad) |
+| **Windows (x64)** | [![Unduh Windows Portable](https://img.shields.io/badge/Download-Windows%20Portable-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-windows-x64-portable.zip) | `.zip` (~26 MB) | Standalone Portable (Ekstrak zip & jalankan `Tatap.exe`) |
+| **Linux (x86_64)** | [![Unduh Linux AppImage](https://img.shields.io/badge/Download-Linux%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/asfaraguest/tatap/releases/latest/download/Tatap-x86_64.AppImage) | `.AppImage` (~58 MB) | Standalone AppImage (Berikan izin `chmod +x` lalu jalankan) |
 
 ---
 
-## Pintasan Keyboard (Desktop)
+## Pintasan Kontrol
 
-### Pemutar Video (Player Modal)
+### Keyboard (Desktop)
+- `[` / `]`: Menyesuaikan kecepatan putar (0.5x – 2.0x) / Halaman katalog
+- `S`: Lewati opening/ending (AniSkip) atau ganti sumber stream
+- `N` / `P`: Episode berikutnya / sebelumnya
+- `/`: Fokus ke input pencarian / terminal perintah
 
-| Tombol | Fungsi |
-| :--- | :--- |
-| `Spasi` | Putar / Jeda video |
-| `F` | Masuk / Keluar mode layar penuh |
-| `←` / `→` | Mundur / Maju 5 detik (Seek) |
-| `[` / `]` | Perlambat / Percepat kecepatan putar (0.5x s/d 2.0x) |
-| `S` | Lewati opening/ending (saat intro/outro aktif) atau beralih sumber stream |
-| `N` / `P` | Pindah ke episode berikutnya / episode sebelumnya |
-| `M` | Matikan / Nyalakan suara (Mute toggle) |
-| `Esc` | Keluar dari mode layar penuh atau menutup pemutar video |
-
-### Antarmuka Utama & Dialog
-
-| Tombol | Fungsi |
-| :--- | :--- |
-| `/` | Fokus ke kolom input perintah / pencarian |
-| `Tab` | Berpindah antar tab beranda (Cari, Musim, Jadwal, Lanjutan, Katalog) |
-| `↑` / `↓` | Navigasi riwayat perintah terminal atau pemilihan kartu anime |
-| `[` / `]` | Halaman sebelumnya / berikutnya pada katalog, atau pindah hari jadwal |
-| `Enter` | Eksekusi pencarian atau konfirmasi dialog modal yang aktif |
-| `Esc` | Membatalkan dialog riwayat tontonan atau menutup modal informasi |
-
----
-
-## Navigasi Remote (Android TV)
-
-Tatap TV dirancang khusus untuk pengoperasian penuh menggunakan remote D-pad tanpa memerlukan mouse pointer:
-
-| Tombol Remote | Fungsi di Layar Utama & Daftar Anime | Fungsi Saat Pemutaran Video (Player) |
-| :--- | :--- | :--- |
-| `D-Pad Kiri / Kanan` | Berpindah antar kartu anime / episode | Mundur / Maju 5 detik (Seek) |
-| `D-Pad Atas` | Berpindah ke baris navigasi tab / pencarian | Menampilkan panel kontrol atas (Resolusi, Subtitle, Kecepatan, Info) |
-| `D-Pad Bawah` | Berpindah ke konten baris bawah | Memfokuskan tombol lewati opening/ending jika aktif, atau menyembunyikan kontrol |
-| `D-Pad Tengah / OK` | Membuka detail anime / konfirmasi pilihan | Putar/Jeda; Lewati opening/ending saat tombol skip terfokus; Konfirmasi resume |
-| `Rewind / Fast Forward` | – | Mundur / Maju 5 detik; Tombol `>>` melompati opening/ending secara langsung |
-| `Next / Previous` | – | Pindah ke episode berikutnya / sebelumnya |
-| `Menu / Info / Settings` | Buka menu drawer navigasi | Buka dialog pengaturan pemutar (resolusi, subtitle, kecepatan, rasio, auto-skip) |
-| `Kembali / Back` | Kembali ke halaman sebelumnya / tutup dialog | Menyembunyikan kontrol pemutar / kembali ke detail anime |
-
----
-
-## Konfigurasi AI Subtitle (Opsional)
-
-Dukungan model bahasa kustom (BYOK) via kolom pencarian pemutar:
-
-| Perintah | Layanan |
-| :--- | :--- |
-| `:gemini <api_key>` | Google AI Studio |
-| `:groq <api_key>` | Groq Cloud |
-| `:openai <api_key>` | OpenAI |
-| `:ollama <api_key>` | Ollama |
-
-Perintah utilitas:
-- Cek kunci: `:apikey`
-- Hapus kunci: `:apikey clear`
-- Ganti model: `:model <nama_model>`
+### Remote (Android TV)
+- `D-Pad Kiri / Kanan`: Mundur / Maju 5 detik
+- `D-Pad Tengah / OK`: Putar / Jeda, atau lewati opening/ending saat tombol lewati terfokus
+- `>>` (Fast-Forward): Lewati opening/ending secara langsung
+- `Menu / Settings`: Buka dialog pengaturan pemutar (resolusi, subtitle, kecepatan putar, auto-skip)
 
 ---
 
 ## Dukungan dan Donasi
-
-Jika Anda merasa aplikasi ini bermanfaat, dukung pengembangan Tatap agar tetap aktif, bebas iklan, dan terus diperbarui:
 
 <p align="left">
   <a href="https://trakteer.id/bagus_azizul" target="_blank">
@@ -159,14 +100,9 @@ Jika Anda merasa aplikasi ini bermanfaat, dukung pengembangan Tatap agar tetap a
 
 ---
 
-## Riwayat Versi & Changelog
-
-Proyek ini sepenuhnya mematuhi kaidah [Semantic Versioning 2.0.0](https://semver.org/lang/id/). Catatan riwayat perubahan terperinci dan alasan kenaikan tiap nomor versi didokumentasikan di [CHANGELOG.md](CHANGELOG.md).
-
----
-
-## Batasan Layanan
+## Catatan Layanan & Lisensi
 
 - Memerlukan koneksi internet aktif untuk mengambil metadata anime dan memutar stream video.
-- Aplikasi bertindak sebagai agregator konten publik dan tidak menyimpan berkas video pada server privat.
-- Seluruh kode sumber dirilis di bawah lisensi [GPL-3.0](LICENSE).
+- Aplikasi bertindak sebagai agregator konten publik dan tidak menyimpan berkas video pada server tersendiri.
+- Catatan riwayat perubahan versi terdokumentasi di [CHANGELOG.md](CHANGELOG.md) mengikuti kaidah [Semantic Versioning 2.0.0](https://semver.org/lang/id/).
+- Lisensi di bawah [GPL-3.0](LICENSE).
