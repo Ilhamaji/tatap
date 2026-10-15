@@ -24,7 +24,9 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 5. **Pustaka Vektor Drawables Monokrom Terarah (13 Vector XMLs):** Mengganti karakter simbol teks mentah (`✕` dan `⋮`) dan emoji pada navigasi beranda dengan 13 berkas Android Vector Drawables presisi (`ic_tab_season`, `ic_tab_airing`, `ic_tab_favorite`, `ic_tab_catalog`, `ic_tab_schedule`, `ic_tab_genre`, `ic_filter`, `ic_search`, `ic_more_vert`, `ic_close`, `ic_star_outline`, `ic_star_filled`, `ic_skip_next`).
 6. **State Tinting Dinamis Compound Drawables:** Mengintegrasikan helper `setTabAppearance` di `MainActivity.java` untuk merespons status tab aktif/inaktif secara dinamis (`#FFFFFF` aktif vs `#8892B0` inaktif).
 7. **Pembersihan Copywriting & Toast:** Menghapus seluruh residu emoji pada string status, pesan toast bookmark favorit, dan kontrol player lewati intro/outro.
-8. **Automated Regression Suite (`tests/test_android_ui_icons.py`):** Menambahkan unit test otomatis yang memverifikasi 0 emoji dan 0 simbol mentah pada seluruh layout dan kode Java Android, validitas 13 berkas vektor, serta dimensi aset mipmap dan TV banner.
+8. **Automated Regression Suite (`tests/test_android_ui_icons.py`):** Menambahkan unit test otomatis yang memverifikasi 0 emoji dan 0 simbol mentah pada seluruh layout dan kode Java Android, validitas 13 berkas vektor, batas proporsi ukuran intrinsik 14dp–16dp, serta dimensi aset mipmap dan TV banner.
+9. **Penyelarasan Presisi Proporsi Ikon & Sistem Desain Android (*Optical Cap-Height Hierarchy*):** Menyesuaikan intrinsic dimensions ke-13 berkas vector drawable dari 24dp menjadi ukuran optik proporsional 14dp–15dp (tetap dengan `viewportWidth="24"` dan `viewportHeight="24"`). Mengeliminasi kesan ikon kebesaran (*oversized*), memberikan ruang napas vertikal 8.5dp pada pill kategori 32dp yang bersanding anggun dan seimbang dengan tipografi font 11.5sp bold (rasio ideal ~1.6:1 cap-height).
+10. **Harmonisasi Spasi, Padding & Tombol Interaktif Seluruh Aplikasi:** Menstandarkan `drawablePadding="5dp"` pada tab dan input search, menyelaraskan tombol close modal dialog (`30dp x 30dp` dengan padding `8dp`), tombol bookmark detail, dan tombol lewati opening/ending player (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
 
 ### Ditambahkan
 - **Identitas Visual Maskot Anime Tatap (`assets/`, `frontend/assets/`, `launcher/` & `android/`):**
@@ -33,22 +35,22 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
 - **Dukungan Penuh Android Adaptive Icons (`mipmap-anydpi-v26/` & `drawable/`):**
   - Berkas `mipmap-anydpi-v26/ic_launcher.xml` dan `ic_launcher_round.xml`.
   - Berkas `drawable/ic_launcher_background.xml`, `ic_launcher_foreground.png` (432x432 px, centered safe zone), dan `ic_launcher_monochrome.xml` (Material You).
-- **13 Android Vector Drawables Ramping (`res/drawable/`):**
-  - `ic_tab_season.xml`, `ic_tab_airing.xml`, `ic_tab_favorite.xml`, `ic_tab_catalog.xml`, `ic_tab_schedule.xml`, `ic_tab_genre.xml`, `ic_filter.xml`, `ic_search.xml`, `ic_more_vert.xml`, `ic_close.xml`, `ic_star_outline.xml`, `ic_star_filled.xml`, `ic_skip_next.xml`.
+- **13 Android Vector Drawables Ramping & Proporsional (`res/drawable/`):**
+  - `ic_tab_season.xml` (15dp), `ic_tab_airing.xml` (15dp), `ic_tab_favorite.xml` (15dp), `ic_tab_catalog.xml` (15dp), `ic_tab_schedule.xml` (15dp), `ic_tab_genre.xml` (15dp), `ic_filter.xml` (14dp), `ic_search.xml` (15dp), `ic_more_vert.xml` (15dp), `ic_close.xml` (14dp), `ic_star_outline.xml` (15dp), `ic_star_filled.xml` (15dp), `ic_skip_next.xml` (15dp).
 - **Skrip Pembuatan Aset Ikonik Mandiri (`tools/generate_android_icons.py`):**
   - Otomasi supersampling 4x dengan filter resampling Lanczos untuk menghasilkan seluruh densitas mipmap Android dan banner TV 16:9 beresolusi tinggi.
 - **Unit Test Pencegahan Regresi (`tests/test_android_ui_icons.py`):**
-  - `test_zero_emojis_and_raw_symbols_in_android`, `test_vector_drawables_exist_and_valid`, dan `test_adaptive_icons_and_mipmaps`.
+  - `test_zero_emojis_and_raw_symbols_in_android`, `test_vector_drawables_exist_and_valid` (termasuk validasi proporsi bounds 14dp–16dp), dan `test_adaptive_icons_and_mipmaps`.
 
 ### Diubah
-- **Antarmuka Android Mobile & TV (`activity_main.xml`, `dialog_catalog_filter.xml`, `dialog_*.xml`, `activity_detail.xml`, `activity_player.xml`):**
-  - Kolom pencarian kini dilengkapi lensa pencari halus `ic_search`.
-  - Tombol menu header menggunakan ikon overflow 3-titik `ic_more_vert`.
-  - Seluruh tombol tutup modal dialog dan hapus pencarian menggunakan vektor silang tajam `ic_close`.
+- **Penyelarasan Proporsi & Desain UI Android (`activity_main.xml`, `dialog_catalog_filter.xml`, `dialog_*.xml`, `activity_detail.xml`, `activity_player.xml`):**
+  - Kolom pencarian diselaraskan dengan ikon lensa `ic_search` (15dp), `drawablePadding="6dp"`, dan tombol clear `22dp x 22dp` dengan `padding="4dp"`.
+  - Tombol menu header menggunakan ikon `ic_more_vert` (15dp) dengan `drawablePadding="4dp"`.
+  - Seluruh tombol tutup modal dialog (`dialog_catalog_filter.xml`, `dialog_command_help.xml`, `dialog_genre_selector.xml`, `dialog_ai_settings.xml`, `dialog_translate_logs.xml`) distandarkan ke ukuran `30dp x 30dp` dengan `padding="8dp"` memuat ikon `ic_close` (14dp) tanpa terpotong.
   - 13 chip filter katalog dibersihkan dari seluruh emoji menjadi *pure typographic pills*.
-  - 6 tab beranda menggunakan compound drawables vektor dengan pewarnaan dinamis.
-  - Tombol bookmark pada halaman detail menggunakan `ic_star_outline` dan `ic_star_filled`.
-  - Tombol lewati opening/ending player menggunakan `ic_skip_next`.
+  - 6 tab beranda menggunakan compound drawables vektor terkalibrasi (15dp) dengan `drawablePadding="5dp"` dan pewarnaan dinamis.
+  - Tombol bookmark pada halaman detail menggunakan `ic_star_outline` dan `ic_star_filled` (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
+  - Tombol lewati opening/ending player menggunakan `ic_skip_next` (`app:iconSize="15dp"`, `app:iconPadding="5dp"`).
 - **Logika Java Native (`MainActivity.java`, `DetailActivity.java`, `PlayerActivity.java`):**
   - Penambahan helper `setTabAppearance` untuk tinting dinamis icon dan teks tab beranda.
   - Pembersihan emoji pada teks bookmark detail dan toast notifikasi.

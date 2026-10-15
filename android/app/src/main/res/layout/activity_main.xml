@@ -52,9 +52,9 @@
                 android:layout_weight="1"
                 android:background="@null"
                 android:drawableStart="@drawable/ic_search"
-                android:drawablePadding="8dp"
+                android:drawablePadding="6dp"
                 android:drawableTint="#64748B"
-                android:paddingStart="4dp"
+                android:paddingStart="2dp"
                 android:hint="Cari anime atau :command..."
                 android:textColorHint="#4B5563"
                 android:textColor="#F1F5F9"
@@ -71,7 +71,7 @@
                 android:gravity="center"
                 android:drawableStart="@drawable/ic_close"
                 android:drawableTint="#64748B"
-                android:padding="2dp"
+                android:padding="4dp"
                 android:visibility="gone"
                 android:clickable="true"
                 android:focusable="true"
@@ -144,7 +144,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:drawableStart="@drawable/ic_close"
             android:drawableTint="#64748B"
-            android:padding="3dp" />
+            android:padding="6dp" />
     </LinearLayout>
 
     <!-- Active Filter Badge Bar (Genre, Season, Search) -->
@@ -184,7 +184,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:drawableStart="@drawable/ic_close"
                 android:drawableTint="#38BDF8"
-                android:padding="3dp" />
+                android:padding="5dp" />
         </LinearLayout>
 
         <View
@@ -243,7 +243,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_season"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#FFFFFF"
                 android:text="Musim Ini"
                 android:textColor="#FFFFFF"
@@ -265,7 +265,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_airing"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#8892B0"
                 android:text="Masih Tayang"
                 android:textColor="#8892B0"
@@ -287,7 +287,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_favorite"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#8892B0"
                 android:text="Favorit"
                 android:textColor="#8892B0"
@@ -309,7 +309,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_catalog"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#8892B0"
                 android:text="Katalog"
                 android:textColor="#8892B0"
@@ -332,7 +332,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_schedule"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#8892B0"
                 android:text="Jadwal"
                 android:textColor="#8892B0"
@@ -354,7 +354,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="12dp"
                 android:drawableStart="@drawable/ic_tab_genre"
-                android:drawablePadding="6dp"
+                android:drawablePadding="5dp"
                 android:drawableTint="#8892B0"
                 android:text="Genre"
                 android:textColor="#8892B0"

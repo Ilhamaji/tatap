@@ -57,12 +57,17 @@ def test_vector_drawables_exist_and_valid():
     ]
     
     drawable_dir = os.path.join(RES_DIR, "drawable")
+    android_ns = "{http://schemas.android.com/apk/res/android}"
     for v in vectors:
         file_path = os.path.join(drawable_dir, v)
         assert os.path.exists(file_path), f"Vector drawable {v} missing at {file_path}"
         tree = ET.parse(file_path)
         root = tree.getroot()
         assert root.tag == "vector", f"{v} root element is {root.tag}, expected vector"
+        width = root.attrib.get(f"{android_ns}width")
+        height = root.attrib.get(f"{android_ns}height")
+        assert width in ["14dp", "15dp", "16dp"], f"{v} width {width} not in expected proportional range [14dp-16dp]"
+        assert height in ["14dp", "15dp", "16dp"], f"{v} height {height} not in expected proportional range [14dp-16dp]"
 
 def test_adaptive_icons_and_mipmaps():
     """
