@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, FileResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from config import APP_PORT, APP_HOST, HI_BASE, HI_UA
-from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, add_history, get_history, clear_history, add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked, clear_bookmarks, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
+from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, add_history, get_history, clear_history, save_progress, get_progress, clear_progress, add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked, clear_bookmarks, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
 from api import hianime as hi
 from api import anilist as al
 from api import otakudesu as otaku
@@ -1849,6 +1849,67 @@ async def save_hist(body: dict = None):
 @app.delete("/api/history")
 async def del_hist():
     await clear_history()
+    return ok(True)
+
+def _format_time_sec(sec: int) -> str:
+    sec = max(0, int(sec or 0))
+    m = sec // 60
+    s = sec % 60
+    if m >= 60:
+        h = m // 60
+        m = m % 60
+        return f"{h}:{m:02d}:{s:02d}"
+    return f"{m:02d}:{s:02d}"
+
+@app.get("/api/progress")
+async def get_watch_progress(slug: str = Query(""), ep: int = Query(None), episode: int = Query(None)):
+    ep_num = ep if ep is not None else episode
+    if not slug or ep_num is None:
+        return fail("Parameter slug dan ep wajib diisi")
+    row = await get_progress(slug, ep_num)
+    if row:
+        prog = int(row.get("progress", 0))
+        dur = int(row.get("duration", 0))
+        should_resume = (prog >= 15)
+        if dur > 30 and prog >= (dur - 30):
+            should_resume = False
+        return ok({
+            "slug": slug,
+            "episode": ep_num,
+            "progress": prog,
+            "duration": dur,
+            "formatted": _format_time_sec(prog),
+            "should_resume": should_resume
+        })
+    return ok({
+        "slug": slug,
+        "episode": ep_num,
+        "progress": 0,
+        "duration": 0,
+        "formatted": "00:00",
+        "should_resume": False
+    })
+
+@app.post("/api/progress")
+async def save_watch_progress(body: dict = None):
+    body = body or {}
+    slug = (body.get("slug") or "").strip()
+    ep_val = body.get("episode") if body.get("episode") is not None else body.get("ep")
+    if not slug or ep_val is None:
+        return fail("Slug dan episode wajib diisi")
+    progress = int(body.get("progress", 0))
+    duration = int(body.get("duration", 0))
+    await save_progress(slug, int(ep_val), progress, duration)
+    return ok(True)
+
+@app.delete("/api/progress")
+async def delete_watch_progress(slug: str = Query(""), ep: int = Query(None), episode: int = Query(None), body: dict = None):
+    body = body or {}
+    s = slug or body.get("slug", "")
+    e = ep if ep is not None else (episode if episode is not None else body.get("episode", body.get("ep")))
+    if not s:
+        return fail("Slug wajib diisi")
+    await clear_progress(s, int(e) if e is not None else None)
     return ok(True)
 
 @app.get("/api/bookmarks")

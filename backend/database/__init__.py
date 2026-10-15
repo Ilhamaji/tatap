@@ -78,6 +78,15 @@ async def init_db():
             score REAL DEFAULT 0.0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )""")
+        # Tabel watch_progress: mencatat menit & detik tontonan per episode anime
+        await db.execute("""CREATE TABLE IF NOT EXISTS watch_progress(
+            slug TEXT,
+            episode INTEGER,
+            progress INTEGER DEFAULT 0,
+            duration INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (slug, episode)
+        )""")
         await db.commit()
 
 def _now():
@@ -184,6 +193,45 @@ async def get_history(limit=50):
 async def clear_history():
     async with _connect_db() as db:
         await db.execute("DELETE FROM watch_history")
+        await db.commit()
+
+async def save_progress(slug: str, episode: int, progress: int, duration: int = 0):
+    """Simpan posisi menit & detik tontonan per episode, serta sinkronkan ke watch_history."""
+    if not slug or episode is None:
+        return
+    async with _connect_db() as db:
+        await db.execute("""INSERT OR REPLACE INTO watch_progress(slug, episode, progress, duration, updated_at)
+            VALUES(?, ?, ?, ?, CURRENT_TIMESTAMP)""",
+            (slug, int(episode), int(progress), int(duration)))
+        # Update progress di watch_history jika anime dan episode cocok
+        await db.execute("UPDATE watch_history SET progress=? WHERE slug=? AND episode=?",
+                         (int(progress), slug, int(episode)))
+        await db.commit()
+
+async def get_progress(slug: str, episode: int):
+    """Ambil posisi menit & detik terakhir yang tersimpan untuk episode tertentu."""
+    if not slug or episode is None:
+        return None
+    async with _connect_db() as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute("SELECT progress, duration, updated_at FROM watch_progress WHERE slug=? AND episode=?",
+                              (slug, int(episode))) as cur:
+            row = await cur.fetchone()
+            if row:
+                return dict(row)
+            return None
+
+async def clear_progress(slug: str, episode: int = None):
+    """Hapus progres episode tertentu atau seluruh progres anime."""
+    if not slug:
+        return
+    async with _connect_db() as db:
+        if episode is not None:
+            await db.execute("DELETE FROM watch_progress WHERE slug=? AND episode=?", (slug, int(episode)))
+            await db.execute("UPDATE watch_history SET progress=0 WHERE slug=? AND episode=?", (slug, int(episode)))
+        else:
+            await db.execute("DELETE FROM watch_progress WHERE slug=?", (slug,))
+            await db.execute("UPDATE watch_history SET progress=0 WHERE slug=?", (slug,))
         await db.commit()
 
 async def add_bookmark(slug: str, title: str, poster: str = "", type: str = "", sub: str = "", eps: str = "", score: float = 0.0):

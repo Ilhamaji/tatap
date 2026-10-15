@@ -312,12 +312,94 @@ function syncSeg(){
   document.querySelectorAll("#mode-seg button").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-mode")===cur.mode);});
 }
 
+function formatTimeSec(sec){
+  sec = Math.max(0, Math.floor(sec || 0));
+  var m = Math.floor(sec / 60);
+  var s = sec % 60;
+  if(m >= 60){
+    var h = Math.floor(m / 60);
+    m = m % 60;
+    return h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+}
+
+var _lastProgressSaveTime = 0;
+function recordWatchProgress(force){
+  var v = $("vid");
+  if(!v || !cur.slug || !cur.ep) return;
+  var now = Date.now();
+  if(!force && (now - _lastProgressSaveTime < 5000)) return;
+  _lastProgressSaveTime = now;
+  var curPos = Math.floor(v.currentTime || 0);
+  var dur = Math.floor(v.duration || 0);
+  if(curPos <= 0 && !force) return;
+  window.Tatap.saveProgress(cur.slug, cur.ep, curPos, dur).then(function(){
+    renderContinue();
+  }).catch(function(){});
+}
+
+function closeResumeModal(){
+  var rm = $("resume-modal");
+  if(rm) rm.classList.add("hidden");
+}
+
 function openPlayer(ep, resumeTime){
+  if(resumeTime === undefined){
+    window.Tatap.getProgress(cur.slug, ep).then(function(r){
+      if(r && r.success && r.data && r.data.should_resume && r.data.progress >= 15){
+        var p = r.data.progress;
+        var fTime = r.data.formatted || formatTimeSec(p);
+        var modal = $("resume-modal");
+        if(modal){
+          $("rm-sub").textContent = "Episode " + ep + " · Tersimpan pada " + fTime;
+          $("rm-time").textContent = fTime;
+          $("rm-resume-label").textContent = "Lanjutkan (" + fTime + ")";
+
+          var cleanupModal = function(){
+            modal.classList.add("hidden");
+            $("rm-btn-resume").onclick = null;
+            $("rm-btn-restart").onclick = null;
+            $("rm-close").onclick = null;
+          };
+
+          $("rm-btn-resume").onclick = function(){
+            cleanupModal();
+            openPlayer(ep, p);
+          };
+
+          $("rm-btn-restart").onclick = function(){
+            cleanupModal();
+            window.Tatap.saveProgress(cur.slug, ep, 0, r.data.duration || 0).catch(function(){});
+            openPlayer(ep, 0);
+          };
+
+          $("rm-close").onclick = function(){
+            cleanupModal();
+            openPlayer(ep, p);
+          };
+
+          modal.classList.remove("hidden");
+          setTimeout(function(){
+            var b = $("rm-btn-resume");
+            if(b) b.focus();
+          }, 50);
+          return;
+        }
+      }
+      openPlayer(ep, 0);
+    }).catch(function(){
+      openPlayer(ep, 0);
+    });
+    return;
+  }
+
   cur.ep=ep;
   cur.playerOpenedAt=Date.now();
   cur.playToken = ++_playTokenCounter;
   var token = cur.playToken;
   closeTitle();
+  closeResumeModal();
   $("player-modal").classList.remove("hidden");
   $("pm-title").textContent=cur.title;
   $("pm-meta").textContent="ep "+ep+" · "+cur.mode.toUpperCase();
@@ -360,7 +442,7 @@ function openPlayer(ep, resumeTime){
     }
     var streamUrl = (r.data.master && (r.data.master.indexOf(".m3u8") >= 0 || r.data.master.indexOf("/hls") >= 0)) ? r.data.master : (picked ? picked.url : "");
     playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
-    window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode}).then(function(){renderContinue();});
+    window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode,progress:resumeTime||0}).then(function(){renderContinue();});
   }).catch(function(err){
     if(cur.playToken !== token) return;
     $("pm-spinner").classList.add("hidden");
@@ -1496,6 +1578,7 @@ function stepEp(d){
 }
 function closePlayer(){
   var v=$("vid");
+  try{recordWatchProgress(true);}catch(e){}
   try{v.pause();}catch(e){}
   if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
   cur.cues=[];
@@ -1523,7 +1606,10 @@ function renderContinue(){
       (function(x){
         var d=document.createElement("div");d.className="hist-card";
         var b=document.createElement("b");b.textContent=x.title;d.appendChild(b);
-        var s=document.createElement("span");s.textContent="ep "+x.episode+" · "+x.mode+" · lanjutkan ▶";d.appendChild(s);
+        var s=document.createElement("span");
+        var progStr = (x.progress && x.progress >= 15) ? (" · " + formatTimeSec(x.progress)) : "";
+        s.textContent="ep "+x.episode+progStr+" · "+x.mode+" · lanjutkan ▶";
+        d.appendChild(s);
         d.addEventListener("click",function(){
           cur.slug=x.slug;cur.title=x.title;cur.mode=x.mode||"sub";syncSeg();
           openTitle(x.slug,x.title);openPlayer(x.episode);
@@ -1824,7 +1910,18 @@ function init(){
   });
   var v=$("vid");
   if(v){
-    v.addEventListener("timeupdate",paintCue);
+    v.addEventListener("timeupdate",function(){
+      paintCue();
+      recordWatchProgress(false);
+    });
+    v.addEventListener("pause",function(){
+      recordWatchProgress(true);
+    });
+    v.addEventListener("ended",function(){
+      if(cur.slug && cur.ep){
+        window.Tatap.saveProgress(cur.slug, cur.ep, 0, Math.floor(v.duration||0)).catch(function(){});
+      }
+    });
     v.addEventListener("seeked",paintCue);
     v.addEventListener("loadedmetadata",function(){
       if(currentPlaybackSpeed && v.playbackRate !== currentPlaybackSpeed){
@@ -2000,6 +2097,16 @@ function init(){
   var um = $("update-modal");
   if(um) um.addEventListener("click", function(e){
     if(e.target === um) closeUpdateModal();
+  });
+
+  var rmClose = $("rm-close");
+  if(rmClose) rmClose.addEventListener("click", closeResumeModal);
+  var rm = $("resume-modal");
+  if(rm) rm.addEventListener("click", function(e){
+    if(e.target === rm) closeResumeModal();
+  });
+  window.addEventListener("beforeunload", function(){
+    recordWatchProgress(true);
   });
 
   window.Tui.boot();

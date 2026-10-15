@@ -44,8 +44,25 @@ Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2
     - Pintasan 1-klik remote: tombol `>>` (`MEDIA_FAST_FORWARD` dan `BUTTON_R1`) langsung mengeksekusi lompat opening/ending tanpa memindahkan kursor.
     - Panduan visual remote TV dinamis: menampilkan label `Lewati Opening [OK]` saat fokus dan `[▼] Lewati Opening` saat unfocused pada layar TV.
     - Opsi preferensi baru pada dialog pengaturan pemutar: *"Otomatis Lewati Opening & Ending (Aktif/Mati)"* yang tersimpan persisten di `SharedPreferences`.
+16. **Fitur Pengingat Posisi Tontonan & Dialog Resume Lintas Platform (*Multiplatform Resume Watch Position & Prompt Modal*):**
+    - Menyimpan posisi waktu menit dan detik terakhir saat menonton anime secara atomik per episode pada tabel SQLite `watch_progress` (kompatibel penuh antara backend CPython dan Chaquopy Android).
+    - Menampilkan dialog/modal interaktif yang cerdas saat pengguna membuka kembali episode yang memiliki riwayat tontonan: opsi *"Lanjutkan (MM:SS)"* atau *"Mulai dari Awal (00:00)"*.
+    - Guard filter cerdas: posisi < 15 detik atau mendekati selesai (> 90% durasi / sisa < 30 detik) secara otomatis memulai dari awal tanpa mengganggu pengguna dengan dialog.
+    - Sinkronisasi otomatis ke baris *Lanjutkan Nonton* di Beranda dengan label menit & detik riil (`ep X · MM:SS · lanjutkan ▶`).
+    - Khusus Android TV: Dialog secara otomatis memfokuskan tombol *"Lanjutkan"* sehingga pengguna dapat langsung melanjutkan tontonan hanya dengan 1 klik tombol `OK` remote.
+17. **Pengerasan & Kehandalan Startup Linux AppImage (`linux/AppRun`):**
+    - Mengganti endpoint probe kesiapan server internal dari `/api/health` (yang memeriksa konektivitas upstream WAN HiAnime dengan timeout 10s) menjadi `/api/ping` (pemeriksaan port lokal murni instan), mengeliminasi kegagalan startup semu saat offline atau jaringan lambat.
+    - Menambahkan penanganan graceful shutdown port 8767 via request HTTP `POST /api/shutdown` sebelum mengeksekusi launcher.
 
 ### Ditambahkan
+- **Fitur Pengingat Posisi Tontonan (*Resume Watch Position & Prompt Modal*):**
+  - Backend API (`backend/main.py` & Chaquopy Android): Endpoint `GET /api/progress`, `POST /api/progress`, `DELETE /api/progress`, dan helper `_format_time_sec`.
+  - Database SQLite (`backend/database/__init__.py` & Chaquopy Android): Skema tabel `watch_progress(slug, episode, progress, duration, updated_at)` serta method `save_progress`, `get_progress`, `clear_progress` yang tersinkronisasi otomatis dengan `watch_history`.
+  - Frontend Web & Desktop (`frontend/index.html`, `frontend/css/style.css`, `frontend/js/api.js`, `frontend/js/app.js`): Modal `#resume-modal` bergaya dark-cyber dengan tombol *"Lanjutkan (MM:SS)"* dan *"Mulai dari Awal"*, event listener `timeupdate`, `pause`, `ended`, dan `beforeunload` untuk persistensi riil, serta pembaruan tampilan badge waktu pada baris beranda `renderContinue()`.
+  - Android Mobile & Android TV (`PlayerActivity.java`): Persistensi instan pada `SharedPreferences` dan background sync ke `/api/progress`, dialog `AlertDialog` tema gelap dengan D-pad auto-focus pada tombol positif untuk 1-klik resume pada remote Android TV, pemulihan posisi akurat pada `STATE_READY`, serta penanganan pergantian episode (`switchEpisode`).
+  - Unit Test Otomatis (`tests/test_resume_watch.py`): Menguji operasi database, sinkronisasi history, format waktu, endpoint REST API, threshold resume, dan 100% paritas kode CPython & Chaquopy.
+- **Pengerasan Runtime Linux AppImage (`linux/AppRun`):**
+  - Mengganti probe kesiapan server internal dari `/api/health` menjadi `/api/ping` dan pembersihan port 8767 basi via HTTP `POST /api/shutdown`.
 - **Pemilih Kecepatan Putar Video (*Video Playback Speed Selector*):**
   - Desktop Web: Dropdown `<select id="pm-speed-select">` di player header bar dengan 7 opsi kecepatan (`0.5x`, `0.75x`, `1.0x (Normal)`, `1.25x`, `1.5x`, `1.75x`, `2.0x`), pintasan keyboard `[` (perlambat) dan `]` (percepat), status toast real-time, serta reset deterministik kembali ke `1.0x` saat membuka judul baru (`openTitle`).
   - Android Mobile & Android TV: Tombol interaktif `btn_speed` pada top overlay player, dialog pilihan tunggal `showSpeedSelectorDialog`, integrasi pada `showPlayerUnifiedSettingsDialog`, navigasi D-Pad terintegrasi (`nextFocusLeft` ke `btn_quality`, `nextFocusRight` ke `btn_sub_style`), dan penerapan rate via `player.setPlaybackParameters(new PlaybackParameters(speed))`.

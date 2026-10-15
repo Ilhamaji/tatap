@@ -21,6 +21,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -107,6 +108,9 @@ public class PlayerActivity extends Activity {
     private boolean autoSkipOpEd = false;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
+    private long pendingResumePosMs = -1;
+    private boolean hasPromptedResume = false;
+    private long lastProgressSaveMs = 0;
 
     // Subtitle Engine State
     public static class SubtitleCue {
@@ -190,6 +194,7 @@ public class PlayerActivity extends Activity {
 
             if (player != null) {
                 checkSkipTimes(player.getCurrentPosition());
+                recordWatchProgress(false);
             }
 
             if (player != null && player.isPlaying()) {
@@ -410,6 +415,7 @@ public class PlayerActivity extends Activity {
         initExoPlayer();
         setupExoNativeControls();
         setupGestureControls();
+        checkAndPromptResume();
         resolveAndPlayStream();
     }
 
@@ -618,10 +624,18 @@ public class PlayerActivity extends Activity {
                     if (layoutBuffering != null) {
                         layoutBuffering.setVisibility(View.GONE);
                     }
+                    if (pendingResumePosMs > 0 && player != null) {
+                        player.seekTo(pendingResumePosMs);
+                        pendingResumePosMs = -1;
+                    }
                 } else if (playbackState == Player.STATE_ENDED) {
                     if (layoutBuffering != null) {
                         layoutBuffering.setVisibility(View.GONE);
                     }
+                    try {
+                        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+                        sp.edit().putLong("prog_" + slug + "_" + ep, 0).apply();
+                    } catch (Throwable ignored) {}
                     if (hasNextEpisode()) {
                         Toast.makeText(PlayerActivity.this, "Episode selesai. Memutar Episode " + getNextEpisodeNumber() + "...", Toast.LENGTH_SHORT).show();
                         playNextEpisode();
@@ -2285,6 +2299,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        recordWatchProgress(true);
         if (player != null) player.pause();
         handler.removeCallbacks(subtitleSyncRunnable);
         handler.removeCallbacks(preResolveRunnable);
@@ -2303,11 +2318,170 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        recordWatchProgress(true);
         handler.removeCallbacks(subtitleSyncRunnable);
         handler.removeCallbacks(preResolveRunnable);
         if (player != null) {
             player.release();
             player = null;
+        }
+    }
+
+    private void recordWatchProgress(boolean force) {
+        if (player == null || slug == null || slug.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastProgressSaveMs < 5000)) return;
+        lastProgressSaveMs = now;
+
+        long pos = player.getCurrentPosition();
+        long dur = player.getDuration();
+        if (pos <= 0 && !force) return;
+
+        final int progSec = (int) (pos / 1000);
+        final int durSec = dur > 0 ? (int) (dur / 1000) : 0;
+        final String curSlug = slug;
+        final int curEp = ep;
+
+        try {
+            SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+            sp.edit()
+                    .putLong("prog_" + curSlug + "_" + curEp, pos)
+                    .putLong("dur_" + curSlug + "_" + curEp, dur)
+                    .apply();
+        } catch (Throwable ignored) {}
+
+        new Thread(() -> {
+            try {
+                JSONObject b = new JSONObject();
+                b.put("slug", curSlug);
+                b.put("episode", curEp);
+                b.put("progress", progSec);
+                b.put("duration", durSec);
+
+                HttpURLConnection conn = (HttpURLConnection) new URL("http://127.0.0.1:8767/api/progress").openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(2000);
+                conn.setReadTimeout(2000);
+                java.io.OutputStream os = conn.getOutputStream();
+                os.write(b.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                os.close();
+                conn.getResponseCode();
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    private void checkAndPromptResume() {
+        if (hasPromptedResume || slug == null || slug.isEmpty()) return;
+        hasPromptedResume = true;
+
+        long localSavedMs = 0;
+        long localDurMs = 0;
+        try {
+            SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+            localSavedMs = sp.getLong("prog_" + slug + "_" + ep, 0);
+            localDurMs = sp.getLong("dur_" + slug + "_" + ep, 0);
+        } catch (Throwable ignored) {}
+
+        if (localSavedMs >= 15_000) {
+            if (localDurMs <= 30_000 || localSavedMs < (localDurMs - 30_000)) {
+                showResumeDialog(localSavedMs);
+                return;
+            }
+        }
+
+        final String curSlug = slug;
+        final int curEp = ep;
+        new Thread(() -> {
+            try {
+                String u = "http://127.0.0.1:8767/api/progress?slug=" + URLEncoder.encode(curSlug, "UTF-8")
+                        + "&ep=" + curEp;
+                HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                conn.setConnectTimeout(2000);
+                conn.setReadTimeout(2000);
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader r = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String l;
+                    while ((l = r.readLine()) != null) sb.append(l);
+                    r.close();
+                    JSONObject res = new JSONObject(sb.toString());
+                    if (res.optBoolean("success")) {
+                        JSONObject d = res.optJSONObject("data");
+                        if (d != null && d.optBoolean("should_resume", false)) {
+                            long progMs = d.optLong("progress", 0) * 1000;
+                            if (progMs >= 15_000) {
+                                runOnUiThread(() -> showResumeDialog(progMs));
+                            }
+                        }
+                    }
+                }
+                conn.disconnect();
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
+    private void showResumeDialog(long savedMs) {
+        if (isFinishing() || isDestroyed()) return;
+        long sec = savedMs / 1000;
+        String timeStr = String.format("%02d:%02d", sec / 60, sec % 60);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        builder.setTitle("Lanjutkan Menonton?");
+        builder.setMessage("Anda sebelumnya menonton episode ini hingga menit " + timeStr + ".\nLanjutkan dari posisi terakhir atau mulai dari awal?");
+
+        builder.setPositiveButton("Lanjutkan (" + timeStr + ")", (dialog, which) -> {
+            pendingResumePosMs = savedMs;
+            if (player != null && player.getPlaybackState() == Player.STATE_READY) {
+                player.seekTo(savedMs);
+                player.play();
+            }
+        });
+
+        builder.setNegativeButton("Mulai dari Awal", (dialog, which) -> {
+            pendingResumePosMs = 0;
+            try {
+                SharedPreferences sp = getSharedPreferences("tatap_player_prefs", Context.MODE_PRIVATE);
+                sp.edit().putLong("prog_" + slug + "_" + ep, 0).apply();
+            } catch (Throwable ignored) {}
+            new Thread(() -> {
+                try {
+                    String u = "http://127.0.0.1:8767/api/progress?slug=" + URLEncoder.encode(slug != null ? slug : "", "UTF-8")
+                            + "&ep=" + ep;
+                    HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
+                    conn.setRequestMethod("DELETE");
+                    conn.setConnectTimeout(2000);
+                    conn.getResponseCode();
+                    conn.disconnect();
+                } catch (Exception ignored) {}
+            }).start();
+
+            if (player != null && player.getPlaybackState() == Player.STATE_READY) {
+                player.seekTo(0);
+                player.play();
+            }
+        });
+
+        builder.setOnCancelListener(dialog -> {
+            if (pendingResumePosMs < 0) {
+                pendingResumePosMs = savedMs;
+                if (player != null && player.getPlaybackState() == Player.STATE_READY) {
+                    player.seekTo(savedMs);
+                    player.play();
+                }
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+        if (TvFocusHelper.isTv(this)) {
+            Button btnPos = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+            if (btnPos != null) {
+                btnPos.requestFocus();
+            }
         }
     }
 
@@ -2561,7 +2735,11 @@ public class PlayerActivity extends Activity {
 
     private void switchEpisode(int targetEp) {
         if (ep == targetEp) return;
+        recordWatchProgress(true);
         ep = targetEp;
+        hasPromptedResume = false;
+        pendingResumePosMs = -1;
+        checkAndPromptResume();
 
         currentResolveLoadId++;
         final int thisResolveId = currentResolveLoadId;

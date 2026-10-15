@@ -361,6 +361,30 @@
   </div>
 </div>
 
+<div id="resume-modal" class="overlay hidden" role="dialog" aria-modal="true">
+  <div class="sheet resume-sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="eyebrow" id="rm-eyebrow">LANJUTKAN TONTONAN</div>
+        <h2 id="rm-title">Lanjutkan Menonton?</h2>
+        <div class="dim small" id="rm-sub">Episode tersimpan pada posisi terakhir</div>
+      </div>
+      <button class="icon-btn big" id="rm-close" title="Tutup (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
+    </div>
+    <div class="resume-body">
+      <p id="rm-desc" class="dim">Anda sebelumnya menonton episode ini hingga menit <b id="rm-time">00:00</b>. Ingin melanjutkan dari posisi terakhir atau mulai dari awal?</p>
+      <div class="resume-actions">
+        <button id="rm-btn-resume" class="btn-resume-primary" autofocus>
+          <svg class="ui-icon"><use href="#icon-play"/></svg> <span id="rm-resume-label">Lanjutkan (00:00)</span>
+        </button>
+        <button id="rm-btn-restart" class="btn-resume-secondary">
+          <svg class="ui-icon"><use href="#icon-rewind"/></svg> Mulai dari Awal (00:00)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="help-overlay" class="overlay hidden" role="dialog" aria-modal="true">
   <div class="help-sheet">
     <div class="sec-head"><h2>perintah</h2><button class="link-btn" id="help-close">tutup</button></div>
