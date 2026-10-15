@@ -606,13 +606,23 @@ public class DetailActivity extends Activity {
         this.isBookmarked = bookmarked;
         if (btnBookmark == null) return;
         if (bookmarked) {
-            btnBookmark.setText("★ Tersimpan");
+            btnBookmark.setText("Tersimpan");
             btnBookmark.setTextColor(0xFFFBBF24);
             btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF2A2210));
+            if (btnBookmark instanceof com.google.android.material.button.MaterialButton) {
+                com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnBookmark;
+                mb.setIconResource(R.drawable.ic_star_filled);
+                mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFFFBBF24));
+            }
         } else {
-            btnBookmark.setText("⭐ + Favorit");
+            btnBookmark.setText("+ Favorit");
             btnBookmark.setTextColor(0xFF94A3B8);
             btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1E2433));
+            if (btnBookmark instanceof com.google.android.material.button.MaterialButton) {
+                com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnBookmark;
+                mb.setIconResource(R.drawable.ic_star_outline);
+                mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFF94A3B8));
+            }
         }
     }
 
@@ -620,7 +630,7 @@ public class DetailActivity extends Activity {
         if (slug == null || slug.isEmpty()) return;
         boolean nextState = !isBookmarked;
         updateBookmarkUI(nextState);
-        Toast.makeText(this, nextState ? "Tersimpan ke Favorit ⭐" : "Dihapus dari Favorit", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, nextState ? "Tersimpan ke Favorit" : "Dihapus dari Favorit", Toast.LENGTH_SHORT).show();
 
         new Thread(() -> {
             try {

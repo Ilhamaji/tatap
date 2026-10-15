@@ -28,9 +28,9 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:text="✕"
-      android:textColor="#8892B0"
-            android:textSize="16sp" />
+            android:drawableStart="@drawable/ic_close"
+            android:drawableTint="#8892B0"
+            android:padding="8dp" />
     </LinearLayout>
 
     <TextView

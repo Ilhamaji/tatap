@@ -13,6 +13,47 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.7.0] - 2026-10-15
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.6.2 -> 2.7.0)
+Kenaikan digit MINOR diterapkan secara resmi sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan identitas visual baru aplikasi serta perombakan antarmuka pengguna Android (Mobile & Android TV) yang backward-compatible tanpa merusak logika aplikasi:
+1. **Redesain Total Ikon Aplikasi Berkarakter Anime (*Anime Mascot Character*):** Menghadirkan maskot anime resmi Tatap (*Cyber Anime Streamer*) dengan tatapan tajam (*"Tatap"*), headphone streaming LED cyan neon, dan semburat rambut cyan-violet.
+2. **Arsitektur Android Adaptive Icons Modern (API 26+ `mipmap-anydpi-v26`):** Mengimplementasikan adaptive icon resmi dengan pemisahan layer background (`#0A0D14`), foreground dengan safe margin 72dp, dan siluet monokromik untuk mendukung penuh fitur **Themed Icons (Material You)** di Android 13+ (API 33+).
+3. **Penyempurnaan Seluruh Mipmap Legacy & TV Banner Standar Broadcast:** Menghasilkan ulang seluruh varian raster mipmap (`mdpi` 48px hingga `xxxhdpi` 192px dan drawable 512px) dengan masker lingkaran murni anti-aliased (menghilangkan cacat squircle terpotong pada `ic_launcher_round.png`), serta memperbarui Android TV Leanback Banner (`tv_banner.png`, 320x180 & 640x360) dengan penataan aman overscan TV tanpa teks terpotong.
+4. **Pembersihan Total "AI Slop" pada Seluruh UI Android:** Mengeliminasi 100% penjejangan emoji kartun murahan pada 13 chip filter katalog (`Terpopuler`, `Skor Tertinggi`, `Terbaru`, `Trending`, `A-Z`, `Favorit`, `TV Series`, `Movie`, `OVA`, `ONA`, `Special`, `Sedang Tayang`, `Sudah Tamat`) dan mengubahnya menjadi *pure typographic pills* monokrom yang elegan, kompak, dan berkelas layaknya aplikasi streaming papan atas dunia.
+5. **Pustaka Vektor Drawables Monokrom Terarah (13 Vector XMLs):** Mengganti karakter simbol teks mentah (`✕` dan `⋮`) dan emoji pada navigasi beranda dengan 13 berkas Android Vector Drawables presisi (`ic_tab_season`, `ic_tab_airing`, `ic_tab_favorite`, `ic_tab_catalog`, `ic_tab_schedule`, `ic_tab_genre`, `ic_filter`, `ic_search`, `ic_more_vert`, `ic_close`, `ic_star_outline`, `ic_star_filled`, `ic_skip_next`).
+6. **State Tinting Dinamis Compound Drawables:** Mengintegrasikan helper `setTabAppearance` di `MainActivity.java` untuk merespons status tab aktif/inaktif secara dinamis (`#FFFFFF` aktif vs `#8892B0` inaktif).
+7. **Pembersihan Copywriting & Toast:** Menghapus seluruh residu emoji pada string status, pesan toast bookmark favorit, dan kontrol player lewati intro/outro.
+8. **Automated Regression Suite (`tests/test_android_ui_icons.py`):** Menambahkan unit test otomatis yang memverifikasi 0 emoji dan 0 simbol mentah pada seluruh layout dan kode Java Android, validitas 13 berkas vektor, serta dimensi aset mipmap dan TV banner.
+
+### Ditambahkan
+- **Identitas Visual Maskot Anime Tatap (`assets/`, `frontend/assets/`, `launcher/` & `android/`):**
+  - Mengadopsi ilustrasi maskot anime orisinal dengan tatapan fokus tajam, headphone streaming neon cyan, dan palet gelap cyberpunk yang menyatu sempurna di seluruh platform.
+  - Menghasilkan aset pendukung: `assets/tatap_icon_master.png`, `tatap_icon_512.png`, `frontend/assets/icon.png`, `favicon.ico`, serta `launcher/icon.ico`.
+- **Dukungan Penuh Android Adaptive Icons (`mipmap-anydpi-v26/` & `drawable/`):**
+  - Berkas `mipmap-anydpi-v26/ic_launcher.xml` dan `ic_launcher_round.xml`.
+  - Berkas `drawable/ic_launcher_background.xml`, `ic_launcher_foreground.png` (432x432 px, centered safe zone), dan `ic_launcher_monochrome.xml` (Material You).
+- **13 Android Vector Drawables Ramping (`res/drawable/`):**
+  - `ic_tab_season.xml`, `ic_tab_airing.xml`, `ic_tab_favorite.xml`, `ic_tab_catalog.xml`, `ic_tab_schedule.xml`, `ic_tab_genre.xml`, `ic_filter.xml`, `ic_search.xml`, `ic_more_vert.xml`, `ic_close.xml`, `ic_star_outline.xml`, `ic_star_filled.xml`, `ic_skip_next.xml`.
+- **Skrip Pembuatan Aset Ikonik Mandiri (`tools/generate_android_icons.py`):**
+  - Otomasi supersampling 4x dengan filter resampling Lanczos untuk menghasilkan seluruh densitas mipmap Android dan banner TV 16:9 beresolusi tinggi.
+- **Unit Test Pencegahan Regresi (`tests/test_android_ui_icons.py`):**
+  - `test_zero_emojis_and_raw_symbols_in_android`, `test_vector_drawables_exist_and_valid`, dan `test_adaptive_icons_and_mipmaps`.
+
+### Diubah
+- **Antarmuka Android Mobile & TV (`activity_main.xml`, `dialog_catalog_filter.xml`, `dialog_*.xml`, `activity_detail.xml`, `activity_player.xml`):**
+  - Kolom pencarian kini dilengkapi lensa pencari halus `ic_search`.
+  - Tombol menu header menggunakan ikon overflow 3-titik `ic_more_vert`.
+  - Seluruh tombol tutup modal dialog dan hapus pencarian menggunakan vektor silang tajam `ic_close`.
+  - 13 chip filter katalog dibersihkan dari seluruh emoji menjadi *pure typographic pills*.
+  - 6 tab beranda menggunakan compound drawables vektor dengan pewarnaan dinamis.
+  - Tombol bookmark pada halaman detail menggunakan `ic_star_outline` dan `ic_star_filled`.
+  - Tombol lewati opening/ending player menggunakan `ic_skip_next`.
+- **Logika Java Native (`MainActivity.java`, `DetailActivity.java`, `PlayerActivity.java`):**
+  - Penambahan helper `setTabAppearance` untuk tinting dinamis icon dan teks tab beranda.
+  - Pembersihan emoji pada teks bookmark detail dan toast notifikasi.
+  - Pembersihan emoji pada tombol dan toast lompat intro/outro player.
+
 ## [2.6.2] - 2026-10-14
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.6.1 -> 2.6.2)

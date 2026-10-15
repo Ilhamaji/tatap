@@ -202,7 +202,7 @@ public class PlayerActivity extends Activity {
             long sec = currentSkipTargetMs / 1000;
             currentSkipTargetMs = 0;
             String timeStr = String.format("%02d:%02d", sec / 60, sec % 60);
-            Toast.makeText(this, "⏩ Melompat ke " + timeStr, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Melompat ke " + timeStr, Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -215,13 +215,13 @@ public class PlayerActivity extends Activity {
 
         if (inIntro) {
             currentSkipTargetMs = introEndMs + 500;
-            btnSkipOpEd.setText("⏭ Lewati Opening");
+            btnSkipOpEd.setText("Lewati Opening");
             if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
                 btnSkipOpEd.setVisibility(View.VISIBLE);
             }
         } else if (inOutro) {
             currentSkipTargetMs = outroEndMs + 500;
-            btnSkipOpEd.setText("⏭ Lewati Ending");
+            btnSkipOpEd.setText("Lewati Ending");
             if (btnSkipOpEd.getVisibility() != View.VISIBLE) {
                 btnSkipOpEd.setVisibility(View.VISIBLE);
             }

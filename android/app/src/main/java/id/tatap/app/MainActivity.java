@@ -720,7 +720,7 @@ public class MainActivity extends Activity {
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.VISIBLE);
         } else if ("favorit".equals(currentView)) {
             layoutActiveFilter.setVisibility(View.VISIBLE);
-            tvActiveFilterLabel.setText("⭐ ANIME FAVORIT");
+            tvActiveFilterLabel.setText("ANIME FAVORIT");
             if (btnClearHistoryAll != null) btnClearHistoryAll.setVisibility(View.GONE);
         } else {
             layoutActiveFilter.setVisibility(View.GONE);
@@ -1765,6 +1765,14 @@ public class MainActivity extends Activity {
         fetchData();
     }
 
+    private void setTabAppearance(TextView tab, boolean active) {
+        if (tab == null) return;
+        tab.setBackgroundResource(active ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
+        int color = active ? 0xFFFFFFFF : 0xFF8892B0;
+        tab.setTextColor(color);
+        tab.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(color));
+    }
+
     private void updateTabButtons() {
         boolean isMusim = "musim".equals(currentView);
         boolean isAiring = "airing".equals(currentView);
@@ -1774,29 +1782,12 @@ public class MainActivity extends Activity {
         boolean isGenre = "genre".equals(currentView);
         boolean isRiwayat = "riwayat".equals(currentView);
 
-        btnTabMusim.setBackgroundResource(isMusim ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-        btnTabMusim.setTextColor(isMusim ? 0xFFFFFFFF : 0xFF8892B0);
-
-        btnTabAiring.setBackgroundResource(isAiring ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-        btnTabAiring.setTextColor(isAiring ? 0xFFFFFFFF : 0xFF8892B0);
-
-        if (btnTabFavorit != null) {
-            btnTabFavorit.setBackgroundResource(isFavorit ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-            btnTabFavorit.setTextColor(isFavorit ? 0xFFFFFFFF : 0xFF8892B0);
-        }
-
-        btnTabKatalog.setBackgroundResource(isKatalog ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-        btnTabKatalog.setTextColor(isKatalog ? 0xFFFFFFFF : 0xFF8892B0);
-
-        if (btnTabJadwal != null) {
-            btnTabJadwal.setBackgroundResource(isJadwal ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-            btnTabJadwal.setTextColor(isJadwal ? 0xFFFFFFFF : 0xFF8892B0);
-        }
-
-        if (btnTabGenre != null) {
-            btnTabGenre.setBackgroundResource(isGenre ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
-            btnTabGenre.setTextColor(isGenre ? 0xFFFFFFFF : 0xFF8892B0);
-        }
+        setTabAppearance(btnTabMusim, isMusim);
+        setTabAppearance(btnTabAiring, isAiring);
+        setTabAppearance(btnTabFavorit, isFavorit);
+        setTabAppearance(btnTabKatalog, isKatalog);
+        setTabAppearance(btnTabJadwal, isJadwal);
+        setTabAppearance(btnTabGenre, isGenre);
 
         if (layoutScheduleDays != null) {
             layoutScheduleDays.setVisibility(isJadwal ? View.VISIBLE : View.GONE);
@@ -1994,7 +1985,7 @@ public class MainActivity extends Activity {
             title = "Riwayat Tontonan";
             endpoint = "/api/history";
         } else if ("favorit".equals(currentView)) {
-            title = "⭐ Anime Favorit";
+            title = "Anime Favorit";
             endpoint = "/api/bookmarks";
         } else {
             title = "Hasil Pencarian: " + currentSearchQuery;
@@ -2145,7 +2136,7 @@ public class MainActivity extends Activity {
                     tvEmptyDesc.setText("Anime yang Anda tonton akan otomatis tercatat di sini.");
                 } else if ("favorit".equals(currentView)) {
                     tvEmptyTitle.setText("Belum Ada Anime Favorit");
-                    tvEmptyDesc.setText("Tandai anime favorit Anda dengan menekan tombol ⭐ + Favorit pada halaman detail.");
+                    tvEmptyDesc.setText("Tandai anime favorit Anda dengan menekan tombol + Favorit pada halaman detail.");
                 } else if ("jadwal".equals(currentView)) {
                     String dayLabel = getScheduleDayLabel(currentScheduleDay);
                     tvEmptyTitle.setText("Tidak Ada Jadwal Rilis");
