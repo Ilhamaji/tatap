@@ -1,4 +1,4 @@
-import sys, os, re, time
+import sys, os, re, time, html
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import asyncio, subprocess, tempfile
 from fastapi import FastAPI, Query, HTTPException
@@ -27,6 +27,9 @@ def ok(data):
     return {"success": True, "data": data}
 def fail(msg):
     return JSONResponse({"success": False, "error": msg}, status_code=200)
+
+def _clean(s: str) -> str:
+    return html.unescape(s or "").strip()
 
 @app.get("/api/ping")
 async def ping():
