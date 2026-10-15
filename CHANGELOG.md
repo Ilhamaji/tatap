@@ -13,6 +13,24 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.7.1] - 2026-10-15
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.7.0 -> 2.7.1)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan bug navigasi remote D-Pad dan fungsionalitas tombol Next/Previous ExoPlayer yang terisolasi 100% pada platform Android TV tanpa memodifikasi antarmuka maupun logika pada varian Android Mobile:
+1. **Perbaikan Terisolasi Tombol Next/Previous ExoPlayer Android TV (`PlayerActivity.java`):**
+   - Mengintegrasikan pemeriksaan perintah `Player.COMMAND_SEEK_TO_NEXT` dan `Player.COMMAND_SEEK_TO_PREVIOUS` pada `ForwardingPlayer` Media3 secara terisolasi (`TvFocusHelper.isTv(this)`), sehingga tombol Next dan Previous hanya aktif (`enabled` dan `focusable`) saat video berada dalam status ter-pause (`isPaused`).
+   - Menyambungkan callback `seekToNext()` dan `seekToPrevious()` pada `ForwardingPlayer` langsung ke `playNextEpisode()` dan `playPrevEpisode()`.
+2. **Perilaku D-Pad Terarah (Fast-Forward saat Berjalan vs Navigasi saat Ter-pause):**
+   - Ketika video sedang berputar (`isPlaying`), tombol `DPAD_RIGHT` berfungsi murni sebagai Fast-Forward (`seekRelative(+5000)`), dan `DPAD_LEFT` sebagai Rewind (`seekRelative(-5000)`).
+   - Ketika video ter-pause (`!isPlaying`), pembajakan event D-Pad dinonaktifkan (`break;`) sehingga D-Pad Left/Right dapat bernavigasi secara mulus di antara tombol-tombol kontrol pemutar (`[exo_prev]`, `[exo_rew]`, `[exo_play_pause]`, `[exo_ffwd]`, `[exo_next]`).
+3. **Delegasi Klik Tombol Kontrol pada `DPAD_CENTER` / `ENTER`:**
+   - Memperbaiki `dispatchKeyEvent` agar saat fokus berada di `btnExoNext` atau `btnExoPrev`, penekanan tombol `OK` / `DPAD_CENTER` langsung mengeksekusi perpindahan episode (`playNextEpisode()` / `playPrevEpisode()`).
+   - Meneruskan klik via `focused.performClick()` untuk tombol-tombol kontrol di dalam `playerView` ketika terfokus, bukan membajak event menjadi play/pause.
+4. **Opsi Ganti Episode Cepat pada Menu Pengaturan TV (`showPlayerUnifiedSettingsDialog`):**
+   - Menambahkan opsi *"Putar Episode Berikutnya (Ep X)"* dan *"Putar Episode Sebelumnya (Ep Y)"* langsung ke dialog menu pengaturan pemutar khusus perangkat Android TV.
+5. **Pemutakhiran Status Tombol Otomatis (`onIsPlayingChanged`):**
+   - Memanggil `updateExoButtonStates()` secara otomatis pada event `onIsPlayingChanged` sehingga status aktif/nonaktif tombol Next dan Previous langsung tersinkronisasi saat video dijeda atau dilanjutkan.
+
 ## [2.7.0] - 2026-10-15
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.6.2 -> 2.7.0)

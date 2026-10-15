@@ -543,13 +543,25 @@ public class PlayerActivity extends Activity {
         player.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT);
 
         forwardingPlayer = new ForwardingPlayer(player) {
+            private boolean isNextAllowed() {
+                boolean isTv = TvFocusHelper.isTv(PlayerActivity.this);
+                boolean isPaused = (player != null && !player.isPlaying());
+                return hasNextEpisode() && (!isTv || isPaused);
+            }
+
+            private boolean isPrevAllowed() {
+                boolean isTv = TvFocusHelper.isTv(PlayerActivity.this);
+                boolean isPaused = (player != null && !player.isPlaying());
+                return hasPrevEpisode() && (!isTv || isPaused);
+            }
+
             @Override
             public boolean isCommandAvailable(int command) {
-                if (command == COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) {
-                    return hasNextEpisode();
+                if (command == COMMAND_SEEK_TO_NEXT || command == COMMAND_SEEK_TO_NEXT_MEDIA_ITEM) {
+                    return isNextAllowed();
                 }
-                if (command == COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM) {
-                    return hasPrevEpisode();
+                if (command == COMMAND_SEEK_TO_PREVIOUS || command == COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM) {
+                    return isPrevAllowed();
                 }
                 return super.isCommandAvailable(command);
             }
@@ -557,14 +569,18 @@ public class PlayerActivity extends Activity {
             @Override
             public Commands getAvailableCommands() {
                 Commands.Builder builder = super.getAvailableCommands().buildUpon();
-                if (hasNextEpisode()) {
+                if (isNextAllowed()) {
+                    builder.add(COMMAND_SEEK_TO_NEXT);
                     builder.add(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM);
                 } else {
+                    builder.remove(COMMAND_SEEK_TO_NEXT);
                     builder.remove(COMMAND_SEEK_TO_NEXT_MEDIA_ITEM);
                 }
-                if (hasPrevEpisode()) {
+                if (isPrevAllowed()) {
+                    builder.add(COMMAND_SEEK_TO_PREVIOUS);
                     builder.add(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM);
                 } else {
+                    builder.remove(COMMAND_SEEK_TO_PREVIOUS);
                     builder.remove(COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM);
                 }
                 return builder.build();
@@ -572,22 +588,40 @@ public class PlayerActivity extends Activity {
 
             @Override
             public boolean hasNextMediaItem() {
-                return hasNextEpisode();
+                return isNextAllowed();
             }
 
             @Override
             public boolean hasPreviousMediaItem() {
-                return hasPrevEpisode();
+                return isPrevAllowed();
+            }
+
+            @Override
+            public void seekToNext() {
+                if (hasNextEpisode()) {
+                    playNextEpisode();
+                }
             }
 
             @Override
             public void seekToNextMediaItem() {
-                playNextEpisode();
+                if (hasNextEpisode()) {
+                    playNextEpisode();
+                }
+            }
+
+            @Override
+            public void seekToPrevious() {
+                if (hasPrevEpisode()) {
+                    playPrevEpisode();
+                }
             }
 
             @Override
             public void seekToPreviousMediaItem() {
-                playPrevEpisode();
+                if (hasPrevEpisode()) {
+                    playPrevEpisode();
+                }
             }
         };
         playerView.setPlayer(forwardingPlayer);
@@ -649,6 +683,7 @@ public class PlayerActivity extends Activity {
                     handler.removeCallbacks(subtitleSyncRunnable);
                     handler.post(subtitleSyncRunnable);
                 }
+                updateExoButtonStates();
             }
 
             @Override
@@ -870,10 +905,29 @@ public class PlayerActivity extends Activity {
                             return true;
                         }
                     }
+                    View focused = getCurrentFocus();
+                    if (focused != null) {
+                        if (focused == btnExoNext || (btnExoNext != null && focused.getId() == androidx.media3.ui.R.id.exo_next)) {
+                            playNextEpisode();
+                            return true;
+                        }
+                        if (focused == btnExoPrev || (btnExoPrev != null && focused.getId() == androidx.media3.ui.R.id.exo_prev)) {
+                            playPrevEpisode();
+                            return true;
+                        }
+                        if (playerView != null && isChildOf(focused, playerView)) {
+                            focused.performClick();
+                            return true;
+                        }
+                    }
                     if (player != null) {
                         if (player.isPlaying()) {
                             player.pause();
                             showTopBarBriefly();
+                            if (playerView != null) {
+                                playerView.showController();
+                            }
+                            updateExoButtonStates();
                         } else {
                             player.play();
                             hideTopBar();
@@ -888,6 +942,10 @@ public class PlayerActivity extends Activity {
                         if (player.isPlaying()) {
                             player.pause();
                             showTopBarBriefly();
+                            if (playerView != null) {
+                                playerView.showController();
+                            }
+                            updateExoButtonStates();
                         } else {
                             player.play();
                             hideTopBar();
@@ -909,6 +967,10 @@ public class PlayerActivity extends Activity {
                     if (player != null && player.isPlaying()) {
                         player.pause();
                         showTopBarBriefly();
+                        if (playerView != null) {
+                            playerView.showController();
+                        }
+                        updateExoButtonStates();
                         return true;
                     }
                     break;
@@ -935,6 +997,12 @@ public class PlayerActivity extends Activity {
                     if (isSkipFocused && playerView != null) {
                         playerView.requestFocus();
                     }
+                    boolean isTvLeft = TvFocusHelper.isTv(this);
+                    boolean isPlayingLeft = (player != null && player.isPlaying());
+                    if (isTvLeft && !isPlayingLeft) {
+                        // Di Android TV saat video ter-pause: biarkan D-Pad bernavigasi antar tombol kontrol
+                        break;
+                    }
                     if (hasFocusOnTopBar) {
                         showTopBarBriefly();
                         break; // Jangan seek, biarkan navigasi fokus antar tombol
@@ -953,6 +1021,12 @@ public class PlayerActivity extends Activity {
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     if (isSkipFocused && playerView != null) {
                         playerView.requestFocus();
+                    }
+                    boolean isTvRight = TvFocusHelper.isTv(this);
+                    boolean isPlayingRight = (player != null && player.isPlaying());
+                    if (isTvRight && !isPlayingRight) {
+                        // Di Android TV saat video ter-pause: biarkan D-Pad bernavigasi antar tombol kontrol
+                        break;
                     }
                     if (hasFocusOnTopBar) {
                         showTopBarBriefly();
@@ -2540,16 +2614,21 @@ public class PlayerActivity extends Activity {
             bindExoControlButtons();
             boolean hasNext = hasNextEpisode();
             boolean hasPrev = hasPrevEpisode();
+            boolean isTv = TvFocusHelper.isTv(this);
+            boolean isPaused = (player != null && !player.isPlaying());
+
+            boolean enableNext = hasNext && (!isTv || isPaused);
+            boolean enablePrev = hasPrev && (!isTv || isPaused);
 
             if (btnExoNext != null) {
-                btnExoNext.setEnabled(hasNext);
-                btnExoNext.setFocusable(hasNext);
-                btnExoNext.setAlpha(hasNext ? 1.0f : 0.35f);
+                btnExoNext.setEnabled(enableNext);
+                btnExoNext.setFocusable(enableNext);
+                btnExoNext.setAlpha(enableNext ? 1.0f : 0.25f);
             }
             if (btnExoPrev != null) {
-                btnExoPrev.setEnabled(hasPrev);
-                btnExoPrev.setFocusable(hasPrev);
-                btnExoPrev.setAlpha(hasPrev ? 1.0f : 0.35f);
+                btnExoPrev.setEnabled(enablePrev);
+                btnExoPrev.setFocusable(enablePrev);
+                btnExoPrev.setAlpha(enablePrev ? 1.0f : 0.25f);
             }
             if (btnExoSub != null) {
                 btnExoSub.setAlpha(subEnabled ? 1.0f : 0.45f);
@@ -2570,31 +2649,48 @@ public class PlayerActivity extends Activity {
         String qLabel = activeQuality != null && !activeQuality.isEmpty() ? activeQuality.toUpperCase() : "AUTO";
         String subLabel = !subEnabled ? "Mati" : (activeSubLang.toUpperCase() + " [" + activeEngine + "]");
         String autoSkipLabel = autoSkip ? "Aktif" : "Mati";
-        String[] menu = new String[]{
-                "Kecepatan Putar Video (" + spdLabel + ")",
-                "Pilihan Subtitle & Terjemahan (" + subLabel + ")",
-                "Pilihan Kualitas Video (" + qLabel + ")",
-                "Pengaturan Tampilan & Gaya Subtitle",
-                "Skala Layar / Rasio Aspek (" + getAspectLabel() + ")",
-                "Otomatis Lewati Opening & Ending (" + autoSkipLabel + ")"
-        };
 
-        builder.setItems(menu, (dialog, which) -> {
-            if (which == 0) {
-                showSpeedSelectorDialog();
-            } else if (which == 1) {
-                showSubtitleSelectorDialog();
-            } else if (which == 2) {
-                showQualitySelectorDialog();
-            } else if (which == 3) {
-                showSubtitleStyleDialog();
-            } else if (which == 4) {
-                cycleAspectRatio();
-            } else if (which == 5) {
-                boolean newAutoSkip = !autoSkip;
-                sp.edit().putBoolean("auto_skip_op_ed", newAutoSkip).apply();
-                autoSkipOpEd = newAutoSkip;
-                Toast.makeText(this, "Otomatis Lewati OP/ED: " + (newAutoSkip ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
+        List<String> menuList = new ArrayList<>();
+        List<Runnable> actionList = new ArrayList<>();
+
+        if (TvFocusHelper.isTv(this)) {
+            if (hasNextEpisode()) {
+                menuList.add("Putar Episode Berikutnya (Ep " + getNextEpisodeNumber() + ")");
+                actionList.add(this::playNextEpisode);
+            }
+            if (hasPrevEpisode()) {
+                menuList.add("Putar Episode Sebelumnya (Ep " + getPrevEpisodeNumber() + ")");
+                actionList.add(this::playPrevEpisode);
+            }
+        }
+
+        menuList.add("Kecepatan Putar Video (" + spdLabel + ")");
+        actionList.add(this::showSpeedSelectorDialog);
+
+        menuList.add("Pilihan Subtitle & Terjemahan (" + subLabel + ")");
+        actionList.add(this::showSubtitleSelectorDialog);
+
+        menuList.add("Pilihan Kualitas Video (" + qLabel + ")");
+        actionList.add(this::showQualitySelectorDialog);
+
+        menuList.add("Pengaturan Tampilan & Gaya Subtitle");
+        actionList.add(this::showSubtitleStyleDialog);
+
+        menuList.add("Skala Layar / Rasio Aspek (" + getAspectLabel() + ")");
+        actionList.add(this::cycleAspectRatio);
+
+        menuList.add("Otomatis Lewati Opening & Ending (" + autoSkipLabel + ")");
+        actionList.add(() -> {
+            boolean newAutoSkip = !autoSkip;
+            sp.edit().putBoolean("auto_skip_op_ed", newAutoSkip).apply();
+            autoSkipOpEd = newAutoSkip;
+            Toast.makeText(this, "Otomatis Lewati OP/ED: " + (newAutoSkip ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
+        });
+
+        String[] menuArray = menuList.toArray(new String[0]);
+        builder.setItems(menuArray, (dialog, which) -> {
+            if (which >= 0 && which < actionList.size()) {
+                actionList.get(which).run();
             }
         });
 
