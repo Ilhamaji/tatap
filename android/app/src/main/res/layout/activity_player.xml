@@ -311,4 +311,41 @@
             app:cornerRadius="8dp"
             android:backgroundTint="#1E2433" />
     </LinearLayout>
+
+    <!-- Floating Screen Lock Button (Mobile Touch Screen Lock) -->
+    <ImageButton
+        android:id="@+id/btn_screen_lock"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="24dp"
+        android:background="@drawable/bg_screen_lock_button"
+        android:src="@drawable/ic_lock_open"
+        app:tint="#38BDF8"
+        android:contentDescription="Kunci Layar"
+        android:visibility="gone" />
+
+    <!-- Floating Screen Unlock Button (Visible briefly on tap when locked) -->
+    <Button
+        android:id="@+id/btn_screen_unlock"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="24dp"
+        android:backgroundTint="#D90F172A"
+        app:strokeColor="#38BDF8"
+        app:strokeWidth="1.5dp"
+        app:cornerRadius="20dp"
+        app:icon="@drawable/ic_lock"
+        app:iconTint="#38BDF8"
+        app:iconPadding="6dp"
+        app:iconSize="15dp"
+        android:paddingHorizontal="16dp"
+        android:text="Buka Kunci"
+        android:textColor="#38BDF8"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:visibility="gone" />
 </FrameLayout>
+

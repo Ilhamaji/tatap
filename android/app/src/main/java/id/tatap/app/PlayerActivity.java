@@ -111,6 +111,22 @@ public class PlayerActivity extends Activity {
     private long pendingResumePosMs = -1;
     private boolean hasPromptedResume = false;
     private long lastProgressSaveMs = 0;
+    private View btnScreenLock;
+    private View btnScreenUnlock;
+    private boolean isScreenLocked = false;
+    private final Runnable hideUnlockButtonRunnable = () -> {
+        if (btnScreenUnlock != null && isScreenLocked) {
+            btnScreenUnlock.animate()
+                    .alpha(0f)
+                    .setDuration(250)
+                    .withEndAction(() -> {
+                        if (isScreenLocked && btnScreenUnlock != null) {
+                            btnScreenUnlock.setVisibility(View.GONE);
+                        }
+                    })
+                    .start();
+        }
+    };
 
     // Subtitle Engine State
     public static class SubtitleCue {
@@ -379,6 +395,20 @@ public class PlayerActivity extends Activity {
                     updateSkipButtonLabel(inIntro);
                 });
             }
+        }
+
+        btnScreenLock = findViewById(R.id.btn_screen_lock);
+        if (btnScreenLock != null) {
+            btnScreenLock.setOnClickListener(v -> lockScreen());
+            if (TvFocusHelper.isTv(this)) {
+                btnScreenLock.setVisibility(View.GONE);
+            }
+        }
+
+        btnScreenUnlock = findViewById(R.id.btn_screen_unlock);
+        if (btnScreenUnlock != null) {
+            btnScreenUnlock.setOnClickListener(v -> unlockScreen());
+            btnScreenUnlock.setVisibility(View.GONE);
         }
 
         try {
@@ -683,6 +713,9 @@ public class PlayerActivity extends Activity {
                     handler.removeCallbacks(subtitleSyncRunnable);
                     handler.post(subtitleSyncRunnable);
                 }
+                if (playerView != null) {
+                    playerView.setKeepScreenOn(isPlaying);
+                }
                 updateExoButtonStates();
             }
 
@@ -727,6 +760,9 @@ public class PlayerActivity extends Activity {
             boolean isVisible = (visibility == View.VISIBLE);
             if (layoutTopBar != null) {
                 layoutTopBar.setVisibility(visibility);
+            }
+            if (btnScreenLock != null && !TvFocusHelper.isTv(this)) {
+                btnScreenLock.setVisibility(isVisible && !isScreenLocked ? View.VISIBLE : View.GONE);
             }
             if (isVisible) {
                 handler.removeCallbacks(hideTopBarRunnable);
@@ -806,6 +842,12 @@ public class PlayerActivity extends Activity {
         });
 
         playerView.setOnTouchListener((v, event) -> {
+            if (isScreenLocked) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    showUnlockButtonBriefly();
+                }
+                return true;
+            }
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 if (audioManager != null) {
                     int maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
@@ -820,6 +862,54 @@ public class PlayerActivity extends Activity {
         });
     }
 
+    private void lockScreen() {
+        if (TvFocusHelper.isTv(this)) return;
+        isScreenLocked = true;
+        if (playerView != null) {
+            playerView.hideController();
+            playerView.setUseController(false);
+        }
+        if (layoutTopBar != null) {
+            layoutTopBar.setVisibility(View.GONE);
+        }
+        if (btnSkipOpEd != null) {
+            btnSkipOpEd.setVisibility(View.GONE);
+        }
+        if (btnScreenLock != null) {
+            btnScreenLock.setVisibility(View.GONE);
+        }
+        vibrate(25);
+        Toast.makeText(this, "Layar terkunci. Ketuk layar untuk membuka kunci.", Toast.LENGTH_SHORT).show();
+        showUnlockButtonBriefly();
+    }
+
+    private void unlockScreen() {
+        isScreenLocked = false;
+        if (btnScreenUnlock != null) {
+            handler.removeCallbacks(hideUnlockButtonRunnable);
+            btnScreenUnlock.setVisibility(View.GONE);
+        }
+        if (playerView != null) {
+            playerView.setUseController(true);
+            playerView.showController();
+        }
+        showTopBarBriefly();
+        if (btnScreenLock != null && !TvFocusHelper.isTv(this)) {
+            btnScreenLock.setVisibility(View.VISIBLE);
+        }
+        vibrate(25);
+        Toast.makeText(this, "Layar terbuka", Toast.LENGTH_SHORT).show();
+    }
+
+    private void showUnlockButtonBriefly() {
+        if (btnScreenUnlock == null || !isScreenLocked || TvFocusHelper.isTv(this)) return;
+        btnScreenUnlock.animate().cancel();
+        btnScreenUnlock.setAlpha(1.0f);
+        btnScreenUnlock.setVisibility(View.VISIBLE);
+        handler.removeCallbacks(hideUnlockButtonRunnable);
+        handler.postDelayed(hideUnlockButtonRunnable, 3000);
+    }
+
     private final Runnable hideTopBarRunnable = this::hideTopBar;
 
     private void showTopBarBriefly() {
@@ -828,11 +918,17 @@ public class PlayerActivity extends Activity {
             handler.removeCallbacks(hideTopBarRunnable);
             handler.postDelayed(hideTopBarRunnable, 5000);
         }
+        if (btnScreenLock != null && !TvFocusHelper.isTv(this) && !isScreenLocked) {
+            btnScreenLock.setVisibility(View.VISIBLE);
+        }
     }
 
     private void hideTopBar() {
         if (layoutTopBar != null) {
             layoutTopBar.setVisibility(View.GONE);
+            if (btnScreenLock != null) {
+                btnScreenLock.setVisibility(View.GONE);
+            }
             if (playerView != null) {
                 playerView.requestFocus();
             }
@@ -876,9 +972,32 @@ public class PlayerActivity extends Activity {
     }
 
     @Override
+    public void onBackPressed() {
+        if (isScreenLocked) {
+            showUnlockButtonBriefly();
+            Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
+
+            if (isScreenLocked) {
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    showUnlockButtonBriefly();
+                    Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+                    return super.dispatchKeyEvent(event);
+                }
+                return true;
+            }
+
             boolean isTopBarActive = (layoutTopBar != null && layoutTopBar.getVisibility() == View.VISIBLE);
             boolean hasFocusOnTopBar = isTopBarActive && isViewOrChildFocused(layoutTopBar);
             boolean isSkipVisible = (btnSkipOpEd != null && btnSkipOpEd.getVisibility() == View.VISIBLE);
@@ -2395,6 +2514,8 @@ public class PlayerActivity extends Activity {
         recordWatchProgress(true);
         handler.removeCallbacks(subtitleSyncRunnable);
         handler.removeCallbacks(preResolveRunnable);
+        handler.removeCallbacks(hideTopBarRunnable);
+        handler.removeCallbacks(hideUnlockButtonRunnable);
         if (player != null) {
             player.release();
             player = null;

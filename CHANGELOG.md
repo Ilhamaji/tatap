@@ -30,6 +30,13 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
    - Menambahkan opsi *"Putar Episode Berikutnya (Ep X)"* dan *"Putar Episode Sebelumnya (Ep Y)"* langsung ke dialog menu pengaturan pemutar khusus perangkat Android TV.
 5. **Pemutakhiran Status Tombol Otomatis (`onIsPlayingChanged`):**
    - Memanggil `updateExoButtonStates()` secara otomatis pada event `onIsPlayingChanged` sehingga status aktif/nonaktif tombol Next dan Previous langsung tersinkronisasi saat video dijeda atau dilanjutkan.
+6. **Fitur Kunci Sentuhan Layar (Touch Screen Lock) Terisolasi pada Android Mobile (`PlayerActivity.java`, `activity_player.xml`):**
+   - Menambahkan tombol melayang (*floating lock button*) ergonomis di sisi kiri tengah layar (`btn_screen_lock`) yang muncul secara otomatis bersama kontrol pemutar.
+   - Mengimplementasikan penguncian total interaksi sentuhan (`isScreenLocked = true`): saat aktif, seluruh gesture swipe (kecerahan dan volume), double-tap seek, dan kemunculan seekbar kontrol ExoPlayer dicegat 100% pada `playerView.setOnTouchListener`.
+   - Menghadirkan tombol interaktif gembok *"Buka Kunci"* (`btn_screen_unlock`) yang muncul selama 3 detik saat layar disentuh atau tombol Back ditekan, lalu memudar halus (*fade out*) agar tampilan anime tetap bersih dan tidak terhalang.
+   - Memproteksi penutupan pemutar yang tidak disengaja via hardware maupun gesture back (`dispatchKeyEvent` & `onBackPressed`), dengan tetap membiarkan tombol fisik volume HP berfungsi normal.
+   - Menjamin layar HP tidak mati atau mengunci sendiri saat anime aktif diputar melalui pemanggilan `playerView.setKeepScreenOn(isPlaying)`.
+   - Mengisolasi penuh fitur ini dari Android TV (`TvFocusHelper.isTv(this)` menyembunyikan tombol secara permanen), menjaga antarmuka remote D-Pad 10-Foot UI tetap bersih.
 
 ## [2.7.0] - 2026-10-15
 
