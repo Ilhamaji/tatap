@@ -70,19 +70,60 @@ Pilih paket instalasi resmi sesuai perangkat Anda:
 
 ---
 
-## Pintasan Kontrol
+## Panduan Navigasi & Kontrol
 
-### Keyboard (Desktop)
-- `[` / `]`: Menyesuaikan kecepatan putar (0.5x – 2.0x) / Halaman katalog
-- `S`: Lewati opening/ending (AniSkip) atau ganti sumber stream
-- `N` / `P`: Episode berikutnya / sebelumnya
-- `/`: Fokus ke input pencarian / terminal perintah
+### 1. Desktop & Web (Keyboard)
 
-### Remote (Android TV)
-- `D-Pad Kiri / Kanan`: Mundur / Maju 5 detik
-- `D-Pad Tengah / OK`: Putar / Jeda, atau lewati opening/ending saat tombol lewati terfokus
-- `>>` (Fast-Forward): Lewati opening/ending secara langsung
-- `Menu / Settings`: Buka dialog pengaturan pemutar (resolusi, subtitle, kecepatan putar, auto-skip)
+#### Pemutar Video (Player)
+| Tombol | Fungsi |
+| :--- | :--- |
+| `Spasi` | Putar / Jeda pemutaran video |
+| `F` | Masuk / Keluar mode layar penuh (*Fullscreen*) |
+| `←` / `→` | Mundur / Maju 5 detik (*Seek*) |
+| `[` / `]` | Perlambat / Percepat kecepatan putar (`0.5x` s/d `2.0x`) |
+| `S` | Lewati opening/ending (jika terdeteksi) atau beralih sumber stream |
+| `N` / `P` | Pindah langsung ke episode berikutnya / sebelumnya |
+| `M` | Matikan / Nyalakan audio (*Mute toggle*) |
+| `Esc` | Keluar mode layar penuh atau menutup pemutar video |
+
+#### Antarmuka Beranda & Dialog
+| Tombol | Fungsi |
+| :--- | :--- |
+| `/` | Fokus ke kolom input pencarian atau terminal perintah |
+| `Tab` | Berpindah antar tab beranda (*Cari*, *Musim*, *Jadwal*, *Lanjutan*, *Katalog*) |
+| `↑` / `↓` | Navigasi riwayat perintah terminal atau pemilihan kartu anime |
+| `[` / `]` | Berpindah halaman katalog atau berganti hari pada tab jadwal |
+| `Enter` | Menjalankan pencarian atau mengonfirmasi pilihan dialog aktif |
+| `Esc` | Membatalkan dialog riwayat tontonan atau menutup modal informasi |
+
+---
+
+### 2. Android TV (Remote D-Pad 10-Foot UI)
+
+Antarmuka Android TV dirancang khusus untuk pengoperasian penuh via remote kontrol D-pad:
+
+| Tombol Remote | Fungsi di Layar Utama & Katalog | Fungsi Saat Pemutaran Video (Player) |
+| :--- | :--- | :--- |
+| `D-Pad Kiri / Kanan` | Berpindah antar kartu anime atau chip hari | Mundur / Maju 5 detik (*Seek*) |
+| `D-Pad Atas` | Berpindah ke baris tab atau kolom pencarian (tekan `OK` untuk memunculkan keyboard virtual) | Menampilkan panel kontrol atas (Resolusi, Subtitle, Kecepatan, Rasio, Info) |
+| `D-Pad Bawah` | Menjelajahi baris konten anime di bawahnya | Memfokuskan tombol *Lewati Opening/Ending* jika aktif, atau menyembunyikan kontrol |
+| `D-Pad Tengah / OK` | Membuka detail anime atau konfirmasi pilihan | Putar / Jeda; mengeksekusi *Lewati Opening/Ending* saat tombol skip terfokus; konfirmasi *Lanjutkan* pada dialog riwayat |
+| `>>` *(Fast-Forward)* | – | Melompati opening/ending secara langsung tanpa memindahkan fokus remote |
+| `<<` *(Rewind)* | – | Mundur 10 detik |
+| `Next / Previous` | – | Pindah ke episode berikutnya / sebelumnya |
+| `Menu / Info / Settings` | Membuka panel drawer navigasi samping | Membuka dialog pengaturan pemutar (resolusi, subtitle, kecepatan, rasio aspek, auto-skip) |
+| `Kembali / Back` | Kembali ke menu sebelumnya atau tutup dialog | Menyembunyikan bar kontrol pemutar / kembali ke detail anime |
+
+---
+
+### 3. Android Ponsel & Tablet (Gesture Layar Sentuh)
+
+| Gesture / Sentuhan | Area Layar | Fungsi |
+| :--- | :--- | :--- |
+| Geser Vertikal Sisi Kanan | Layar kanan pemutar | Mengatur volume suara secara halus (*continuous*) |
+| Geser Vertikal Sisi Kiri | Layar kiri pemutar | Mengatur tingkat kecerahan layar (*brightness*) |
+| Ketuk Dua Kali (*Double Tap*) | Layar kiri / kanan | Mundur / Maju 10 detik |
+| Tombol Rasio Aspek | Bar kontrol atas | Beralih mode tampilan rasio (*Fit, Fill, Zoom, Stretch*) |
 
 ---
 
