@@ -100,3 +100,58 @@ def test_player_activity_back_press_behavior():
 
     assert "if (!TvFocusHelper.isTv(this) && getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {" in code
     assert "exitLandscapeFullscreen();" in code
+
+
+def test_portrait_header_decluttering():
+    """Memverifikasi bahwa header ExoPlayer dalam mode portrait dideclutter:
+    5 tombol aksi berjejal disembunyikan (karena ada di panel bawah), padding kompak,
+    dan tombol kembali menggunakan ic_arrow_back."""
+    icon_file = os.path.join(RES_DIR, "drawable", "ic_arrow_back.xml")
+    assert os.path.exists(icon_file), "ic_arrow_back.xml tidak ditemukan!"
+
+    with open(LAYOUT_FILE, "r", encoding="utf-8") as f:
+        layout_code = f.read()
+    assert '@drawable/ic_arrow_back' in layout_code
+
+    with open(JAVA_FILE, "r", encoding="utf-8") as f:
+        code = f.read()
+
+    # Memastikan tombol berjejal disembunyikan di portrait
+    assert "btnAspect.setVisibility(View.GONE);" in code
+    assert "btnQuality.setVisibility(View.GONE);" in code
+    assert "btnSpeed.setVisibility(View.GONE);" in code
+    assert "btnSubStyle.setVisibility(View.GONE);" in code
+    assert "btnSubSelector.setVisibility(View.GONE);" in code
+    assert "tvSubStatus.setVisibility(View.GONE);" in code
+    assert "btnScreenLock.setVisibility(View.GONE);" in code
+    assert "layoutTopBar.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));" in code
+
+    # Memastikan tombol berjejal dipulihkan saat landscape atau Android TV
+    assert "btnAspect.setVisibility(View.VISIBLE);" in code
+    assert "btnQuality.setVisibility(View.VISIBLE);" in code
+    assert "btnSpeed.setVisibility(View.VISIBLE);" in code
+    assert "btnSubStyle.setVisibility(View.VISIBLE);" in code
+    assert "btnSubSelector.setVisibility(View.VISIBLE);" in code
+    assert "tvSubStatus.setVisibility(View.VISIBLE);" in code
+
+
+def test_portrait_edge_swipe_and_back_invoked():
+    """Memverifikasi bahwa sistem edge swipe gesture back berjalan responsif:
+    tidak terjebak immersive sticky pada portrait (clearFlags FLAG_FULLSCREEN, BEHAVIOR_DEFAULT),
+    serta integrasi OnBackInvokedCallback (API 33+) dan unregister di onDestroy."""
+    with open(JAVA_FILE, "r", encoding="utf-8") as f:
+        code = f.read()
+
+    # Clear FLAG_FULLSCREEN dan BEHAVIOR_DEFAULT pada portrait
+    assert "getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);" in code
+    assert "controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_DEFAULT);" in code
+
+    # OnBackInvokedCallback API 33+ registration & unregistration
+    assert "getOnBackInvokedDispatcher().registerOnBackInvokedCallback(" in code
+    assert "getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(" in code
+
+    # handleBackAction hook
+    assert "btnPlayerBack.setOnClickListener(v -> handleBackAction());" in code
+    assert "private void handleBackAction()" in code
+    assert "applySystemUiVisibility();" in code
+

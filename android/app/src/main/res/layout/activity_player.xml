@@ -193,7 +193,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:src="@android:drawable/ic_menu_revert"
+            android:src="@drawable/ic_arrow_back"
             android:focusable="true"
             android:nextFocusRight="@+id/btn_aspect"
             app:tint="#FFFFFF"
@@ -203,7 +203,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:gravity="center_vertical"
             android:orientation="vertical">
 
             <TextView
@@ -212,7 +214,7 @@
                 android:layout_height="wrap_content"
                 android:text="Memuat Video..."
                 android:textColor="#FFFFFF"
-                android:textSize="15sp"
+                android:textSize="14.5sp"
                 android:textStyle="bold"
                 android:singleLine="true"
                 android:ellipsize="end" />
@@ -221,10 +223,10 @@
                 android:id="@+id/tv_sub_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:text="Subtitle: Auto (Indonesia)"
                 android:textColor="#94A3B8"
-                android:textSize="11.5sp" />
+                android:textSize="11sp" />
         </LinearLayout>
 
         <!-- Tombol Skala Layar / Mode Fullscreen (Fit, Zoom, Fill) -->

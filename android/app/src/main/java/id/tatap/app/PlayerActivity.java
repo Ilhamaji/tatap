@@ -125,6 +125,7 @@ public class PlayerActivity extends Activity {
     private PortraitRangeAdapter portraitRangeAdapter;
     private PortraitEpisodeRange activePortraitRange = null;
     private final List<PortraitEpisodeRange> portraitRanges = new ArrayList<>();
+    private android.window.OnBackInvokedCallback backInvokedCallback;
 
     public static class PortraitEpisodeRange {
         public final int start;
@@ -344,8 +345,23 @@ public class PlayerActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        boolean isTvOrLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (isTvOrLandscape) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backInvokedCallback = this::handleBackAction;
+            try {
+                getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    backInvokedCallback
+                );
+            } catch (Throwable ignored) {}
+        }
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -431,13 +447,7 @@ public class PlayerActivity extends Activity {
 
         // Pastikan hideSystemUi / showSystemUi dieksekusi setelah decorView terpasang di window
         try {
-            getWindow().getDecorView().post(() -> {
-                if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    hideSystemUi();
-                } else {
-                    showSystemUiForPortrait();
-                }
-            });
+            getWindow().getDecorView().post(this::applySystemUiVisibility);
         } catch (Throwable ignored) {}
 
         ensureEpisodeListLoaded();
@@ -466,7 +476,7 @@ public class PlayerActivity extends Activity {
         }
 
         if (btnPlayerBack != null) {
-            btnPlayerBack.setOnClickListener(v -> onBackPressed());
+            btnPlayerBack.setOnClickListener(v -> handleBackAction());
         }
 
         btnAspect = findViewById(R.id.btn_aspect);
@@ -596,26 +606,27 @@ public class PlayerActivity extends Activity {
 
     private void hideSystemUi() {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Window window = getWindow();
-                if (window != null) {
+            Window window = getWindow();
+            if (window != null) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     android.view.WindowInsetsController controller = window.getInsetsController();
                     if (controller != null) {
                         controller.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
                         controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
                     }
-                }
-            } else {
-                View decorView = getWindow().getDecorView();
-                if (decorView != null) {
-                    decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
-                    );
+                } else {
+                    View decorView = window.getDecorView();
+                    if (decorView != null) {
+                        decorView.setSystemUiVisibility(
+                            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        );
+                    }
                 }
             }
         } catch (Throwable ignored) {}
@@ -623,24 +634,31 @@ public class PlayerActivity extends Activity {
 
     private void showSystemUiForPortrait() {
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                Window window = getWindow();
-                if (window != null) {
+            Window window = getWindow();
+            if (window != null) {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     android.view.WindowInsetsController controller = window.getInsetsController();
                     if (controller != null) {
                         controller.show(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                        controller.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_DEFAULT);
                     }
-                }
-            } else {
-                View decorView = getWindow().getDecorView();
-                if (decorView != null) {
-                    decorView.setSystemUiVisibility(
-                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                    );
+                } else {
+                    View decorView = window.getDecorView();
+                    if (decorView != null) {
+                        decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);
+                    }
                 }
             }
         } catch (Throwable ignored) {}
+    }
+
+    private void applySystemUiVisibility() {
+        if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            hideSystemUi();
+        } else {
+            showSystemUiForPortrait();
+        }
     }
 
     private void updateLayoutForOrientation(int orientation) {
@@ -655,6 +673,17 @@ public class PlayerActivity extends Activity {
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
                 flPlayerWrapper.setLayoutParams(lp);
             }
+            // Pulihkan tombol aksi kontrol di landscape & TV
+            if (btnAspect != null) btnAspect.setVisibility(View.VISIBLE);
+            if (btnQuality != null) btnQuality.setVisibility(View.VISIBLE);
+            if (btnSpeed != null) btnSpeed.setVisibility(View.VISIBLE);
+            if (btnSubStyle != null) btnSubStyle.setVisibility(View.VISIBLE);
+            if (btnSubSelector != null) btnSubSelector.setVisibility(View.VISIBLE);
+            if (tvSubStatus != null) tvSubStatus.setVisibility(View.VISIBLE);
+            if (layoutTopBar != null) {
+                int padStart = isTv ? getResources().getDimensionPixelSize(R.dimen.tv_overscan_horizontal) : dpToPx(16);
+                layoutTopBar.setPadding(padStart, dpToPx(16), padStart, dpToPx(16));
+            }
             hideSystemUi();
         } else {
             // Mode Watch Portrait View
@@ -668,6 +697,17 @@ public class PlayerActivity extends Activity {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT, playerHeight);
                 flPlayerWrapper.setLayoutParams(lp);
+            }
+            // Sembunyikan 5 tombol berjejal di header saat portrait (fungsi sudah ada di panel bawah)
+            if (btnAspect != null) btnAspect.setVisibility(View.GONE);
+            if (btnQuality != null) btnQuality.setVisibility(View.GONE);
+            if (btnSpeed != null) btnSpeed.setVisibility(View.GONE);
+            if (btnSubStyle != null) btnSubStyle.setVisibility(View.GONE);
+            if (btnSubSelector != null) btnSubSelector.setVisibility(View.GONE);
+            if (tvSubStatus != null) tvSubStatus.setVisibility(View.GONE);
+            if (btnScreenLock != null) btnScreenLock.setVisibility(View.GONE);
+            if (layoutTopBar != null) {
+                layoutTopBar.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
             }
             showSystemUiForPortrait();
             updatePortraitEpisodeDisplay();
@@ -691,16 +731,30 @@ public class PlayerActivity extends Activity {
         }
     }
 
+    private void handleBackAction() {
+        if (isScreenLocked) {
+            showUnlockButtonBriefly();
+            Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!TvFocusHelper.isTv(this) && getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            exitLandscapeFullscreen();
+            return;
+        }
+        finish();
+    }
+
+    @Override
+    public void onBackPressed() {
+        handleBackAction();
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             try {
-                if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    hideSystemUi();
-                } else {
-                    showSystemUiForPortrait();
-                }
+                applySystemUiVisibility();
             } catch (Throwable ignored) {}
         }
     }
@@ -947,8 +1001,9 @@ public class PlayerActivity extends Activity {
             if (layoutTopBar != null) {
                 layoutTopBar.setVisibility(visibility);
             }
+            boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
             if (btnScreenLock != null && !TvFocusHelper.isTv(this)) {
-                btnScreenLock.setVisibility(isVisible && !isScreenLocked ? View.VISIBLE : View.GONE);
+                btnScreenLock.setVisibility(isVisible && !isScreenLocked && isLandscape ? View.VISIBLE : View.GONE);
             }
             if (isVisible) {
                 handler.removeCallbacks(hideTopBarRunnable);
@@ -962,7 +1017,7 @@ public class PlayerActivity extends Activity {
                     btnExoSettings.setVisibility(View.VISIBLE);
                 }
             } else {
-                hideSystemUi();
+                applySystemUiVisibility();
             }
         });
     }
@@ -974,13 +1029,13 @@ public class PlayerActivity extends Activity {
                 // Toggle visibility top bar
                 if (layoutTopBar.getVisibility() == View.VISIBLE) {
                     layoutTopBar.setVisibility(View.GONE);
-                    hideSystemUi();
+                    applySystemUiVisibility();
                 } else {
                     layoutTopBar.setVisibility(View.VISIBLE);
                     handler.postDelayed(() -> {
                         if (player != null && player.isPlaying()) {
                             layoutTopBar.setVisibility(View.GONE);
-                            hideSystemUi();
+                            applySystemUiVisibility();
                         }
                     }, 4000);
                 }
@@ -1104,7 +1159,8 @@ public class PlayerActivity extends Activity {
             handler.removeCallbacks(hideTopBarRunnable);
             handler.postDelayed(hideTopBarRunnable, 5000);
         }
-        if (btnScreenLock != null && !TvFocusHelper.isTv(this) && !isScreenLocked) {
+        boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (btnScreenLock != null && !TvFocusHelper.isTv(this) && !isScreenLocked && isLandscape) {
             btnScreenLock.setVisibility(View.VISIBLE);
         }
     }
@@ -1118,7 +1174,7 @@ public class PlayerActivity extends Activity {
             if (playerView != null) {
                 playerView.requestFocus();
             }
-            hideSystemUi();
+            applySystemUiVisibility();
         }
     }
 
@@ -1155,20 +1211,6 @@ public class PlayerActivity extends Activity {
             }
         }
         return false;
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (isScreenLocked) {
-            showUnlockButtonBriefly();
-            Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (!TvFocusHelper.isTv(this) && getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            exitLandscapeFullscreen();
-            return;
-        }
-        super.onBackPressed();
     }
 
     @Override
@@ -2695,11 +2737,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            hideSystemUi();
-        } else {
-            showSystemUiForPortrait();
-        }
+        applySystemUiVisibility();
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
             handler.post(subtitleSyncRunnable);
@@ -2709,6 +2747,12 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backInvokedCallback != null) {
+            try {
+                getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backInvokedCallback);
+            } catch (Throwable ignored) {}
+            backInvokedCallback = null;
+        }
         recordWatchProgress(true);
         handler.removeCallbacks(subtitleSyncRunnable);
         handler.removeCallbacks(preResolveRunnable);
