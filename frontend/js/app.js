@@ -1,4 +1,4 @@
-var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[], watched:{},
+var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[], watched:{}, lastWatchedEp:null,
             subLang:"English",    // preferensi bahasa user dari /api/settings
             activeSub:null,       // URL track subtitle yang sedang aktif (live switch)
             cues:[],              // cue subtitle hasil parse VTT (render overlay milik app)
@@ -176,6 +176,36 @@ function loadRelations(){
 var _epsMemCache = {};
 cur.activeEpRange = null;
 
+function recordEpisodeWatched(slug, ep){
+  if(!slug || !ep) return;
+  ep = parseInt(ep);
+  if(isNaN(ep)) return;
+  if(!cur.watched) cur.watched = {};
+  cur.watched[ep] = 1;
+  cur.lastWatchedEp = ep;
+
+  try {
+    localStorage.setItem("tatap_last_ep_" + slug, String(ep));
+    var wKey = "tatap_watched_" + slug;
+    var wObj = {};
+    try { wObj = JSON.parse(localStorage.getItem(wKey) || "{}"); } catch(e){}
+    wObj[ep] = 1;
+    localStorage.setItem(wKey, JSON.stringify(wObj));
+  } catch(e){}
+
+  window.Tatap.saveHist({
+    slug: slug,
+    title: cur.title || slug,
+    episode: ep,
+    mode: cur.mode || "sub",
+    progress: 0,
+    poster: cur.poster || "",
+    type: cur.type || ""
+  }).then(function(){
+    renderContinue();
+  }).catch(function(){});
+}
+
 function renderEpRanges(){
   var bar = $("tm-ep-ranges");
   if(!bar) return;
@@ -189,13 +219,20 @@ function renderEpRanges(){
   bar.classList.remove("hidden");
   var total = cur.eps.length;
   var step = 100;
-  var lastWatchedEp = -1;
-  if(cur.watched){
+  var lastWatchedEp = cur.lastWatchedEp || -1;
+  if(lastWatchedEp <= 0 && cur.slug){
+    try {
+      var sLast = localStorage.getItem("tatap_last_ep_" + cur.slug);
+      if(sLast) lastWatchedEp = parseInt(sLast);
+    } catch(e){}
+  }
+  if(lastWatchedEp <= 0 && cur.watched){
     for(var w in cur.watched){
       var n = parseInt(w);
       if(n > lastWatchedEp) lastWatchedEp = n;
     }
   }
+  if(lastWatchedEp > 0) cur.lastWatchedEp = lastWatchedEp;
 
   var ranges = [];
   for(var s = 1; s <= total; s += step){
@@ -231,6 +268,15 @@ function renderEpRanges(){
 
 function loadEps(){
   cur.activeEpRange = null;
+  if(cur.slug){
+    try {
+      var localWatched = JSON.parse(localStorage.getItem("tatap_watched_" + cur.slug) || "{}");
+      cur.watched = Object.assign({}, localWatched);
+      var s = localStorage.getItem("tatap_last_ep_" + cur.slug);
+      if(s) cur.lastWatchedEp = parseInt(s);
+    } catch(e){}
+  }
+
   var countLabel = function(){
     var base = cur.eps.length + " episode";
     if(cur.eps_counter){
@@ -258,10 +304,24 @@ function loadEps(){
     }
     cur.eps = r.data.episodes || [];
     _epsMemCache[cur.slug] = cur.eps;
-    var watched = {};
     window.Tatap.history().then(function(h){
-      (h.data || []).forEach(function(x){ if(x.slug === cur.slug) watched[x.episode] = 1; });
-      cur.watched = watched;
+      (h.data || []).forEach(function(x){
+        if(x.slug === cur.slug){
+          if(!cur.watched) cur.watched = {};
+          cur.watched[x.episode] = 1;
+          if(!cur.lastWatchedEp) cur.lastWatchedEp = x.episode;
+        }
+      });
+      if(cur.slug){
+        try {
+          var wKey = "tatap_watched_" + cur.slug;
+          var wObj = {};
+          try { wObj = JSON.parse(localStorage.getItem(wKey) || "{}"); } catch(e){}
+          for(var k in cur.watched){ wObj[k] = 1; }
+          localStorage.setItem(wKey, JSON.stringify(wObj));
+          if(cur.lastWatchedEp) localStorage.setItem("tatap_last_ep_" + cur.slug, String(cur.lastWatchedEp));
+        } catch(e){}
+      }
       $("tm-count").textContent = countLabel();
       renderEpRanges();
       renderEpGrid();
@@ -283,6 +343,14 @@ function renderEpGrid(){
   var epsToRender = cur.eps || [];
   var useRange = !f && cur.activeEpRange && !cur.activeEpRange.isAll;
 
+  var lastEp = cur.lastWatchedEp;
+  if(!lastEp && cur.slug){
+    try {
+      var storedLast = localStorage.getItem("tatap_last_ep_" + cur.slug);
+      if(storedLast) lastEp = parseInt(storedLast);
+    } catch(e){}
+  }
+
   for(var i = 0; i < epsToRender.length; i++){
     var epObj = epsToRender[i];
     var ep = epObj.ep;
@@ -291,8 +359,25 @@ function renderEpGrid(){
 
     shown++;
     var b = document.createElement("button");
-    b.className = "ep" + (cur.watched && cur.watched[ep] ? " watched" : "");
-    b.textContent = ep;
+    var isLast = (lastEp && ep === lastEp);
+    var isWatched = (cur.watched && cur.watched[ep]);
+
+    var cls = "ep";
+    if(isLast){
+      cls += " last-watch";
+    } else if(isWatched){
+      cls += " watched";
+    }
+    b.className = cls;
+
+    if(isLast){
+      b.innerHTML = '<span class="ep-num">' + ep + '</span><span class="ep-badge-last">TERAKHIR</span>';
+      b.title = "Episode " + ep + " (Terakhir ditonton)";
+    } else {
+      b.textContent = ep;
+      if(isWatched) b.title = "Episode " + ep + " (Sudah ditonton)";
+    }
+
     (function(targetEp){
       b.addEventListener("click", function(e){
         if(e) e.stopPropagation();
@@ -304,6 +389,16 @@ function renderEpGrid(){
 
   if(shown > 0){
     box.appendChild(frag);
+    if(lastEp){
+      setTimeout(function(){
+        var activeBtn = box.querySelector(".ep.last-watch");
+        if(activeBtn){
+          try {
+            activeBtn.scrollIntoView({behavior: "smooth", block: "nearest", inline: "nearest"});
+          } catch(e){}
+        }
+      }, 50);
+    }
   } else {
     box.innerHTML = "<p class='dim'>Tidak ada episode cocok filter.</p>";
   }
@@ -351,12 +446,31 @@ function closeResumeModal(){
 }
 
 function dismissResumeModal(){
+  var savedSlug = cur.slug;
+  var savedTitle = cur.title;
+  var savedPoster = cur.poster;
+  var savedType = cur.type;
+  var savedCounter = cur.eps_counter;
+
   closeResumeModal();
+
+  if(savedSlug){
+    var tm = $("title-modal");
+    if(tm && tm.classList.contains("hidden")){
+      openTitle(savedSlug, savedTitle, savedPoster, savedType, savedCounter);
+    } else {
+      if(tm) tm.classList.remove("hidden");
+      renderEpGrid();
+    }
+  }
 }
 
 function openPlayer(ep, resumeTime){
   if(resumeTime === undefined){
+    var fetchToken = ++_playTokenCounter;
+    cur.playToken = fetchToken;
     window.Tatap.getProgress(cur.slug, ep).then(function(r){
+      if(cur.playToken !== fetchToken) return;
       if(r && r.success && r.data && r.data.should_resume && r.data.progress >= 15){
         var p = r.data.progress;
         var dur = r.data.duration || 0;
@@ -386,16 +500,24 @@ function openPlayer(ep, resumeTime){
             badgeEl.textContent = (pct > 0) ? (pct + "% selesai") : "Tersimpan";
           }
 
+          var bResume = $("rm-btn-resume");
+          var bRestart = $("rm-btn-restart");
+          var bCancel = $("rm-btn-cancel");
+          var bClose = $("rm-close");
+
+          var btns = [bResume, bRestart, bCancel].filter(Boolean);
           var keyHandler = function(e){
             if(modal.classList.contains("hidden")) return;
             if(e.key === "ArrowLeft" || e.key === "ArrowUp"){
               e.preventDefault();
-              var b1 = $("rm-btn-resume");
-              if(b1) b1.focus();
+              var idx = btns.indexOf(document.activeElement);
+              var prevIdx = (idx <= 0) ? btns.length - 1 : idx - 1;
+              if(btns[prevIdx]) btns[prevIdx].focus();
             } else if(e.key === "ArrowRight" || e.key === "ArrowDown"){
               e.preventDefault();
-              var b2 = $("rm-btn-restart");
-              if(b2) b2.focus();
+              var idx = btns.indexOf(document.activeElement);
+              var nextIdx = (idx >= btns.length - 1 || idx === -1) ? 0 : idx + 1;
+              if(btns[nextIdx]) btns[nextIdx].focus();
             } else if(e.key === "Escape"){
               e.preventDefault();
               dismissResumeModal();
@@ -405,41 +527,54 @@ function openPlayer(ep, resumeTime){
           var cleanupModal = function(){
             modal.classList.add("hidden");
             window.removeEventListener("keydown", keyHandler);
-            $("rm-btn-resume").onclick = null;
-            $("rm-btn-restart").onclick = null;
-            $("rm-close").onclick = null;
+            if(bResume) bResume.onclick = null;
+            if(bRestart) bRestart.onclick = null;
+            if(bCancel) bCancel.onclick = null;
+            if(bClose) bClose.onclick = null;
             _activeResumeCleanup = null;
           };
           _activeResumeCleanup = cleanupModal;
 
-          $("rm-btn-resume").onclick = function(){
-            cleanupModal();
-            openPlayer(ep, p);
-          };
+          if(bResume){
+            bResume.onclick = function(){
+              cleanupModal();
+              openPlayer(ep, p);
+            };
+          }
 
-          $("rm-btn-restart").onclick = function(){
-            cleanupModal();
-            window.Tatap.saveProgress(cur.slug, ep, 0, dur).catch(function(){});
-            openPlayer(ep, 0);
-          };
+          if(bRestart){
+            bRestart.onclick = function(){
+              cleanupModal();
+              window.Tatap.saveProgress(cur.slug, ep, 0, dur).catch(function(){});
+              openPlayer(ep, 0);
+            };
+          }
 
-          $("rm-close").onclick = function(e){
-            if(e) e.stopPropagation();
-            dismissResumeModal();
-          };
+          if(bCancel){
+            bCancel.onclick = function(e){
+              if(e) e.stopPropagation();
+              dismissResumeModal();
+            };
+          }
+
+          if(bClose){
+            bClose.onclick = function(e){
+              if(e) e.stopPropagation();
+              dismissResumeModal();
+            };
+          }
 
           window.addEventListener("keydown", keyHandler);
           modal.classList.remove("hidden");
           setTimeout(function(){
-            var b = $("rm-btn-resume");
-            if(b) b.focus();
+            if(bResume) bResume.focus();
           }, 50);
           return;
         }
       }
-      openPlayer(ep, 0);
+      if(cur.playToken === fetchToken) openPlayer(ep, 0);
     }).catch(function(){
-      openPlayer(ep, 0);
+      if(cur.playToken === fetchToken) openPlayer(ep, 0);
     });
     return;
   }
@@ -448,6 +583,7 @@ function openPlayer(ep, resumeTime){
   cur.playerOpenedAt=Date.now();
   cur.playToken = ++_playTokenCounter;
   var token = cur.playToken;
+  recordEpisodeWatched(cur.slug, ep);
   closeTitle();
   closeResumeModal();
   $("player-modal").classList.remove("hidden");
@@ -1623,7 +1759,11 @@ function stepEp(d){
   var idx=-1;
   for(var i=0;i<cur.eps.length;i++)if(cur.eps[i].ep===cur.ep)idx=i;
   var nxt=cur.eps[idx+d];
-  if(nxt)openPlayer(nxt.ep);
+  if(nxt){
+    cur.ep=nxt.ep;
+    updatePrevNext();
+    openPlayer(nxt.ep);
+  }
   else toast(d>0?"Sudah episode terakhir":"Sudah episode pertama");
 }
 function closePlayer(){
@@ -1970,8 +2110,30 @@ function init(){
       recordWatchProgress(true);
     });
     v.addEventListener("ended",function(){
-      if(cur.slug && cur.ep){
-        window.Tatap.saveProgress(cur.slug, cur.ep, 0, Math.floor(v.duration||0)).catch(function(){});
+      var endedSlug = cur.slug;
+      var endedEp = cur.ep;
+      var endedTitle = cur.title;
+      var endedPoster = cur.poster;
+      var endedType = cur.type;
+      var endedCounter = cur.eps_counter;
+
+      if(endedSlug && endedEp){
+        window.Tatap.saveProgress(endedSlug, endedEp, 0, Math.floor(v.duration||0)).catch(function(){});
+        recordEpisodeWatched(endedSlug, endedEp);
+      }
+
+      if(document.fullscreenElement || document.webkitFullscreenElement){
+        try{
+          if(document.exitFullscreen) document.exitFullscreen();
+          else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+        }catch(e){}
+      }
+
+      closePlayer();
+
+      if(endedSlug){
+        openTitle(endedSlug, endedTitle, endedPoster, endedType, endedCounter);
+        toast("Episode " + endedEp + " selesai diputar");
       }
     });
     v.addEventListener("seeked",paintCue);

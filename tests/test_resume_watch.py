@@ -165,6 +165,7 @@ def test_interactive_resume_modal_frontend():
     assert 'id="rm-percent-badge"' in html, "index.html harus memuat #rm-percent-badge"
     assert 'id="rm-btn-resume"' in html, "index.html harus memuat tombol Lanjutkan"
     assert 'id="rm-btn-restart"' in html, "index.html harus memuat tombol Mulai dari Awal"
+    assert 'id="rm-btn-cancel"' in html, "index.html harus memuat tombol Batal"
     assert 'id="rm-close"' in html, "index.html harus memuat tombol close Batal (Esc)"
 
     # 2. style.css checks
@@ -176,12 +177,14 @@ def test_interactive_resume_modal_frontend():
     assert ".rm-progress-track" in css, "style.css harus memuat .rm-progress-track"
     assert ".rm-progress-fill" in css, "style.css harus memuat .rm-progress-fill"
     assert ".btn-resume-primary:focus-visible" in css, "style.css harus memiliki indikator :focus-visible pada tombol resume"
+    assert ".btn-resume-cancel" in css, "style.css harus memuat .btn-resume-cancel"
 
     # 3. app.js checks
     app_js_path = os.path.join(base_dir, "frontend", "js", "app.js")
     with open(app_js_path, "r", encoding="utf-8") as f:
         app_js = f.read()
     assert "dismissResumeModal" in app_js, "app.js harus mendefinisikan dismissResumeModal"
+    assert "title-modal" in app_js, "app.js dismissResumeModal harus mengembalikan ke title-modal"
     assert "rm-progress-fill" in app_js, "app.js harus memperbarui lebar rm-progress-fill"
     assert "ArrowLeft" in app_js and "ArrowRight" in app_js, "app.js harus menangani navigasi panah kiri/kanan"
 
