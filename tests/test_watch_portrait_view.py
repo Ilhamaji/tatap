@@ -134,6 +134,11 @@ def test_portrait_header_decluttering():
     assert "btnSubSelector.setVisibility(View.VISIBLE);" in code
     assert "tvSubStatus.setVisibility(View.VISIBLE);" in code
 
+    # Memastikan layoutTopBar diisolasi total (GONE di portrait) dan tombol kembali portrait tersedia di panel bawah
+    assert "btn_portrait_back" in layout_code, "Layout harus memuat tombol btn_portrait_back"
+    assert "btnPortraitBack.setOnClickListener(v -> handleBackAction());" in code, "btnPortraitBack harus terhubung ke handleBackAction"
+    assert "layoutTopBar.setVisibility(isLandscape ? visibility : View.GONE);" in code, "layoutTopBar harus GONE di portrait"
+
 
 def test_portrait_edge_swipe_and_back_invoked():
     """Memverifikasi bahwa sistem edge swipe gesture back berjalan responsif:

@@ -408,6 +408,11 @@ public class PlayerActivity extends Activity {
             }
             tvPortraitCurrentEp.setText("Memutar Episode " + ep);
 
+            android.widget.ImageButton btnPortraitBack = findViewById(R.id.btn_portrait_back);
+            if (btnPortraitBack != null) {
+                btnPortraitBack.setOnClickListener(v -> handleBackAction());
+            }
+
             if (btnPortraitSub != null) {
                 btnPortraitSub.setOnClickListener(v -> showSubtitleSelectorDialog());
             }
@@ -707,6 +712,7 @@ public class PlayerActivity extends Activity {
             if (tvSubStatus != null) tvSubStatus.setVisibility(View.GONE);
             if (btnScreenLock != null) btnScreenLock.setVisibility(View.GONE);
             if (layoutTopBar != null) {
+                layoutTopBar.setVisibility(View.GONE);
                 layoutTopBar.setPadding(dpToPx(12), dpToPx(8), dpToPx(12), dpToPx(8));
             }
             showSystemUiForPortrait();
@@ -998,10 +1004,11 @@ public class PlayerActivity extends Activity {
 
         playerView.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) visibility -> {
             boolean isVisible = (visibility == View.VISIBLE);
-            if (layoutTopBar != null) {
-                layoutTopBar.setVisibility(visibility);
-            }
             boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+            if (layoutTopBar != null) {
+                // Di mode portrait mobile, layoutTopBar MUTLAK GONE agar tidak menutupi panggung video
+                layoutTopBar.setVisibility(isLandscape ? visibility : View.GONE);
+            }
             if (btnScreenLock != null && !TvFocusHelper.isTv(this)) {
                 btnScreenLock.setVisibility(isVisible && !isScreenLocked && isLandscape ? View.VISIBLE : View.GONE);
             }
@@ -1026,18 +1033,31 @@ public class PlayerActivity extends Activity {
         gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
             @Override
             public boolean onSingleTapConfirmed(MotionEvent e) {
-                // Toggle visibility top bar
-                if (layoutTopBar.getVisibility() == View.VISIBLE) {
-                    layoutTopBar.setVisibility(View.GONE);
-                    applySystemUiVisibility();
-                } else {
-                    layoutTopBar.setVisibility(View.VISIBLE);
-                    handler.postDelayed(() -> {
-                        if (player != null && player.isPlaying()) {
-                            layoutTopBar.setVisibility(View.GONE);
-                            applySystemUiVisibility();
+                boolean isLandscape = TvFocusHelper.isTv(PlayerActivity.this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+                if (!isLandscape) {
+                    if (playerView != null) {
+                        if (playerView.isControllerFullyVisible()) {
+                            playerView.hideController();
+                        } else {
+                            playerView.showController();
                         }
-                    }, 4000);
+                    }
+                    return true;
+                }
+                // Toggle visibility top bar (Khusus landscape / TV)
+                if (layoutTopBar != null) {
+                    if (layoutTopBar.getVisibility() == View.VISIBLE) {
+                        layoutTopBar.setVisibility(View.GONE);
+                        applySystemUiVisibility();
+                    } else {
+                        layoutTopBar.setVisibility(View.VISIBLE);
+                        handler.postDelayed(() -> {
+                            if (player != null && player.isPlaying()) {
+                                layoutTopBar.setVisibility(View.GONE);
+                                applySystemUiVisibility();
+                            }
+                        }, 4000);
+                    }
                 }
                 return true;
             }
@@ -1154,13 +1174,17 @@ public class PlayerActivity extends Activity {
     private final Runnable hideTopBarRunnable = this::hideTopBar;
 
     private void showTopBarBriefly() {
+        boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (!isLandscape) {
+            if (layoutTopBar != null) layoutTopBar.setVisibility(View.GONE);
+            return;
+        }
         if (layoutTopBar != null) {
             layoutTopBar.setVisibility(View.VISIBLE);
             handler.removeCallbacks(hideTopBarRunnable);
             handler.postDelayed(hideTopBarRunnable, 5000);
         }
-        boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
-        if (btnScreenLock != null && !TvFocusHelper.isTv(this) && !isScreenLocked && isLandscape) {
+        if (btnScreenLock != null && !TvFocusHelper.isTv(this) && !isScreenLocked) {
             btnScreenLock.setVisibility(View.VISIBLE);
         }
     }

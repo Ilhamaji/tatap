@@ -470,7 +470,7 @@ function openPlayer(ep, resumeTime){
     var fetchToken = ++_playTokenCounter;
     cur.playToken = fetchToken;
     window.Tatap.getProgress(cur.slug, ep).then(function(r){
-      if(cur.playToken !== fetchToken) return;
+      if(cur.playToken !== fetchToken || (cur.ep && cur.ep !== ep)) return;
       if(r && r.success && r.data && r.data.should_resume && r.data.progress >= 15){
         var p = r.data.progress;
         var dur = r.data.duration || 0;
@@ -572,9 +572,9 @@ function openPlayer(ep, resumeTime){
           return;
         }
       }
-      if(cur.playToken === fetchToken) openPlayer(ep, 0);
+      if(cur.playToken === fetchToken && (!cur.ep || cur.ep === ep)) openPlayer(ep, 0);
     }).catch(function(){
-      if(cur.playToken === fetchToken) openPlayer(ep, 0);
+      if(cur.playToken === fetchToken && (!cur.ep || cur.ep === ep)) openPlayer(ep, 0);
     });
     return;
   }

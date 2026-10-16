@@ -85,6 +85,11 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
     - **Perlindungan Terhadap Race Condition:** Menambahkan token guard `fetchToken` pada pemanggilan asinkron `window.Tatap.getProgress()` di `openPlayer()` dan pembaruan instan `cur.ep` serta `updatePrevNext()` pada `stepEp()` untuk mencegah ketidaksinkronan state saat navigasi episode cepat.
     - **Isolasi Mutlak Web & Desktop:** Seluruh perubahan ini diterapkan khusus pada runtime antarmuka Web dan Desktop tanpa menyentuh satu baris pun kode native Android.
     - **Automated Tests:** Menambahkan 4 unit test otomatis baru pada `tests/test_post_watch_web.py` dan memperluas pengujian pada `tests/test_resume_watch.py` (total 105 pengujian otomatis 100% lulus).
+11. **Eliminasi Total Custom Header ExoPlayer di Atas Video Portrait & Tombol Kembali Panel Bawah (`activity_player.xml`, `PlayerActivity.java`):**
+    - **Panggung Video Bersih dari Header Gelap:** Mengunci `layout_top_bar` agar 100% `View.GONE` saat orientasi portrait ponsel (`updateLayoutForOrientation`, `setControllerVisibilityListener`, `onSingleTapConfirmed`, dan `showTopBarBriefly`). Ketukan pada layar video atau kemunculan timeline pengontrol native ExoPlayer tidak akan lagi memunculkan bilah header gelap di atas video yang mengganggu tontonan.
+    - **Tombol Kembali Ergonomis di Panel Bawah (`btn_portrait_back`):** Menambahkan tombol panah kembali Material (`ic_arrow_back.xml`) tepat di sebelah kiri judul anime pada panel kontrol bawah (`layout_portrait_bottom`), terhubung langsung ke `handleBackAction()` sehingga pengguna dapat bernavigasi kembali dengan mudah via satu jempol.
+    - **Isolasi Penuh Landscape & Android TV:** Mode landscape fullscreen dan antarmuka 10-Foot UI Android TV tetap mempertahankan header atas lengkap beserta seluruh 5 tombol kontrol (`btn_aspect`, `btn_quality`, `btn_speed`, `btn_sub_style`, `btn_sub_selector`) dan navigasi remote D-Pad.
+    - **Automated Tests:** Memperluas pengujian di `tests/test_watch_portrait_view.py` untuk memvalidasi keberadaan `btn_portrait_back` dan isolasi `layout_top_bar.setVisibility(isLandscape ? visibility : View.GONE)` (100% lulus).
 
 ## [2.7.1] - 2026-10-15
 
