@@ -77,6 +77,48 @@ Pilih paket instalasi resmi sesuai perangkat Anda:
 
 Seluruh arsip versi rilis stabil sebelumnya tersedia di [Halaman Rilis Resmi GitHub](https://github.com/asfaraguest/tatap/releases).
 
+### Menjalankan Versi Self-Hosted (Web Server / VPS / Localhost)
+
+Bagi pengguna yang ingin menjalankan Tatap sebagai layanan web mandiri (*self-hosted*) di server lokal, HomeLab, maupun VPS Linux:
+
+1. **Prasyarat Sistem:**
+   - Python 3.11 atau lebih baru (`python3 --version`)
+   - Git (`git --version`)
+
+2. **Kloning & Pemasangan Otomatis:**
+   ```bash
+   git clone https://github.com/asfaraguest/tatap.git
+   cd tatap
+   ./install.sh
+   ```
+   *Skrip `./install.sh` akan menyiapkan virtual environment Python (`venv/`), memasang seluruh pustaka dependensi (`requirements.txt`), serta menginisialisasi basis data SQLite lokal.*
+
+3. **Menjalankan Layanan:**
+   - **Mode Interaktif (Foreground):**
+     ```bash
+     ./run.sh
+     ```
+     Buka peramban di `http://127.0.0.1:8767`.
+   - **Mode Latar Belakang (Background Daemon Service):**
+     ```bash
+     ./manage.sh start     # Menjalankan server di latar belakang
+     ./manage.sh status    # Memeriksa status proses dan PID
+     ./manage.sh logs      # Melihat log aktivitas pemutaran & server
+     ./manage.sh stop      # Menghentikan server
+     ```
+
+4. **Akses Jaringan Lokal (LAN) atau Server VPS (Remote Access):**
+   Secara bawaan, backend mendengarkan pada host lokal `127.0.0.1`. Untuk membuka akses ke perangkat lain dalam satu jaringan Wi-Fi/LAN atau server publik, setel variabel `APP_HOST` ke `0.0.0.0`:
+   ```bash
+   APP_HOST=0.0.0.0 ./run.sh
+   ```
+   *Atau buat berkas konfigurasi `.env` pada direktori root:*
+   ```env
+   APP_HOST=0.0.0.0
+   APP_PORT=8767
+   ```
+   Akses antarmuka web dari perangkat apa pun di peramban via `http://<IP_SERVER_ANDA>:8767`.
+
 ---
 
 ## Panduan Navigasi & Kontrol
