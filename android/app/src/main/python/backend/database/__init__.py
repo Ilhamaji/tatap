@@ -87,6 +87,16 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (slug, episode)
         )""")
+        # Sanitasi satu kali relasi panzer yang salah ter-cache pada slug_map / cache
+        try:
+            await db.execute("DELETE FROM slug_map WHERE lower(title) LIKE '%panzer%' AND slug = 'girls-und-panzer-der-film-1161' AND lower(title) NOT LIKE '%film%'")
+            await db.execute("DELETE FROM slug_map WHERE lower(title) LIKE '%alice war%'")
+            await db.execute("DELETE FROM slug_map WHERE lower(title) LIKE '%finale%' OR lower(title) LIKE '%saishuushou%'")
+            await db.execute("DELETE FROM search_cache WHERE lower(query) LIKE '%panzer%'")
+            await db.execute("DELETE FROM browse_cache WHERE key LIKE '%panzer%'")
+            await db.execute("DELETE FROM browse_cache WHERE key LIKE '%relations%'")
+        except Exception:
+            pass
         await db.commit()
 
 def _now():

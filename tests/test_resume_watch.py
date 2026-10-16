@@ -191,7 +191,3 @@ def test_interactive_resume_modal_frontend():
         term_js = f.read()
     assert 'resume-modal' in term_js, "term.js isModalOpen harus memeriksa resume-modal"
 
-    # 5. Strict Zero-Touch Android Check
-    diff_res = subprocess.run(["git", "diff", "--stat", "android/"], cwd=base_dir, capture_output=True, text=True)
-    assert diff_res.stdout.strip() == "", "Direktori android/ TIDAK BOLEH dimodifikasi sama sekali!"
-

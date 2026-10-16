@@ -602,6 +602,8 @@ public class DetailActivity extends Activity {
                 holder.tvBadge.setTextColor(0xFFC084FC); // Purple
             } else if ("MOVIE".equalsIgnoreCase(relFormat)) {
                 holder.tvBadge.setTextColor(0xFFFACC15); // Gold/Yellow
+            } else if ("OVA".equalsIgnoreCase(relFormat) || "SPECIAL".equalsIgnoreCase(relFormat) || "ONA".equalsIgnoreCase(relFormat)) {
+                holder.tvBadge.setTextColor(0xFF34D399); // Emerald / Mint
             } else {
                 holder.tvBadge.setTextColor(0xFF94A3B8); // Slate
             }

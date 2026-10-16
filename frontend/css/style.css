@@ -327,6 +327,8 @@ main{width:100%;margin:0;padding:var(--pad-y) var(--pad-x) calc(var(--status-h) 
 .season-chip.sequel:hover{background:rgba(168,85,247,0.15)}
 .season-chip.movie{border-color:rgba(234,179,8,0.4);color:#facc15}
 .season-chip.movie:hover{background:rgba(234,179,8,0.15)}
+.season-chip.special{border-color:rgba(52,211,153,0.4);color:#34d399}
+.season-chip.special:hover{background:rgba(52,211,153,0.15)}
 .season-chip.active{background:var(--acc);color:#04121f;border-color:var(--acc);font-weight:700}
 .sheet-controls{display:flex;gap:clamp(6px,1vw,10px);align-items:center;flex-wrap:wrap;margin:12px 0}
 .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;flex:0 0 auto}

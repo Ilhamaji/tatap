@@ -56,6 +56,14 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
    - Menyambungkan event click listener pada item `:clear` (`cmd_item_clear`) untuk mereset pencarian/filter langsung ke tab musim ini.
    - Mempertahankan fungsionalitas CLI / input teks search bar (`executeCommand`) sehingga seluruh perintah teks tetap dapat diketikkan dan dijalankan 100% normal.
    - Menambahkan unit test otomatis pada [`tests/test_command_help_menu.py`](file:///home/b-ict/tatap/tests/test_command_help_menu.py) (4 unit test).
+7. **Perbaikan Metadata & Sinkronisasi Tombol Relasi Waralaba Anime Girls & Panzer (`hianime.py`, `otakudesu.py`, `main.py`, `DetailActivity.java`, `app.js`, `style.css`):**
+   - **Perbaikan URL Encoding & Aliasing HiAnime:** Memperbaiki pencarian keyword berkarakter ampersand `&` menggunakan `urllib.parse.quote_plus` dan mapping alias (`girls und panzer`, `girls and panzer`, `garupan` $\rightarrow$ `girls & panzer`) sehingga serial TV 12 episode utama (`girls-und-panzer-2670`) tampil akurat di urutan teratas.
+   - **Normalisasi Pencarian Otakudesu (Sub Indo):** Menormalkan query Otakudesu dari konjungsi Jerman *"und"* ke *"panzer"*, serta mencegah salah tangkap episode Saishuushou / Part lanjutan sehingga serial TV 12 episode (`girls-panzer-v979ece`) terhubung presisi.
+   - **Diferensiasi Presisi Format Serial TV vs Movie vs OVA/Special (`_is_title_match`):** Mencegah serial TV mencocokkan Movie (*Girls und Panzer der Film*) atau OVA secara keliru melalui validasi isolasi format ketat, kesesuaian part/saishuushou/finale, dan kata pembeda franchise (*anzio*, *taiyaki*, *alice*).
+   - **Prioritas Pelabelan Relasi Anime & Sinkronisasi Antarmuka:** Memperbaiki urutan pelabelan relasi pada `/api/anime/{slug}/relations` agar format fisik (`MOVIE`, `OVA`, `SPECIAL`) diprioritaskan sebelum fallback `Season 1`, mencegah film atau OVA salah dilabeli sebagai "Season 1".
+   - **Sinkronisasi Tampilan & Tombol Interaktif Multiplatform:** Memastikan seluruh tombol chip relasi waralaba anime di Android (`DetailActivity.java`) dan Web Desktop (`app.js`) tersinkronisasi, memiliki palet warna khas (Cyan untuk Prekuel, Ungu untuk Sekuel, Emas untuk Movie, Emerald/Mint untuk OVA/Special), tidak menampilkan chip redundant ke anime itu sendiri, dan dapat diklik untuk membuka entri anime tujuan secara instan.
+   - **Sanitasi Database Cache:** Membersihkan entri slug map, search cache, dan browse cache yang tercemar pada database SQLite lokal.
+   - **Automated Tests:** Menambahkan suite pengujian otomatis [`tests/test_girls_und_panzer_metadata.py`](file:///home/b-ict/tatap/tests/test_girls_und_panzer_metadata.py) (6 unit test).
 
 ## [2.7.1] - 2026-10-15
 

@@ -1,5 +1,5 @@
 """Port alur browse-and-play hianime.at (terinspirasi cara kerja pemain CLI)."""
-import os, sys, re, json, base64, html as htmlmod, threading, time as _time
+import os, sys, re, json, base64, html as htmlmod, threading, time as _time, urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import HI_BASE, HI_UA, XOR_KEY
 
@@ -359,15 +359,25 @@ _SEARCH_ALIASES = {
     "ghost in school": "ghost stories",
     "ghosts at school": "ghost stories",
     "gakkou no kaidan": "ghost stories",
+    "girls und panzer": "girls & panzer",
+    "girls and panzer": "girls & panzer",
+    "garupan": "girls & panzer",
 }
 
 def hianime_search(query: str, limit: int = 15):
     q_str = (query or "").strip()
     if not q_str or q_str.lower() == "hentai" or "hentai" in q_str.lower().split():
         return []
-    canonical = _SEARCH_ALIASES.get(q_str.lower())
-    q = re.sub(r"\s+", "+", canonical or q_str)
-    page = _fetch(SEARCH_API.format(q))
+    q_lower = q_str.lower()
+    canonical = _SEARCH_ALIASES.get(q_lower)
+    if not canonical:
+        if "girls und panzer" in q_lower and "film" not in q_lower and "movie" not in q_lower:
+            canonical = re.sub(r"\bgirls\s+und\s+panzer\b", "girls & panzer", q_str, flags=re.I)
+        elif "girls and panzer" in q_lower and "film" not in q_lower and "movie" not in q_lower:
+            canonical = re.sub(r"\bgirls\s+and\s+panzer\b", "girls & panzer", q_str, flags=re.I)
+    q_val = canonical or q_str
+    q_encoded = urllib.parse.quote_plus(q_val)
+    page = _fetch(SEARCH_API.format(q_encoded))
     if "<title>Just a moment" in page:
         raise RuntimeError("Blocked by cloudflare.")
     page = page.split('id="main-sidebar"')[0]

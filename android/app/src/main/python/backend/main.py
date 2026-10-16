@@ -509,7 +509,7 @@ def _slug_norm_match(title):
 def _extract_season_num(t: str) -> int:
     import re
     t = (t or "").lower()
-    m = re.search(r"\b(?:season\s*(\d+)|(\d+)(?:nd|rd|th|st)\s*season|part\s*(\d+)|s(\d+))\b", t)
+    m = re.search(r"\b(?:season\s*(\d+)|(\d+)(?:nd|rd|th|st)\s*season|part\s*(\d+)|s(\d+)|saishuushou\s*(\d+)|finale\s*(\d+))\b|(?:\b|\s)(\d+)$", t)
     if m:
         for g in m.groups():
             if g:
@@ -522,9 +522,17 @@ def _extract_season_num(t: str) -> int:
 
 def _clean_title_tokens(t: str) -> set:
     import re
-    t = re.sub(r"\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+)\b", "", t or "", flags=re.I)
+    t = (t or "").replace("&", " and ")
+    t = re.sub(r"\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+|saishuushou\s*\d+|finale\s*\d+)\b|(?:\b|\s)\d+$", "", t, flags=re.I)
     t = re.sub(r"[^a-zA-Z0-9\s]", " ", t)
-    return set(t.lower().split())
+    tokens = set()
+    for tok in t.lower().split():
+        if tok == "ovas": tok = "ova"
+        elif tok == "specials": tok = "special"
+        elif tok == "movies": tok = "movie"
+        elif tok == "finale": tok = "saishuushou"
+        tokens.add(tok)
+    return tokens
 
 
 def _is_title_match(target_title: str, candidate_title: str) -> bool:
@@ -532,9 +540,11 @@ def _is_title_match(target_title: str, candidate_title: str) -> bool:
     if not target_title or not candidate_title:
         return False
     # 1. Exact normalized match (tanpa spasi & simbol)
-    norm_a = re.sub(r"[^a-zA-Z0-9]", "", target_title.lower())
-    norm_b = re.sub(r"[^a-zA-Z0-9]", "", candidate_title.lower())
-    if norm_a == norm_b:
+    def _norm(s):
+        s = (s or "").lower().replace("&", "and")
+        s = re.sub(r"\bund\b", "and", s)
+        return re.sub(r"[^a-zA-Z0-9]", "", s)
+    if _norm(target_title) == _norm(candidate_title):
         return True
 
     # 2. Validasi nomor season / part (mencegah Season 2 match ke Season 1)
@@ -549,7 +559,23 @@ def _is_title_match(target_title: str, candidate_title: str) -> bool:
     if not tokens_a or not tokens_b:
         return False
 
-    stopwords = {"the", "a", "an", "of", "in", "to", "and", "no", "wa", "ga", "ni", "de"}
+    # 4. Isolasi format Movie/Film vs Serial
+    movie_keywords = {"movie", "film", "gekijouban"}
+    if bool(tokens_a.intersection(movie_keywords)) != bool(tokens_b.intersection(movie_keywords)):
+        return False
+
+    # 5. Isolasi format OVA/Special vs Serial
+    ova_keywords = {"ova", "special", "oad"}
+    if bool(tokens_a.intersection(ova_keywords)) != bool(tokens_b.intersection(ova_keywords)):
+        return False
+
+    # 6. Validasi kata pembeda spesifik franchise
+    distinct_tags = {"anzio", "taiyaki", "saishuushou", "alice"}
+    for tag in distinct_tags:
+        if (tag in tokens_a) != (tag in tokens_b):
+            return False
+
+    stopwords = {"the", "a", "an", "of", "in", "to", "and", "und", "der", "die", "das", "no", "wa", "ga", "ni", "de", "series"}
     sig_common = tokens_a.intersection(tokens_b) - stopwords
     sig_a = tokens_a - stopwords
     sig_b = tokens_b - stopwords
@@ -568,18 +594,32 @@ async def _match_slug_one(loop, title, alt_title=""):
         return slug
     try:
         res = await loop.run_in_executor(None, lambda t=title: hi.hianime_search(t, 5))
+        picked = None
         if res:
-            picked = None
             for c in res:
                 c_title = c.get("title", "")
                 if _is_title_match(title, c_title) or (alt_title and _is_title_match(alt_title, c_title)):
                     picked = c
                     break
-            # Validasi ketat: HANYA gunakan jika benar-benar cocok.
-            # JANGAN PERNAH fallback ke res[0] secara buta agar judul & thumbnail tidak tertukar!
-            if picked:
-                await set_slug_map(title, picked["id"])
-                return picked["id"]
+
+        # Fallback pencarian tanpa kata generik "series" atau tanpa subtitle setelah ":" jika belum cocok
+        if not picked and (" series" in title.lower() or ":" in title):
+            clean_q = re.sub(r"\bseries\b", "", title, flags=re.I).strip()
+            clean_q = re.sub(r"\s+", " ", clean_q).strip()
+            if clean_q and clean_q.lower() != title.lower():
+                res2 = await loop.run_in_executor(None, lambda t=clean_q: hi.hianime_search(t, 5))
+                if res2:
+                    for c in res2:
+                        c_title = c.get("title", "")
+                        if _is_title_match(title, c_title) or (alt_title and _is_title_match(alt_title, c_title)):
+                            picked = c
+                            break
+
+        # Validasi ketat: HANYA gunakan jika benar-benar cocok.
+        # JANGAN PERNAH fallback ke res[0] secara buta agar judul & thumbnail tidak tertukar!
+        if picked:
+            await set_slug_map(title, picked["id"])
+            return picked["id"]
     except Exception:
         pass
     return None
@@ -924,19 +964,20 @@ async def anime_relations_endpoint(slug: str, title: str = Query("")):
             if rel_type in ("SEQUEL", "ALTERNATIVE", "SUMMARY") and not matched_slug:
                 continue
 
-            # Buat label yang mudah dimengerti user (misal: "Season 1", "Prekuel", "Sekuel", "Movie")
+            # Buat label yang mudah dimengerti user (misal: "Season 1", "Prekuel", "Sekuel", "Movie", "OVA")
             label = "Terkait"
             season_num = _extract_season_num(r_title) or _extract_season_num(r_romaji)
-            if is_origin or (rel_type == "PREQUEL" and season_num == 1 and "season" not in r_title.lower()):
+            if r_fmt == "MOVIE":
+                part_m = re.search(r'\bpart\s*(\d+)\b', r_title, re.I)
+                label = f"Movie Part {part_m.group(1)}" if part_m else "Movie"
+            elif r_fmt in ("OVA", "ONA", "SPECIAL"):
+                label = "Special" if r_fmt == "SPECIAL" else r_fmt
+            elif is_origin or (rel_type == "PREQUEL" and season_num == 1 and "season" not in r_title.lower()):
                 label = "Season 1"
             elif rel_type == "PREQUEL":
                 label = f"Season {season_num}" if season_num > 1 else "Prekuel"
             elif rel_type == "SEQUEL":
                 label = f"Season {season_num}" if season_num > 1 else "Sekuel"
-            elif r_fmt == "MOVIE":
-                label = "Movie"
-            elif r_fmt in ("OVA", "ONA", "SPECIAL"):
-                label = r_fmt
 
             results.append({
                 "relation": rel_type,

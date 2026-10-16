@@ -145,14 +145,15 @@ function loadRelations(){
     var count=0;
     for(var i=0;i<rels.length;i++){
       (function(rel){
-        if(!rel.slug)return; // Lewati jika belum termap ke sumber video
+        if(!rel.slug || rel.slug === thisSlug)return; // Lewati jika belum termap ke sumber video atau menunjuk ke anime aktif
         count++;
         var b=document.createElement("button");
         var cls="season-chip";
         var icon='<svg class="ui-icon"><use href="#icon-tv"/></svg>';
-        if(rel.relation==="PREQUEL"){cls+=" prequel";icon='<svg class="ui-icon"><use href="#icon-step-prev"/></svg>';}
+        if(rel.format==="MOVIE"){cls+=" movie";icon='<svg class="ui-icon"><use href="#icon-film"/></svg>';}
+        else if(rel.format==="OVA"||rel.format==="SPECIAL"||rel.format==="ONA"){cls+=" special";icon='<svg class="ui-icon"><use href="#icon-disc"/></svg>';}
+        else if(rel.relation==="PREQUEL"){cls+=" prequel";icon='<svg class="ui-icon"><use href="#icon-step-prev"/></svg>';}
         else if(rel.relation==="SEQUEL"){cls+=" sequel";icon='<svg class="ui-icon"><use href="#icon-step-next"/></svg>';}
-        else if(rel.format==="MOVIE"){cls+=" movie";icon='<svg class="ui-icon"><use href="#icon-film"/></svg>';}
         b.className=cls;
         b.title=rel.title+(rel.year?" ("+rel.year+")":"");
         b.innerHTML="<span>"+icon+"</span> <b>"+rel.label+"</b>: "+esc(rel.title);
