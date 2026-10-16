@@ -186,7 +186,8 @@
         android:paddingBottom="16dp"
         android:paddingStart="@dimen/tv_overscan_horizontal"
         android:paddingEnd="@dimen/tv_overscan_horizontal"
-        android:background="#99000000">
+        android:background="#99000000"
+        android:visibility="gone">
 
         <ImageButton
             android:id="@+id/btn_player_back"

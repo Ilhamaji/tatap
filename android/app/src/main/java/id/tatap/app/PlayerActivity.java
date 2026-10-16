@@ -448,13 +448,6 @@ public class PlayerActivity extends Activity {
             }
         }
 
-        updateLayoutForOrientation(getResources().getConfiguration().orientation);
-
-        // Pastikan hideSystemUi / showSystemUi dieksekusi setelah decorView terpasang di window
-        try {
-            getWindow().getDecorView().post(this::applySystemUiVisibility);
-        } catch (Throwable ignored) {}
-
         ensureEpisodeListLoaded();
 
         playerView = findViewById(R.id.player_view);
@@ -466,6 +459,10 @@ public class PlayerActivity extends Activity {
         tvRippleRight = findViewById(R.id.tv_ripple_right);
 
         layoutTopBar = findViewById(R.id.layout_top_bar);
+        boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+        if (layoutTopBar != null) {
+            layoutTopBar.setVisibility(isLandscape ? View.VISIBLE : View.GONE);
+        }
         tvPlayerTitle = findViewById(R.id.tv_player_title);
         tvSubStatus = findViewById(R.id.tv_sub_status);
         btnPlayerBack = findViewById(R.id.btn_player_back);
@@ -552,6 +549,13 @@ public class PlayerActivity extends Activity {
                 playerView.setResizeMode(currentResizeMode);
             }
             updateAspectButtonLabel();
+        } catch (Throwable ignored) {}
+
+        updateLayoutForOrientation(getResources().getConfiguration().orientation);
+
+        // Pastikan hideSystemUi / showSystemUi dieksekusi setelah decorView terpasang di window
+        try {
+            getWindow().getDecorView().post(this::applySystemUiVisibility);
         } catch (Throwable ignored) {}
 
         applySubtitleStyle();

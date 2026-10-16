@@ -138,6 +138,9 @@ def test_portrait_header_decluttering():
     assert "btn_portrait_back" in layout_code, "Layout harus memuat tombol btn_portrait_back"
     assert "btnPortraitBack.setOnClickListener(v -> handleBackAction());" in code, "btnPortraitBack harus terhubung ke handleBackAction"
     assert "layoutTopBar.setVisibility(isLandscape ? visibility : View.GONE);" in code, "layoutTopBar harus GONE di portrait"
+    assert 'android:id="@+id/layout_top_bar"' in layout_code
+    assert 'android:visibility="gone"' in layout_code, "layout_top_bar harus berstatus gone di XML agar tidak berkedip saat inisialisasi"
+    assert "layoutTopBar.setVisibility(isLandscape ? View.VISIBLE : View.GONE);" in code, "layoutTopBar harus langsung diset ke GONE saat orientasi portrait"
 
 
 def test_portrait_edge_swipe_and_back_invoked():
