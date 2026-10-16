@@ -57,8 +57,59 @@ def test_post_watch_js_logic():
     assert "ep-badge-last" in js, "renderEpGrid harus merender badge TERAKHIR"
     assert "scrollIntoView" in js, "renderEpGrid harus mendukung auto-scroll ke episode terakhir yang ditonton"
 
+    # 5. Token invalidation & background playback prevention in closePlayer
+    assert "cur.playToken = ++_playTokenCounter;" in js, "closePlayer harus meng-invalidasi cur.playToken untuk membatalkan in-flight requests"
+    assert 'if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;' in js, "resolve callback harus memeriksa visibilitas player-modal"
+
+
+def test_cross_title_marker_isolation():
+    """Memverifikasi isolasi penanda episode terakhir antar judul anime (zero cross-contamination)."""
+    app_js_path = os.path.join(BASE_DIR, "frontend", "js", "app.js")
+    with open(app_js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+
+    # Verifikasi openTitle mereset state tontonan
+    assert "cur.lastWatchedEp=null;" in js or "cur.lastWatchedEp = null;" in js, "openTitle wajib mereset cur.lastWatchedEp"
+    assert "cur.watched={};" in js or "cur.watched = {};" in js, "openTitle wajib mereset cur.watched"
+
+    # Verifikasi loadEps juga mereset state tontonan sebelum membaca storage
+    assert "cur.activeEpRange = null;\n  cur.lastWatchedEp = null;\n  cur.watched = {};" in js, "loadEps wajib mereset state sebelum membaca storage"
+
+
+def test_race_condition_fast_click_and_close_protection():
+    """Memverifikasi guard pencegahan pemutaran audio/video di background saat user klik cepat lalu menutup player."""
+    app_js_path = os.path.join(BASE_DIR, "frontend", "js", "app.js")
+    with open(app_js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+
+    # 1. closePlayer meng-invalidasi playToken
+    assert "cur.playToken = ++_playTokenCounter;" in js, "closePlayer harus menaikkan playToken"
+
+    # 2. closePlayer menghentikan pemutaran audio/video secara sinkron
+    assert 'v.pause()' in js, "closePlayer harus mem-pause video"
+    assert 'v.removeAttribute("src")' in js, "closePlayer harus mengosongkan atribut src video"
+    assert 'v.load()' in js, "closePlayer harus me-reset elemen video"
+
+    # 3. playUrl memeriksa apakah player-modal tersembunyi
+    assert 'if(!pm || pm.classList.contains("hidden") || (token && cur.playToken !== token))' in js, "playUrl harus meng-abort jika player-modal tersembunyi"
+    assert 'if(pm.classList.contains("hidden") || (token && cur.playToken !== token))' in js, "playUrl harus memeriksa visibilitas sebelum memanggil v.play()"
+
+    # 4. dismissResumeModal dan penutupan title-modal meng-invalidasi playToken
+    assert 'cur.playToken = ++_playTokenCounter;\n  var savedSlug = cur.slug;' in js, "dismissResumeModal harus meng-invalidasi token"
+
+
+def test_deadlock_elimination_in_open_player():
+    """Memverifikasi penghapusan guard pemblokir yang menyebabkan deadlock saat berpindah episode."""
+    app_js_path = os.path.join(BASE_DIR, "frontend", "js", "app.js")
+    with open(app_js_path, "r", encoding="utf-8") as f:
+        js = f.read()
+
+    assert "(cur.ep && cur.ep !== ep)" not in js, "Pengecekan keliru (cur.ep && cur.ep !== ep) yang memicu deadlock harus dihapus dari openPlayer"
+    assert "cur.playToken !== fetchToken || cur.slug !== reqSlug" in js, "openPlayer harus menggunakan guard berbasis token dan slug"
+
 
 def test_android_native_untouched_post_watch():
     """Direktif isolasi ketat: verifikasi isolasi task frontend web."""
     pass
+
 

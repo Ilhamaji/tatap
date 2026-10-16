@@ -113,6 +113,9 @@ function toggleModalBookmark(){
 function openTitle(slug,title,poster,type,epsCounter){
   cur.slug=slug;cur.title=title;cur.poster=poster||cur.poster||"";cur.type=type||cur.type||"";cur.eps=[];
   cur.eps_counter=epsCounter||"";
+  cur.lastWatchedEp=null;
+  cur.watched={};
+  cur.activeEpRange=null;
   setPlaySpeed(1.0, false);
   renderSourceUI();
   $("tm-title").textContent=title;
@@ -181,8 +184,10 @@ function recordEpisodeWatched(slug, ep){
   ep = parseInt(ep);
   if(isNaN(ep)) return;
   if(!cur.watched) cur.watched = {};
-  cur.watched[ep] = 1;
-  cur.lastWatchedEp = ep;
+  if(cur.slug === slug){
+    cur.watched[ep] = 1;
+    cur.lastWatchedEp = ep;
+  }
 
   try {
     localStorage.setItem("tatap_last_ep_" + slug, String(ep));
@@ -268,11 +273,14 @@ function renderEpRanges(){
 
 function loadEps(){
   cur.activeEpRange = null;
-  if(cur.slug){
+  cur.lastWatchedEp = null;
+  cur.watched = {};
+  var thisSlug = cur.slug;
+  if(thisSlug){
     try {
-      var localWatched = JSON.parse(localStorage.getItem("tatap_watched_" + cur.slug) || "{}");
+      var localWatched = JSON.parse(localStorage.getItem("tatap_watched_" + thisSlug) || "{}");
       cur.watched = Object.assign({}, localWatched);
-      var s = localStorage.getItem("tatap_last_ep_" + cur.slug);
+      var s = localStorage.getItem("tatap_last_ep_" + thisSlug);
       if(s) cur.lastWatchedEp = parseInt(s);
     } catch(e){}
   }
@@ -289,43 +297,48 @@ function loadEps(){
     }
     return base + " · " + cur.mode.toUpperCase();
   };
-  var cached = _epsMemCache[cur.slug];
-  if(cached){
+  var cached = _epsMemCache[thisSlug];
+  if(cached && thisSlug === cur.slug){
     cur.eps = cached;
     $("tm-count").textContent = countLabel();
     renderEpRanges();
     renderEpGrid();
   }
 
-  window.Tatap.episodes(cur.slug).then(function(r){
+  window.Tatap.episodes(thisSlug).then(function(r){
+    if(thisSlug !== cur.slug) return;
     if(!r.success){
       if(!cached) $("tm-count").textContent = "error: " + r.error;
       return;
     }
     cur.eps = r.data.episodes || [];
-    _epsMemCache[cur.slug] = cur.eps;
+    _epsMemCache[thisSlug] = cur.eps;
     window.Tatap.history().then(function(h){
+      if(thisSlug !== cur.slug) return;
+      var foundInHist = false;
       (h.data || []).forEach(function(x){
-        if(x.slug === cur.slug){
+        if(x.slug === thisSlug){
+          foundInHist = true;
           if(!cur.watched) cur.watched = {};
           cur.watched[x.episode] = 1;
-          if(!cur.lastWatchedEp) cur.lastWatchedEp = x.episode;
+          cur.lastWatchedEp = x.episode;
         }
       });
-      if(cur.slug){
+      if(foundInHist && thisSlug === cur.slug && cur.lastWatchedEp){
         try {
-          var wKey = "tatap_watched_" + cur.slug;
+          var wKey = "tatap_watched_" + thisSlug;
           var wObj = {};
           try { wObj = JSON.parse(localStorage.getItem(wKey) || "{}"); } catch(e){}
           for(var k in cur.watched){ wObj[k] = 1; }
           localStorage.setItem(wKey, JSON.stringify(wObj));
-          if(cur.lastWatchedEp) localStorage.setItem("tatap_last_ep_" + cur.slug, String(cur.lastWatchedEp));
+          localStorage.setItem("tatap_last_ep_" + thisSlug, String(cur.lastWatchedEp));
         } catch(e){}
       }
       $("tm-count").textContent = countLabel();
       renderEpRanges();
       renderEpGrid();
     }).catch(function(){
+      if(thisSlug !== cur.slug) return;
       $("tm-count").textContent = countLabel();
       renderEpRanges();
       renderEpGrid();
@@ -446,6 +459,7 @@ function closeResumeModal(){
 }
 
 function dismissResumeModal(){
+  cur.playToken = ++_playTokenCounter;
   var savedSlug = cur.slug;
   var savedTitle = cur.title;
   var savedPoster = cur.poster;
@@ -469,8 +483,9 @@ function openPlayer(ep, resumeTime){
   if(resumeTime === undefined){
     var fetchToken = ++_playTokenCounter;
     cur.playToken = fetchToken;
-    window.Tatap.getProgress(cur.slug, ep).then(function(r){
-      if(cur.playToken !== fetchToken || (cur.ep && cur.ep !== ep)) return;
+    var reqSlug = cur.slug;
+    window.Tatap.getProgress(reqSlug, ep).then(function(r){
+      if(cur.playToken !== fetchToken || cur.slug !== reqSlug) return;
       if(r && r.success && r.data && r.data.should_resume && r.data.progress >= 15){
         var p = r.data.progress;
         var dur = r.data.duration || 0;
@@ -545,7 +560,7 @@ function openPlayer(ep, resumeTime){
           if(bRestart){
             bRestart.onclick = function(){
               cleanupModal();
-              window.Tatap.saveProgress(cur.slug, ep, 0, dur).catch(function(){});
+              window.Tatap.saveProgress(reqSlug, ep, 0, dur).catch(function(){});
               openPlayer(ep, 0);
             };
           }
@@ -572,17 +587,18 @@ function openPlayer(ep, resumeTime){
           return;
         }
       }
-      if(cur.playToken === fetchToken && (!cur.ep || cur.ep === ep)) openPlayer(ep, 0);
+      if(cur.playToken === fetchToken && cur.slug === reqSlug) openPlayer(ep, 0);
     }).catch(function(){
-      if(cur.playToken === fetchToken && (!cur.ep || cur.ep === ep)) openPlayer(ep, 0);
+      if(cur.playToken === fetchToken && cur.slug === reqSlug) openPlayer(ep, 0);
     });
     return;
   }
 
   cur.ep=ep;
   cur.playerOpenedAt=Date.now();
-  cur.playToken = ++_playTokenCounter;
-  var token = cur.playToken;
+  var token = ++_playTokenCounter;
+  cur.playToken = token;
+  var reqSlug = cur.slug;
   recordEpisodeWatched(cur.slug, ep);
   closeTitle();
   closeResumeModal();
@@ -595,7 +611,7 @@ function openPlayer(ep, resumeTime){
   var t0=Date.now();
   var src=cur.source||"";
   window.Tatap.resolve(cur.slug,ep,cur.mode,cur.quality,src).then(function(r){
-    if(cur.playToken !== token) return;
+    if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;
     if(!r || !r.success){
       $("pm-spinner").classList.add("hidden");
       $("pm-status").textContent="ERROR: "+(r && r.error ? r.error : "gagal resolve stream");
@@ -618,19 +634,16 @@ function openPlayer(ep, resumeTime){
       };
     }
     renderVariants();
-    // Render dropdown subtitle: pilih track yang cocok dengan preferensi user
-    // (cur.subLang) atau default: true. Simpan URL track yang aktif.
     cur.activeSub = pickSubtitleUrl(r.data.subtitles || [], cur.subLang);
     renderSubtitles(r.data.subtitles || [], cur.activeSub);
-    // Prefetch subtitle segera secara paralel sebelum video selesai buffering
     if(cur.activeSub){
       prefetchSubtitleTrack(cur.activeSub, r.data.referer);
     }
     var streamUrl = (r.data.master && (r.data.master.indexOf(".m3u8") >= 0 || r.data.master.indexOf("/hls") >= 0)) ? r.data.master : (picked ? picked.url : "");
-    playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime);
+    playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime,token);
     window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode,progress:resumeTime||0}).then(function(){renderContinue();});
   }).catch(function(err){
-    if(cur.playToken !== token) return;
+    if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;
     $("pm-spinner").classList.add("hidden");
     $("pm-status").textContent="KONEKSI GAGAL: "+(err&&err.message||err);
     toast("Koneksi gagal saat resolve: "+(err&&err.message||err));
@@ -1497,8 +1510,14 @@ function armAutohide(){
   v.addEventListener("seeking",show);
   show();
 }
-function playUrl(url,referrer,sub,subRef,resumeTime){
+function playUrl(url,referrer,sub,subRef,resumeTime,token){
+  var pm = $("player-modal");
   var v=$("vid");
+  if(!pm || pm.classList.contains("hidden") || (token && cur.playToken !== token)){
+    if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
+    if(v){try{v.pause();v.removeAttribute("src");v.load();}catch(e){}}
+    return;
+  }
   if(v){
     v.muted=false;
     if(v.volume===0) v.volume=1.0;
@@ -1704,6 +1723,11 @@ function playUrl(url,referrer,sub,subRef,resumeTime){
   }else{
     v.src=isHls?prox:url;
   }
+  if(pm.classList.contains("hidden") || (token && cur.playToken !== token)){
+    if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
+    if(v){try{v.pause();v.removeAttribute("src");v.load();}catch(e){}}
+    return;
+  }
   v.play().catch(function(err){
     $("pm-spinner").classList.add("hidden");
     if(err && err.name === "NotAllowedError"){
@@ -1767,17 +1791,46 @@ function stepEp(d){
   else toast(d>0?"Sudah episode terakhir":"Sudah episode pertama");
 }
 function closePlayer(){
+  // 1. Invalidate all pending async playback tokens immediately
+  cur.playToken = ++_playTokenCounter;
+
+  // 2. Safely stop and destroy video & HLS stream
   var v=$("vid");
   try{recordWatchProgress(true);}catch(e){}
-  try{v.pause();}catch(e){}
+  if(v){
+    try{v.pause();}catch(e){}
+    v.removeAttribute("src");
+    try{v.load();}catch(e){}
+  }
   if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
   cur.cues=[];
   clearOverlay();
   syncNativeTextTrack("", [], "");
-  v.removeAttribute("src");
-  try{v.load();}catch(e){}
+
+  // 3. Hide modal & spinner
   $("player-modal").classList.add("hidden");
   $("pm-spinner").classList.add("hidden");
+
+  // 4. Exit fullscreen safely if active
+  if(document.fullscreenElement || document.webkitFullscreenElement){
+    try{
+      if(document.exitFullscreen) document.exitFullscreen();
+      else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }catch(e){}
+  }
+
+  // 5. Perilaku post-watch: kembalikan user ke list episode anime dengan marker last watch yang aktif
+  var savedSlug = cur.slug;
+  if(savedSlug){
+    var tm = $("title-modal");
+    if(cur.eps && cur.eps.length > 0){
+      if(tm) tm.classList.remove("hidden");
+      renderEpRanges();
+      renderEpGrid();
+    } else {
+      openTitle(savedSlug, cur.title, cur.poster, cur.type, cur.eps_counter);
+    }
+  }
 }
 function playMPV(){
   window.Tatap.playMPV({slug:cur.slug,title:cur.title,ep:cur.ep||1,mode:cur.mode,quality:cur.quality}).then(function(r){
@@ -2112,29 +2165,14 @@ function init(){
     v.addEventListener("ended",function(){
       var endedSlug = cur.slug;
       var endedEp = cur.ep;
-      var endedTitle = cur.title;
-      var endedPoster = cur.poster;
-      var endedType = cur.type;
-      var endedCounter = cur.eps_counter;
 
       if(endedSlug && endedEp){
         window.Tatap.saveProgress(endedSlug, endedEp, 0, Math.floor(v.duration||0)).catch(function(){});
         recordEpisodeWatched(endedSlug, endedEp);
       }
 
-      if(document.fullscreenElement || document.webkitFullscreenElement){
-        try{
-          if(document.exitFullscreen) document.exitFullscreen();
-          else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
-        }catch(e){}
-      }
-
       closePlayer();
-
-      if(endedSlug){
-        openTitle(endedSlug, endedTitle, endedPoster, endedType, endedCounter);
-        toast("Episode " + endedEp + " selesai diputar");
-      }
+      toast("Episode " + endedEp + " selesai diputar");
     });
     v.addEventListener("seeked",paintCue);
     v.addEventListener("loadedmetadata",function(){
@@ -2223,11 +2261,18 @@ function init(){
       b.classList.add("active");cur.quality=b.getAttribute("data-q");
     });
   });
-  $("ep-filter").addEventListener("input",renderEpGrid);
-  $("tm-close").addEventListener("click",closeTitle);
+  $("tm-close").addEventListener("click",function(){
+    cur.playToken = ++_playTokenCounter;
+    closeTitle();
+  });
   var tmBmBtn=$("tm-bookmark-btn");
   if(tmBmBtn) tmBmBtn.addEventListener("click",toggleModalBookmark);
-  $("title-modal").addEventListener("click",function(e){if(e.target===this)closeTitle();});
+  $("title-modal").addEventListener("click",function(e){
+    if(e.target===this){
+      cur.playToken = ++_playTokenCounter;
+      closeTitle();
+    }
+  });
   $("pm-close").addEventListener("click",closePlayer);
   $("player-modal").addEventListener("click",function(e){
     if(Date.now() - (cur.playerOpenedAt || 0) < 500) return;
