@@ -52,34 +52,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Item: :musim -->
-            <LinearLayout
-                android:id="@+id/cmd_item_musim"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":musim"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tampilkan anime yang tayang musim ini"
-          android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
             <!-- Item: :season -->
             <LinearLayout
                 android:id="@+id/cmd_item_season"
@@ -103,90 +75,6 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Filter anime spesifik per musim &amp; tahun (misal: :season fall 2024)"
-          android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <!-- Item: :genre -->
-            <LinearLayout
-                android:id="@+id/cmd_item_genre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":genre [nama]"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Buka pemilih genre anime interaktif atau ketik :genre action"
-          android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <!-- Item: :airing -->
-            <LinearLayout
-                android:id="@+id/cmd_item_airing"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":airing"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Tampilkan anime yang masih sedang tayang"
-          android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <!-- Item: :katalog -->
-            <LinearLayout
-                android:id="@+id/cmd_item_katalog"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":katalog"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Buka katalog anime lengkap berdasarkan popularitas"
           android:textColor="#8892B0"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />
@@ -440,62 +328,6 @@
                     android:layout_height="wrap_content"
                     android:text="Buka riwayat log aktivitas penerjemahan subtitle VTT"
           android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <!-- Item: :riwayat -->
-            <LinearLayout
-                android:id="@+id/cmd_item_riwayat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":riwayat"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Buka daftar riwayat anime yang pernah Anda tonton (:riwayat clear untuk hapus)"
-          android:textColor="#8892B0"
-                    android:textSize="11sp"
-                    android:fontFamily="monospace" />
-            </LinearLayout>
-
-            <!-- Item: :favorit -->
-            <LinearLayout
-                android:id="@+id/cmd_item_favorit"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_command_tag"
-                android:orientation="vertical"
-                android:padding="8dp"
-                android:layout_marginBottom="6dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=":favorit"
-                    android:textColor="#38BDF8"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:fontFamily="monospace" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Buka daftar bookmark anime favorit yang Anda simpan"
-                    android:textColor="#8892B0"
                     android:textSize="11sp"
                     android:fontFamily="monospace" />
             </LinearLayout>

@@ -50,6 +50,12 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk pe
    - Pilihan filter musim mencakup: *Semua Musim* (`""`), *Musim Semi / Spring* (`"spring"`), *Musim Panas / Summer* (`"summer"`), *Musim Gugur / Fall* (`"fall"`), dan *Musim Dingin / Winter* (`"winter"`).
    - Dilengkapi dukungan visual chip interaktif dengan ikon vektor `ic_tab_season.xml` di Android, respon D-pad remote TV (`TvFocusHelper.attachFocusScale`), serta sinkronisasi dinamis pada header ringkasan filter katalog dan cache in-memory.
    - Menambahkan unit test otomatis pada [`tests/test_catalog_filter.py`](file:///home/b-ict/tatap/tests/test_catalog_filter.py) (6 unit test).
+6. **Pembersihan Perintah Navigasi Tab pada Dialog Daftar Perintah Android (`dialog_command_help.xml`, `MainActivity.java`):**
+   - Menghapus 6 item perintah yang fungsinya telah tersedia secara permanen sebagai tombol pada horizontal tab menu di layar utama (`:musim`, `:airing`, `:riwayat`, `:favorit`, `:katalog`, `:genre`).
+   - Merampingkan dialog Daftar Perintah agar fokus pada 12 perintah utilitas, sistem, AI translation (`:ai`, `:apikey`, `:gemini`, `:groq`, `:ollama`, `:model`, `:logs`), konektivitas (`:source`, `:ping`), filter berargumen (`:season [musim] [tahun]`), update checker (`:update`), dan reset (`:clear`).
+   - Menyambungkan event click listener pada item `:clear` (`cmd_item_clear`) untuk mereset pencarian/filter langsung ke tab musim ini.
+   - Mempertahankan fungsionalitas CLI / input teks search bar (`executeCommand`) sehingga seluruh perintah teks tetap dapat diketikkan dan dijalankan 100% normal.
+   - Menambahkan unit test otomatis pada [`tests/test_command_help_menu.py`](file:///home/b-ict/tatap/tests/test_command_help_menu.py) (4 unit test).
 
 ## [2.7.1] - 2026-10-15
 

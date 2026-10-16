@@ -1301,32 +1301,12 @@ public class MainActivity extends Activity {
         Button btnClose = dialog.findViewById(R.id.btn_close_help_dialog);
         btnClose.setOnClickListener(v -> dialog.dismiss());
 
-        dialog.findViewById(R.id.cmd_item_musim).setOnClickListener(v -> {
-            dialog.dismiss();
-            resetFiltersToTab("musim");
-        });
-
         dialog.findViewById(R.id.cmd_item_season).setOnClickListener(v -> {
             dialog.dismiss();
             etSearch.setText(":season fall 2024");
             etSearch.setSelection(etSearch.getText().length());
             etSearch.requestFocus();
             showCommandOutput("> tatap$ Silakan tentukan musim & tahun lalu tekan Enter", false);
-        });
-
-        dialog.findViewById(R.id.cmd_item_genre).setOnClickListener(v -> {
-            dialog.dismiss();
-            showGenreSelectorDialog();
-        });
-
-        dialog.findViewById(R.id.cmd_item_airing).setOnClickListener(v -> {
-            dialog.dismiss();
-            resetFiltersToTab("airing");
-        });
-
-        dialog.findViewById(R.id.cmd_item_katalog).setOnClickListener(v -> {
-            dialog.dismiss();
-            resetFiltersToTab("katalog");
         });
 
         dialog.findViewById(R.id.cmd_item_source).setOnClickListener(v -> {
@@ -1383,22 +1363,6 @@ public class MainActivity extends Activity {
             showTranslateLogsDialog();
         });
 
-        View itemRiwayat = dialog.findViewById(R.id.cmd_item_riwayat);
-        if (itemRiwayat != null) {
-            itemRiwayat.setOnClickListener(v -> {
-                dialog.dismiss();
-                switchView("riwayat");
-            });
-        }
-
-        View itemFavorit = dialog.findViewById(R.id.cmd_item_favorit);
-        if (itemFavorit != null) {
-            itemFavorit.setOnClickListener(v -> {
-                dialog.dismiss();
-                switchView("favorit");
-            });
-        }
-
         View itemUpdate = dialog.findViewById(R.id.cmd_item_update);
         if (itemUpdate != null) {
             itemUpdate.setOnClickListener(v -> {
@@ -1407,14 +1371,20 @@ public class MainActivity extends Activity {
             });
         }
 
+        View itemClear = dialog.findViewById(R.id.cmd_item_clear);
+        if (itemClear != null) {
+            itemClear.setOnClickListener(v -> {
+                dialog.dismiss();
+                resetFiltersToTab("musim");
+            });
+        }
+
         int[] cmdItemIds = new int[]{
             R.id.btn_close_help_dialog,
-            R.id.cmd_item_musim, R.id.cmd_item_season, R.id.cmd_item_genre,
-            R.id.cmd_item_airing, R.id.cmd_item_katalog, R.id.cmd_item_source,
+            R.id.cmd_item_season, R.id.cmd_item_source,
             R.id.cmd_item_ping, R.id.cmd_item_ai, R.id.cmd_item_apikey,
             R.id.cmd_item_gemini, R.id.cmd_item_groq, R.id.cmd_item_ollama,
-            R.id.cmd_item_model, R.id.cmd_item_logs, R.id.cmd_item_riwayat,
-            R.id.cmd_item_favorit,
+            R.id.cmd_item_model, R.id.cmd_item_logs,
             R.id.cmd_item_update, R.id.cmd_item_clear
         };
         for (int id : cmdItemIds) {
