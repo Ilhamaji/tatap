@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/player_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:orientation="vertical"
+    android:background="#090A0F">
 
-    <!-- Native Media3 PlayerView -->
-    <androidx.media3.ui.PlayerView
+    <!-- Panggung Video (Player View + Overlays) -->
+    <FrameLayout
+        android:id="@+id/fl_player_wrapper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000">
+
+        <!-- Native Media3 PlayerView -->
+        <androidx.media3.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -345,7 +353,170 @@
         android:textColor="#38BDF8"
         android:textSize="12sp"
         android:textStyle="bold"
-        android:letterSpacing="0.02"
-        android:visibility="gone" />
-</FrameLayout>
+        android:letterSpacing="0.02" />
+    </FrameLayout>
+
+    <!-- Panel Episode Bawah (Hanya Tampil Saat Mode Portrait Mobile) -->
+    <LinearLayout
+        android:id="@+id/layout_portrait_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:background="#090A0F"
+        android:visibility="gone">
+
+        <!-- Info Judul & Episode Aktif -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="8dp"
+            android:background="#11141C">
+
+            <TextView
+                android:id="@+id/tv_portrait_anime_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Judul Anime"
+                android:textColor="#FFFFFF"
+                android:textSize="15.5sp"
+                android:textStyle="bold"
+                android:maxLines="2"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_portrait_current_ep"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:text="Memutar Episode 1"
+                android:textColor="#38BDF8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <!-- Baris Tombol Kontrol Cepat (Subtitle, Kualitas, Kecepatan, Fullscreen) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/btn_portrait_sub"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="Subtitle"
+                    android:textSize="10.5sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#1A202C"
+                    app:cornerRadius="6dp"
+                    app:strokeColor="#2D3748"
+                    app:strokeWidth="1dp" />
+
+                <Button
+                    android:id="@+id/btn_portrait_quality"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="Kualitas"
+                    android:textSize="10.5sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#1A202C"
+                    app:cornerRadius="6dp"
+                    app:strokeColor="#2D3748"
+                    app:strokeWidth="1dp" />
+
+                <Button
+                    android:id="@+id/btn_portrait_speed"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="1.0x"
+                    android:textSize="10.5sp"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#1A202C"
+                    app:cornerRadius="6dp"
+                    app:strokeColor="#2D3748"
+                    app:strokeWidth="1dp" />
+
+                <Button
+                    android:id="@+id/btn_portrait_fullscreen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:paddingHorizontal="12dp"
+                    android:text="⛶ Full"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#38BDF8"
+                    android:backgroundTint="#15233D"
+                    app:cornerRadius="6dp"
+                    app:strokeColor="#38BDF8"
+                    app:strokeWidth="1dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Header Daftar Episode & Sort Order -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="14dp"
+            android:paddingVertical="8dp">
+
+            <TextView
+                android:id="@+id/tv_portrait_ep_count"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Daftar Episode"
+                android:textColor="#94A3B8"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_portrait_sort"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:text="Urutan: 1 - N"
+                android:textColor="#CBD5E1"
+                android:backgroundTint="#161B26"
+                android:textSize="10sp"
+                app:cornerRadius="6dp"
+                app:strokeColor="#2A3347"
+                app:strokeWidth="1dp"
+                android:paddingHorizontal="8dp" />
+        </LinearLayout>
+
+        <!-- Range Selector (untuk serial anime > 30 episode) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_portrait_ranges"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:paddingHorizontal="12dp"
+            android:clipToPadding="false"
+            android:orientation="horizontal"
+            android:visibility="gone" />
+
+        <!-- Grid Episode Vertikal (4 Kolom Mobile) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_portrait_episodes"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingHorizontal="10dp"
+            android:paddingBottom="16dp"
+            android:clipToPadding="false"
+            android:scrollbars="vertical" />
+    </LinearLayout>
+</LinearLayout>
 

@@ -23,6 +23,8 @@ import android.widget.Toast;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -30,6 +32,12 @@ import android.util.TypedValue;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.media3.common.C;
 import androidx.media3.common.Format;
@@ -98,6 +106,41 @@ public class PlayerActivity extends Activity {
     private Button btnSubSelector;
     private Button btnSkipOpEd;
     private float currentPlaybackSpeed = 1.0f;
+
+    // Watch Portrait View components
+    private View flPlayerWrapper;
+    private View layoutPortraitBottom;
+    private TextView tvPortraitAnimeTitle;
+    private TextView tvPortraitCurrentEp;
+    private TextView tvPortraitEpCount;
+    private Button btnPortraitSub;
+    private Button btnPortraitQuality;
+    private Button btnPortraitSpeed;
+    private Button btnPortraitFullscreen;
+    private Button btnPortraitSort;
+    private RecyclerView rvPortraitRanges;
+    private RecyclerView rvPortraitEpisodes;
+    private boolean isPortraitAscending = true;
+    private PortraitEpisodeAdapter portraitEpisodeAdapter;
+    private PortraitRangeAdapter portraitRangeAdapter;
+    private PortraitEpisodeRange activePortraitRange = null;
+    private final List<PortraitEpisodeRange> portraitRanges = new ArrayList<>();
+
+    public static class PortraitEpisodeRange {
+        public final int start;
+        public final int end;
+        public final String label;
+
+        public PortraitEpisodeRange(int start, int end) {
+            this.start = start;
+            this.end = end;
+            this.label = start + " - " + end;
+        }
+    }
+
+    private int dpToPx(int dp) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
+    }
     private static final float[] PLAYBACK_SPEEDS = new float[]{0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
     private static final String[] PLAYBACK_SPEED_LABELS = new String[]{"0.5x", "0.75x", "1.0x (Normal)", "1.25x", "1.5x", "1.75x", "2.0x"};
     private long introStartMs = 0;
@@ -314,12 +357,11 @@ public class PlayerActivity extends Activity {
             }
         } catch (Throwable ignored) {}
 
-        setContentView(R.layout.activity_player);
+        if (TvFocusHelper.isTv(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        }
 
-        // Pastikan hideSystemUi hanya dieksekusi setelah decorView terpasang di window
-        try {
-            getWindow().getDecorView().post(this::hideSystemUi);
-        } catch (Throwable ignored) {}
+        setContentView(R.layout.activity_player);
 
         slug = getIntent().getStringExtra("slug");
         ep = getIntent().getIntExtra("ep", 1);
@@ -328,6 +370,76 @@ public class PlayerActivity extends Activity {
         if (passedList != null) {
             episodeList.addAll(passedList);
         }
+
+        flPlayerWrapper = findViewById(R.id.fl_player_wrapper);
+        layoutPortraitBottom = findViewById(R.id.layout_portrait_bottom);
+        tvPortraitAnimeTitle = findViewById(R.id.tv_portrait_anime_title);
+        tvPortraitCurrentEp = findViewById(R.id.tv_portrait_current_ep);
+        tvPortraitEpCount = findViewById(R.id.tv_portrait_ep_count);
+        btnPortraitSub = findViewById(R.id.btn_portrait_sub);
+        btnPortraitQuality = findViewById(R.id.btn_portrait_quality);
+        btnPortraitSpeed = findViewById(R.id.btn_portrait_speed);
+        btnPortraitFullscreen = findViewById(R.id.btn_portrait_fullscreen);
+        btnPortraitSort = findViewById(R.id.btn_portrait_sort);
+        rvPortraitRanges = findViewById(R.id.rv_portrait_ranges);
+        rvPortraitEpisodes = findViewById(R.id.rv_portrait_episodes);
+
+        if (layoutPortraitBottom != null && !TvFocusHelper.isTv(this)) {
+            if (title != null && !title.isEmpty()) {
+                tvPortraitAnimeTitle.setText(title);
+            } else {
+                tvPortraitAnimeTitle.setText("Episode " + ep);
+            }
+            tvPortraitCurrentEp.setText("Memutar Episode " + ep);
+
+            if (btnPortraitSub != null) {
+                btnPortraitSub.setOnClickListener(v -> showSubtitleSelectorDialog());
+            }
+            if (btnPortraitQuality != null) {
+                btnPortraitQuality.setOnClickListener(v -> showQualitySelectorDialog());
+            }
+            if (btnPortraitSpeed != null) {
+                btnPortraitSpeed.setOnClickListener(v -> showSpeedSelectorDialog());
+            }
+            if (btnPortraitFullscreen != null) {
+                btnPortraitFullscreen.setOnClickListener(v -> {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                });
+            }
+            if (btnPortraitSort != null) {
+                btnPortraitSort.setOnClickListener(v -> {
+                    isPortraitAscending = !isPortraitAscending;
+                    btnPortraitSort.setText(isPortraitAscending ? "Urutan: 1 - N" : "Urutan: N - 1");
+                    updatePortraitEpisodeDisplay();
+                });
+            }
+
+            if (rvPortraitEpisodes != null) {
+                rvPortraitEpisodes.setLayoutManager(new GridLayoutManager(this, 4));
+                portraitEpisodeAdapter = new PortraitEpisodeAdapter();
+                rvPortraitEpisodes.setAdapter(portraitEpisodeAdapter);
+            }
+
+            if (rvPortraitRanges != null) {
+                rvPortraitRanges.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+                portraitRangeAdapter = new PortraitRangeAdapter();
+                rvPortraitRanges.setAdapter(portraitRangeAdapter);
+            }
+        }
+
+        updateLayoutForOrientation(getResources().getConfiguration().orientation);
+
+        // Pastikan hideSystemUi / showSystemUi dieksekusi setelah decorView terpasang di window
+        try {
+            getWindow().getDecorView().post(() -> {
+                if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    hideSystemUi();
+                } else {
+                    showSystemUiForPortrait();
+                }
+            });
+        } catch (Throwable ignored) {}
+
         ensureEpisodeListLoaded();
 
         playerView = findViewById(R.id.player_view);
@@ -354,7 +466,7 @@ public class PlayerActivity extends Activity {
         }
 
         if (btnPlayerBack != null) {
-            btnPlayerBack.setOnClickListener(v -> finish());
+            btnPlayerBack.setOnClickListener(v -> onBackPressed());
         }
 
         btnAspect = findViewById(R.id.btn_aspect);
@@ -509,12 +621,86 @@ public class PlayerActivity extends Activity {
         } catch (Throwable ignored) {}
     }
 
+    private void showSystemUiForPortrait() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                Window window = getWindow();
+                if (window != null) {
+                    android.view.WindowInsetsController controller = window.getInsetsController();
+                    if (controller != null) {
+                        controller.show(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                    }
+                }
+            } else {
+                View decorView = getWindow().getDecorView();
+                if (decorView != null) {
+                    decorView.setSystemUiVisibility(
+                        View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    );
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void updateLayoutForOrientation(int orientation) {
+        boolean isTv = TvFocusHelper.isTv(this);
+        if (isTv || orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            // Mode Landscape Fullscreen
+            if (layoutPortraitBottom != null) {
+                layoutPortraitBottom.setVisibility(View.GONE);
+            }
+            if (flPlayerWrapper != null) {
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                flPlayerWrapper.setLayoutParams(lp);
+            }
+            hideSystemUi();
+        } else {
+            // Mode Watch Portrait View
+            if (layoutPortraitBottom != null) {
+                layoutPortraitBottom.setVisibility(View.VISIBLE);
+            }
+            if (flPlayerWrapper != null) {
+                int screenWidth = getResources().getDisplayMetrics().widthPixels;
+                int playerHeight = (int) (screenWidth * 9f / 16f);
+                if (playerHeight <= 0) playerHeight = dpToPx(215);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, playerHeight);
+                flPlayerWrapper.setLayoutParams(lp);
+            }
+            showSystemUiForPortrait();
+            updatePortraitEpisodeDisplay();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateLayoutForOrientation(newConfig.orientation);
+    }
+
+    private void exitLandscapeFullscreen() {
+        if (!TvFocusHelper.isTv(this)) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            handler.postDelayed(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER);
+                }
+            }, 500);
+        }
+    }
+
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             try {
-                hideSystemUi();
+                if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    hideSystemUi();
+                } else {
+                    showSystemUiForPortrait();
+                }
             } catch (Throwable ignored) {}
         }
     }
@@ -976,6 +1162,10 @@ public class PlayerActivity extends Activity {
         if (isScreenLocked) {
             showUnlockButtonBriefly();
             Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!TvFocusHelper.isTv(this) && getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            exitLandscapeFullscreen();
             return;
         }
         super.onBackPressed();
@@ -1895,8 +2085,12 @@ public class PlayerActivity extends Activity {
     }
 
     private void updateSpeedButtonLabel() {
+        String label = formatSpeedLabel(currentPlaybackSpeed);
         if (btnSpeed != null) {
-            btnSpeed.setText(formatSpeedLabel(currentPlaybackSpeed));
+            btnSpeed.setText(label);
+        }
+        if (btnPortraitSpeed != null) {
+            btnPortraitSpeed.setText(label);
         }
     }
 
@@ -2501,7 +2695,11 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        hideSystemUi();
+        if (TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            hideSystemUi();
+        } else {
+            showSystemUiForPortrait();
+        }
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
             handler.post(subtitleSyncRunnable);
@@ -2724,7 +2922,18 @@ public class PlayerActivity extends Activity {
             btnExoFullscreen = playerView.findViewById(androidx.media3.ui.R.id.exo_fullscreen);
             if (btnExoFullscreen != null) {
                 btnExoFullscreen.setVisibility(View.VISIBLE);
-                btnExoFullscreen.setOnClickListener(v -> cycleAspectRatio());
+                btnExoFullscreen.setOnClickListener(v -> {
+                    if (TvFocusHelper.isTv(this)) {
+                        cycleAspectRatio();
+                    } else {
+                        int orient = getResources().getConfiguration().orientation;
+                        if (orient == Configuration.ORIENTATION_LANDSCAPE) {
+                            exitLandscapeFullscreen();
+                        } else {
+                            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        }
+                    }
+                });
                 TvFocusHelper.attachFocusScale(btnExoFullscreen, 1.15f, 6f);
             }
         }
@@ -2872,6 +3081,7 @@ public class PlayerActivity extends Activity {
                                 episodeList.addAll(list);
                                 updateExoButtonStates();
                                 preResolveNeighbors();
+                                updatePortraitEpisodeDisplay();
                             }
                         });
                     }
@@ -2992,6 +3202,15 @@ public class PlayerActivity extends Activity {
             tvPlayerTitle.setText("Episode " + ep);
         }
 
+        try {
+            SharedPreferences histSp = getSharedPreferences("tatap_history", Context.MODE_PRIVATE);
+            histSp.edit()
+                    .putInt("last_ep_" + slug, ep)
+                    .putBoolean("watched_" + slug + "_" + ep, true)
+                    .apply();
+        } catch (Throwable ignored) {}
+
+        updatePortraitEpisodeDisplay();
         updateExoButtonStates();
 
         if (layoutBuffering != null) {
@@ -3080,6 +3299,220 @@ public class PlayerActivity extends Activity {
                 } catch (Exception ignored) {}
             }
         }).start();
+    }
+
+    private void updatePortraitEpisodeDisplay() {
+        if (TvFocusHelper.isTv(this) || layoutPortraitBottom == null) return;
+
+        if (title != null && !title.isEmpty()) {
+            if (tvPortraitAnimeTitle != null) tvPortraitAnimeTitle.setText(title);
+        }
+        if (tvPortraitCurrentEp != null) {
+            tvPortraitCurrentEp.setText("Memutar Episode " + ep);
+        }
+
+        if (episodeList == null || episodeList.isEmpty()) {
+            if (tvPortraitEpCount != null) tvPortraitEpCount.setText("Daftar Episode");
+            return;
+        }
+
+        if (tvPortraitEpCount != null) {
+            tvPortraitEpCount.setText("Daftar Episode (" + episodeList.size() + ")");
+        }
+
+        // Build ranges if size > 30
+        if (episodeList.size() > 30) {
+            portraitRanges.clear();
+            int minEp = episodeList.get(0);
+            int maxEp = episodeList.get(episodeList.size() - 1);
+            int rangeSize = 30;
+            PortraitEpisodeRange foundActiveRange = null;
+            for (int s = minEp; s <= maxEp; s += rangeSize) {
+                int e = Math.min(s + rangeSize - 1, maxEp);
+                PortraitEpisodeRange r = new PortraitEpisodeRange(s, e);
+                portraitRanges.add(r);
+                if (ep >= s && ep <= e) {
+                    foundActiveRange = r;
+                }
+            }
+            if (activePortraitRange == null || foundActiveRange != null) {
+                activePortraitRange = foundActiveRange != null ? foundActiveRange : portraitRanges.get(0);
+            }
+            if (rvPortraitRanges != null) {
+                rvPortraitRanges.setVisibility(View.VISIBLE);
+                if (portraitRangeAdapter != null) {
+                    portraitRangeAdapter.setRanges(portraitRanges, activePortraitRange);
+                }
+            }
+        } else {
+            activePortraitRange = null;
+            if (rvPortraitRanges != null) {
+                rvPortraitRanges.setVisibility(View.GONE);
+            }
+        }
+
+        // Filter list based on range
+        List<Integer> filtered = new ArrayList<>();
+        for (int e : episodeList) {
+            if (activePortraitRange == null || (e >= activePortraitRange.start && e <= activePortraitRange.end)) {
+                filtered.add(e);
+            }
+        }
+
+        if (!isPortraitAscending) {
+            java.util.Collections.reverse(filtered);
+        }
+
+        if (portraitEpisodeAdapter != null) {
+            portraitEpisodeAdapter.setEpisodes(filtered);
+            int targetPos = filtered.indexOf(ep);
+            if (targetPos >= 0 && rvPortraitEpisodes != null) {
+                rvPortraitEpisodes.scrollToPosition(targetPos);
+            }
+        }
+    }
+
+    private class PortraitEpisodeAdapter extends RecyclerView.Adapter<PortraitEpisodeAdapter.EpViewHolder> {
+        private final List<Integer> items = new ArrayList<>();
+        private final java.util.Set<Integer> watchedSet = new java.util.HashSet<>();
+
+        public void setEpisodes(List<Integer> list) {
+            items.clear();
+            watchedSet.clear();
+            if (list != null) {
+                items.addAll(list);
+                try {
+                    SharedPreferences hist = getSharedPreferences("tatap_history", Context.MODE_PRIVATE);
+                    for (int itemEp : list) {
+                        if (hist.getBoolean("watched_" + slug + "_" + itemEp, false)) {
+                            watchedSet.add(itemEp);
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            }
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public EpViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = getLayoutInflater().inflate(R.layout.item_episode, parent, false);
+            return new EpViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull EpViewHolder holder, int position) {
+            int itemEp = items.get(position);
+            holder.tvTitle.setText(String.format(java.util.Locale.US, "EP %02d", itemEp));
+
+            if (itemEp == ep) {
+                // Active playing episode: cyan highlight
+                holder.card.setCardBackgroundColor(0xFF1E293B);
+                holder.card.setStrokeColor(0xFF38BDF8);
+                holder.card.setStrokeWidth(dpToPx(1));
+                holder.tvTitle.setTextColor(0xFF38BDF8);
+                holder.tvBadge.setVisibility(View.VISIBLE);
+                holder.tvBadge.setText("MEMUTAR");
+                holder.tvBadge.setTextColor(0xFF38BDF8);
+            } else if (watchedSet.contains(itemEp)) {
+                // Watched episode
+                holder.card.setCardBackgroundColor(0xFF0E1017);
+                holder.card.setStrokeColor(0xFF1C202C);
+                holder.card.setStrokeWidth(dpToPx(1));
+                holder.tvTitle.setTextColor(0xFF64748B);
+                holder.tvBadge.setVisibility(View.VISIBLE);
+                holder.tvBadge.setText("DITONTON");
+                holder.tvBadge.setTextColor(0xFF10B981);
+            } else {
+                // Unwatched episode
+                holder.card.setCardBackgroundColor(0xFF11141C);
+                holder.card.setStrokeColor(0xFF1C202C);
+                holder.card.setStrokeWidth(dpToPx(1));
+                holder.tvTitle.setTextColor(0xFFF1F5F9);
+                holder.tvBadge.setVisibility(View.GONE);
+            }
+
+            holder.itemView.setOnClickListener(v -> {
+                if (itemEp != ep) {
+                    switchEpisode(itemEp);
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        class EpViewHolder extends RecyclerView.ViewHolder {
+            com.google.android.material.card.MaterialCardView card;
+            TextView tvTitle;
+            TextView tvBadge;
+
+            public EpViewHolder(@NonNull View itemView) {
+                super(itemView);
+                card = itemView.findViewById(R.id.card_episode);
+                tvTitle = itemView.findViewById(R.id.tv_ep_title);
+                tvBadge = itemView.findViewById(R.id.tv_ep_status_badge);
+            }
+        }
+    }
+
+    private class PortraitRangeAdapter extends RecyclerView.Adapter<PortraitRangeAdapter.RangeViewHolder> {
+        private final List<PortraitEpisodeRange> ranges = new ArrayList<>();
+        private PortraitEpisodeRange selectedRange;
+
+        public void setRanges(List<PortraitEpisodeRange> list, PortraitEpisodeRange selected) {
+            ranges.clear();
+            if (list != null) ranges.addAll(list);
+            this.selectedRange = selected;
+            notifyDataSetChanged();
+        }
+
+        @NonNull
+        @Override
+        public RangeViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = getLayoutInflater().inflate(R.layout.item_range_chip, parent, false);
+            return new RangeViewHolder(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RangeViewHolder holder, int position) {
+            PortraitEpisodeRange r = ranges.get(position);
+            holder.tvLabel.setText(r.label);
+            boolean isSel = (selectedRange != null && selectedRange.label.equals(r.label));
+            if (isSel) {
+                holder.card.setCardBackgroundColor(0xFF1E293B);
+                holder.card.setStrokeColor(0xFF38BDF8);
+                holder.tvLabel.setTextColor(0xFF38BDF8);
+            } else {
+                holder.card.setCardBackgroundColor(0xFF161B26);
+                holder.card.setStrokeColor(0xFF2A3347);
+                holder.tvLabel.setTextColor(0xFF94A3B8);
+            }
+            holder.itemView.setOnClickListener(v -> {
+                selectedRange = r;
+                activePortraitRange = r;
+                notifyDataSetChanged();
+                updatePortraitEpisodeDisplay();
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return ranges.size();
+        }
+
+        class RangeViewHolder extends RecyclerView.ViewHolder {
+            com.google.android.material.card.MaterialCardView card;
+            TextView tvLabel;
+
+            public RangeViewHolder(@NonNull View itemView) {
+                super(itemView);
+                card = itemView.findViewById(R.id.card_range_chip);
+                tvLabel = itemView.findViewById(R.id.tv_range_label);
+            }
+        }
     }
 
     @Override
