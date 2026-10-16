@@ -69,6 +69,13 @@ def test_version_files_synchronized():
         c = f.read()
     assert f"v{root_v}" in c, f"frontend/index.html tidak memuat tag versi v{root_v}"
 
+    # 5. README.md (Download links)
+    README_FILE = os.path.join(ROOT_DIR, "README.md")
+    with open(README_FILE, "r", encoding="utf-8") as f:
+        c = f.read()
+    assert f"tatap-release-v{root_v}.apk" in c, f"README.md tidak memuat tautan tatap-release-v{root_v}.apk"
+    assert f"tatap-tv-release-v{root_v}.apk" in c, f"README.md tidak memuat tautan tatap-tv-release-v{root_v}.apk"
+
 
 def test_version_code_calculation():
     from tools.bump_version import calculate_version_code

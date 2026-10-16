@@ -24,6 +24,7 @@ ANDROID_VER_FILE = os.path.join(ROOT_DIR, "android", "app", "src", "main", "pyth
 WINRES_FILE = os.path.join(ROOT_DIR, "launcher", "winres", "winres.json")
 MANIFEST_FILE = os.path.join(ROOT_DIR, "launcher", "winres", "tatap.manifest")
 FRONTEND_HTML = os.path.join(ROOT_DIR, "frontend", "index.html")
+README_FILE = os.path.join(ROOT_DIR, "README.md")
 
 SEMVER_REGEX = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
@@ -131,6 +132,14 @@ def apply_version(new_version: str):
     update_file(FRONTEND_HTML, repl_html)
     print(f" ✓ {os.path.relpath(FRONTEND_HTML, ROOT_DIR)} -> v{new_version}")
 
+    # 6. README.md (Download links)
+    def repl_readme(content: str) -> str:
+        content = re.sub(r'tatap-release-v[0-9.]+\.apk', f'tatap-release-v{new_version}.apk', content)
+        content = re.sub(r'tatap-tv-release-v[0-9.]+\.apk', f'tatap-tv-release-v{new_version}.apk', content)
+        return content
+    update_file(README_FILE, repl_readme)
+    print(f" ✓ {os.path.relpath(README_FILE, ROOT_DIR)} -> v{new_version}")
+
     print("------------------------------------------------------------")
     print("✅ Berhasil menstandarkan versi di seluruh modul!")
     print(f"\nLangkah berikutnya:")
@@ -187,6 +196,17 @@ def check_consistency():
                 errors.append(f"frontend/index.html tidak memuat 'v{curr}'")
             else:
                 print(f" ✓ frontend/index.html: 'v{curr}'")
+
+    # README.md
+    if os.path.exists(README_FILE):
+        with open(README_FILE, "r", encoding="utf-8") as f:
+            c = f.read()
+            m1 = re.search(r'tatap-release-v([0-9.]+)\.apk', c)
+            m2 = re.search(r'tatap-tv-release-v([0-9.]+)\.apk', c)
+            if not m1 or m1.group(1) != curr or not m2 or m2.group(1) != curr:
+                errors.append(f"README.md download links tidak cocok dengan VERSION ({curr})")
+            else:
+                print(f" ✓ README.md: download links 'v{curr}'")
 
     if errors:
         print("\n❌ Terdeteksi ketidakkonsistenan versi:")
