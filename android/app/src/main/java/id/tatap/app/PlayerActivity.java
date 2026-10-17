@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.GestureDetector;
@@ -58,7 +59,6 @@ import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
 import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
-import androidx.media3.exoplayer.audio.ForwardingAudioSink;
 import androidx.media3.exoplayer.audio.TeeAudioProcessor;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.AspectRatioFrameLayout;
@@ -123,7 +123,6 @@ public class PlayerActivity extends Activity {
     private Object hapticGenerator;
     private int currentAudioSessionId = C.AUDIO_SESSION_ID_UNSET;
     private int lastHapticBrightnessStep = -1;
-    private SceneHapticAudioSink sceneHapticAudioSink;
 
     // Watch Portrait View components
     private View flPlayerWrapper;
@@ -836,23 +835,11 @@ public class PlayerActivity extends Activity {
                 if (TvFocusHelper.isTv(PlayerActivity.this)) {
                     return super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams);
                 }
-                AudioSink defaultSink = new DefaultAudioSink.Builder(context)
+                return new DefaultAudioSink.Builder(context)
                         .setAudioProcessors(new AudioProcessor[] {
                             new TeeAudioProcessor(new SceneHapticAudioSink())
                         })
                         .build();
-                return new ForwardingAudioSink(defaultSink) {
-                    @Override
-                    public boolean handleBuffer(ByteBuffer buffer, long presentationTimeUs, int encodedAccessUnitCount)
-                            throws AudioSink.InitializationException, AudioSink.WriteException {
-                        if (sceneHapticAudioSink != null) {
-                            long playPosUs = getCurrentPositionUs(false);
-                            float speed = currentPlaybackSpeed;
-                            sceneHapticAudioSink.updateTimeline(presentationTimeUs, playPosUs, speed);
-                        }
-                        return super.handleBuffer(buffer, presentationTimeUs, encodedAccessUnitCount);
-                    }
-                };
             }
         };
         renderersFactory.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF)
@@ -1817,36 +1804,13 @@ public class PlayerActivity extends Activity {
     }
 
     private class SceneHapticAudioSink implements TeeAudioProcessor.AudioBufferSink {
-        private long lastHapticTriggerMediaMs = -1000;
+        private long lastHapticTriggerWallMs = -1000;
+        private long lastExplosionTriggerMs = -1000;
         private float runningRms = 1500f;
         private int prevRms = 1500;
         private float lpFilterState = 0f;
         private int currentSampleRateHz = 48000;
         private int currentChannelCount = 2;
-
-        private volatile long latestPresentationTimeUs = C.TIME_UNSET;
-        private volatile long latestCurrentPositionUs = C.TIME_UNSET;
-        private volatile float playbackSpeed = 1.0f;
-        private Runnable pendingHapticRunnable = null;
-
-        SceneHapticAudioSink() {
-            PlayerActivity.this.sceneHapticAudioSink = this;
-        }
-
-        public void updateTimeline(long presentationTimeUs, long currentPositionUs, float speed) {
-            this.latestPresentationTimeUs = presentationTimeUs;
-            this.latestCurrentPositionUs = currentPositionUs;
-            if (speed > 0.05f) {
-                this.playbackSpeed = speed;
-            }
-        }
-
-        public void cancelPendingHaptic() {
-            if (pendingHapticRunnable != null) {
-                handler.removeCallbacks(pendingHapticRunnable);
-                pendingHapticRunnable = null;
-            }
-        }
 
         @Override
         public void flush(int sampleRateHz, int channelCount, int encoding) {
@@ -1855,7 +1819,6 @@ public class PlayerActivity extends Activity {
             lpFilterState = 0f;
             currentSampleRateHz = sampleRateHz > 0 ? sampleRateHz : 48000;
             currentChannelCount = channelCount > 0 ? channelCount : 2;
-            cancelPendingHaptic();
         }
 
         @Override
@@ -1903,16 +1866,7 @@ public class PlayerActivity extends Activity {
             float crestFactor = (float) peak / Math.max(1f, (float) rms);
             float subRatio = (float) subRms / Math.max(1f, (float) rms);
 
-            // Waktu media aktual dari buffer audio ini
-            long mediaTimeMs = (latestPresentationTimeUs != C.TIME_UNSET && latestPresentationTimeUs >= 0)
-                    ? (latestPresentationTimeUs / 1000L)
-                    : 0L;
-
-            // Cooldown 220ms di timeline media agar tidak memicu getaran ganda dalam adegan benturan yang sama
-            if (mediaTimeMs - lastHapticTriggerMediaMs < 220) {
-                prevRms = rms;
-                return;
-            }
+            long nowMs = SystemClock.uptimeMillis();
 
             int deltaRms = rms - prevRms;
             prevRms = rms;
@@ -1922,64 +1876,74 @@ public class PlayerActivity extends Activity {
 
             // 1. Anti-Scream Rejection:
             // Karakter anime berteriak (vokal murni) memiliki energi tinggi di mid-high frequencies,
-            // subRatio rendah (< 0.35), dan Crest Factor rendah (< 3.2).
-            boolean isVocalScream = (subRatio < 0.35f && crestFactor < 3.2f);
+            // subRatio rendah (< 0.35), dan Crest Factor rendah (< 3.0).
+            boolean isVocalScream = (subRatio < 0.35f && crestFactor < 3.0f);
             if (isVocalScream) {
                 runningRms = 0.88f * runningRms + 0.12f * rms;
                 return;
             }
 
-            // Kriteria Akustik Adegan Anime:
-            // 1. Physical Impact / Strike (pukulan tinju, tendangan, benturan pedang/katana, tembakan):
+            // 2. Klasifikasi Adegan Akustik:
+            // A. Gunfire / Rapid Kinetic Strike (tembakan pistol/senapan, benturan katana):
+            // Transien tajam, Crest Factor tinggi (>= 3.2), lonjakan mendadak (deltaRms >= 800)
+            boolean isGunshot = (crestFactor >= 3.2f && peak >= 16500 && deltaRms >= 800);
+
+            // B. Physical Strike / Heavy Attack Onset (pukulan tinju, tendangan):
             boolean isAttackOnset = (deltaRms >= 1400 && peak >= 16500) ||
-                                    (surgeRatio >= 1.55f && peak >= 17000 && rms >= 2600) ||
-                                    (crestFactor >= 3.6f && peak >= 16500 && deltaRms >= 800);
+                                    (surgeRatio >= 1.55f && peak >= 17000 && rms >= 2600);
 
-            // 2. Heavy Explosion / Super-Move / Colossal Impact:
-            //    Dentuman dahsyat (bom, sihir kehancuran, transformasi Titan, Kamehameha) yang menembus musik pertempuran.
-            boolean isColossal = (peak >= 24000 && (rms - runningRms) >= 1200 && deltaRms >= 800) ||
-                                 (peak >= 24000 && subRms >= 8500 && subRatio >= 0.65f);
+            // C. Heavy Explosion / Super-Move / Colossal Blast:
+            // Dentuman dahsyat (bom, sihir kehancuran). Wajib attack onset (deltaRms >= 1200)
+            // agar tidak terpicu pada ekor gema / sub-bass rumble yang sedang meluruh.
+            boolean isColossal = (peak >= 22000 && (rms - runningRms) >= 1200 && deltaRms >= 1200) ||
+                                 (peak >= 24000 && subRms >= 7000 && subRatio >= 0.50f && deltaRms >= 1200);
 
-            boolean isSceneImpact = isAttackOnset || isColossal;
+            // Anti-reverb lockout: abaikan gema/asap pasca-ledakan dalam 400ms
+            if (isColossal && (nowMs - lastExplosionTriggerMs < 400)) {
+                runningRms = 0.88f * runningRms + 0.12f * rms;
+                return;
+            }
 
+            // Dual-cadence cooldown:
+            // Tembakan: cooldown pendek 85ms (mendukung burst-fire / semi-auto)
+            // Benturan fisik / Ledakan: cooldown 200ms
+            long minCooldownMs = isGunshot ? 85 : 200;
+            if (nowMs - lastHapticTriggerWallMs < minCooldownMs) {
+                runningRms = 0.88f * runningRms + 0.12f * rms;
+                return;
+            }
+
+            boolean isSceneImpact = isGunshot || isAttackOnset || isColossal;
             if (!isSceneImpact) {
                 runningRms = 0.88f * runningRms + 0.12f * rms;
                 return;
             }
 
-            // Catat waktu pemicuan di timeline media
-            lastHapticTriggerMediaMs = mediaTimeMs;
+            // Catat waktu pemicuan
+            lastHapticTriggerWallMs = nowMs;
+            if (isColossal) {
+                lastExplosionTriggerMs = nowMs;
+            }
             runningRms = Math.max(runningRms, (float) rms * 0.75f);
 
-            int intensity = Math.min(255, 120 + ((peak - 16500) * 135 / 16267));
+            int intensity = Math.min(255, 140 + ((peak - 16500) * 115 / 16267));
 
-            // Hitung jeda kompensasi garis waktu (A/V/Haptic timeline sync):
-            // leadUs = waktu buffer di pipeline - posisi playout aktual speaker
-            // motorRiseTimeMs (~20ms) = inersia akselerasi motor getar untuk mencapai puncak getaran
-            long scheduledDelayMs = 0;
-            if (latestPresentationTimeUs != C.TIME_UNSET && latestCurrentPositionUs != C.TIME_UNSET
-                    && latestCurrentPositionUs != AudioSink.CURRENT_POSITION_NOT_SET) {
-                long leadUs = latestPresentationTimeUs - latestCurrentPositionUs;
-                if (leadUs > 0 && leadUs < 1_000_000L) {
-                    float speed = playbackSpeed > 0.05f ? playbackSpeed : 1.0f;
-                    long leadMs = (long) ((leadUs / 1000L) / speed);
-                    scheduledDelayMs = Math.max(0, leadMs - 20L); // kurangi 20ms inersia motor
-                }
-            }
-
-            cancelPendingHaptic();
-
-            if (scheduledDelayMs > 15) {
-                pendingHapticRunnable = () -> {
-                    if (isHapticEnabled && isVideoPlaying && !isInOpEd && !isFinishing()) {
-                        vibrateDirect(35, intensity);
-                    }
-                    pendingHapticRunnable = null;
-                };
-                handler.postDelayed(pendingHapticRunnable, scheduledDelayMs);
+            // Profil durasi haptik multi-tier:
+            // - Tembakan: pulsa tajam 15ms
+            // - Benturan fisik: 30ms
+            // - Ledakan dahsyat: 45ms
+            long vibeDurationMs;
+            if (isColossal) {
+                vibeDurationMs = 45;
+                intensity = Math.max(intensity, 230);
+            } else if (isGunshot) {
+                vibeDurationMs = 15;
             } else {
-                vibrateDirect(35, intensity);
+                vibeDurationMs = 30;
             }
+
+            // Zero-delay direct trigger: eksekusi seketika tanpa antrean postDelayed
+            vibrateDirect(vibeDurationMs, intensity);
         }
     }
 
@@ -3174,9 +3138,6 @@ public class PlayerActivity extends Activity {
         isVideoPlaying = false;
         recordWatchProgress(true);
         if (player != null) player.pause();
-        if (sceneHapticAudioSink != null) {
-            sceneHapticAudioSink.cancelPendingHaptic();
-        }
         if (hapticGenerator instanceof HapticGenerator && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, false);
         }
@@ -3211,10 +3172,6 @@ public class PlayerActivity extends Activity {
         handler.removeCallbacks(hideTopBarRunnable);
         handler.removeCallbacks(hideUnlockButtonRunnable);
         releaseHapticGenerator();
-        if (sceneHapticAudioSink != null) {
-            sceneHapticAudioSink.cancelPendingHaptic();
-            sceneHapticAudioSink = null;
-        }
         if (player != null) {
             player.release();
             player = null;
@@ -3679,9 +3636,6 @@ public class PlayerActivity extends Activity {
     private void switchEpisode(int targetEp) {
         if (ep == targetEp) return;
         performHapticClick();
-        if (sceneHapticAudioSink != null) {
-            sceneHapticAudioSink.cancelPendingHaptic();
-        }
         recordWatchProgress(true);
         ep = targetEp;
         hasPromptedResume = false;

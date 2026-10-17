@@ -69,7 +69,7 @@ def test_scene_haptic_audio_processor(player_source):
     assert "class SceneHapticAudioSink implements TeeAudioProcessor.AudioBufferSink" in player_source
     assert "TeeAudioProcessor(new SceneHapticAudioSink())" in player_source
     assert "handleBuffer(ByteBuffer buffer)" in player_source
-    assert "vibrateDirect(35, intensity);" in player_source
+    assert "vibrateDirect(vibeDurationMs, intensity);" in player_source
 
 def test_scene_haptic_thread_safety(player_source):
     """Test that SceneHapticAudioSink does not touch player instance on audio thread."""

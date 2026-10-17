@@ -48,6 +48,11 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
    - Menghilangkan *stereo channel blindness*: loop sampling kini membaca saluran Kiri (L) dan Kanan (R) secara simultan (`Math.max(|Left|, |Right|)`), menangkap seluruh efek ledakan dan benturan stereo di sisi kanan layar.
    - Menambahkan filter *Bipolar 200Hz Low-Pass* (`SubRatio`) dan *Crest Factor* untuk menyaring teriakan vokal karakter anime (*anti-scream rejection*) dan membedakan benturan fisik kinetik dari vokal maupun BGM.
    - Menjamin pembatalan getaran tertunda secara bersih (*cancellation hygiene*) pada saat pengguna melakukan *seek*, jeda (*pause*), pergantian episode, atau keluar dari aplikasi.
+10. **Eliminasi Getaran Palsu Antar-Adegan Tembakan & Ledakan (Zero-Delay Direct Trigger, Anti-Reverb Lockout, & Dual-Cadence Cooldown):**
+    - **Zero-Delay Direct Trigger:** Menghapus penjadwalan tunda buatan `handler.postDelayed(~200ms)` dan wrapper `ForwardingAudioSink` yang sebelumnya menunda getaran ke celah hening / jeda antar-adegan; `vibrateDirect(...)` kini dieksekusi seketika (*zero-delay*) saat transien benturan terdeteksi pada buffer audio.
+    - **Anti-Reverb Tail Lockout & Mandatory Attack Onset:** Mewajibkan lonjakan energi positif ($\Delta \text{RMS} \ge 1200$) pada deteksi ledakan dahsyat serta mengunci jendela gema selama 400ms (`now - lastExplosionTriggerMs < 400`), mencegah gema/asap pasca-ledakan memicu getaran palsu susulan di ruang kosong antara aksi.
+    - **Dual-Cadence Cooldown:** Memisahkan cooldown tembakan (85ms) dan benturan/ledakan (200–400ms), mendukung getaran presisi pada tiap butir peluru tembakan beruntun (*burst-fire / semi-auto*).
+    - **Profil Haptik Multi-Tier Berbasis Karakter Akustik:** Tembakan memicu pulsa klik mekanis tajam & renyah (15ms), benturan fisik/pukulan tinju solid (30ms), dan dentuman ledakan dahsyat berbobot berat (45ms).
 
 ## [2.8.3] - 2026-10-17
 
