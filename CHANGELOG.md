@@ -13,6 +13,26 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.8.1] - 2026-10-17
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.8.0 -> 2.8.1)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan bug (*bug fix*) pada sistem haptic feedback Android:
+1. **Universal Real-Time Scene Haptics Engine (`SceneHapticAudioSink` via `TeeAudioProcessor`):**
+   - Mengatasi kendala di mana `HapticGenerator` hanya tersedia pada perangkat Pixel (`HapticGenerator.isAvailable() == false` pada sebagian besar ponsel Xiaomi, Samsung, Infinix, Realme, Vivo, Poco, dan Oppo).
+   - Mengintegrasikan `TeeAudioProcessor` langsung ke dalam pipeline audio ExoPlayer (`DefaultAudioSink`) untuk menganalisis energi audio PCM 16-bit secara real-time.
+   - Mendeteksi lonjakan energi audio (*audio transient & peak amplitude* > 23000 dan RMS > 8500) yang dihasilkan oleh adegan aksi anime (ledakan, pukulan pertarungan, dentuman bass, tembakan, tabrakan) dan memicu getaran taktil dinamis (35ms) dengan debounce cooldown 200ms agar terhindar dari humming/buzz konstan.
+   - Bekerja 100% pada seluruh perangkat Android berkemampuan getar tanpa membutuhkan izin `RECORD_AUDIO`.
+2. **Direct Hardware Motor Fallback & VibratorManager Support (`vibrateDirect`):**
+   - Mengatasi perilaku Android `View.performHapticFeedback` yang mengembalikan `true` pada `ViewRootImpl` meski getaran dimatikan di pengaturan sistem, yang sebelumnya mencegah eksekusi fallback vibrator.
+   - Mengimplementasikan `getVibratorService()` dengan dukungan `VibratorManager.getDefaultVibrator()` untuk Android 12+ (API 31+) dan fallback `VIBRATOR_SERVICE`.
+   - Mengaktifkan `vibrateDirect` dengan durasi dan amplitudo terkalibrasi (`createOneShot`):
+     - **Tick (Volume & Kecerahan):** 15ms (amplitudo 70) dengan flag `FLAG_IGNORE_VIEW_SETTING | FLAG_IGNORE_GLOBAL_SETTING`.
+     - **Click (Seek, Play/Pause, Skip OP/ED, Episode Selector):** 25ms (amplitudo 140).
+     - **Heavy Click (Screen Lock):** 45ms (amplitudo 230).
+   - Memastikan getaran terpicu secara fisik dan terasa jelas di tangan pengguna pada seluruh vendor perangkat.
+3. **Pembaruan Test Suite:**
+   - Memperbarui `tests/test_haptic_feedback.py` (8/8 unit test lulus) untuk memvalidasi engine `SceneHapticAudioSink`, `TeeAudioProcessor`, `vibrateDirect`, dan `getVibratorService`.
+
 ## [2.8.0] - 2026-10-17
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.7.2 -> 2.8.0)

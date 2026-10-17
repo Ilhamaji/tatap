@@ -43,23 +43,33 @@ def test_haptic_tv_isolation(player_source):
     assert "if (TvFocusHelper.isTv(this)) return;" in player_source
 
 def test_haptic_modern_methods(player_source):
-    """Test modern subtle haptic feedback implementation."""
+    """Test modern subtle haptic feedback and direct vibrator engine implementation."""
     assert "private void performHapticTick()" in player_source
     assert "private void performHapticClick()" in player_source
     assert "private void performHapticHeavyClick()" in player_source
+    assert "private void vibrateDirect(long ms, int amplitude)" in player_source
+    assert "getVibratorService()" in player_source
 
-    # Check tick uses SEGMENT_TICK or CLOCK_TICK or EFFECT_TICK
+    # Check tick uses SEGMENT_TICK, CLOCK_TICK, or KEYBOARD_TAP and vibrateDirect
     assert "HapticFeedbackConstants.SEGMENT_TICK" in player_source
     assert "HapticFeedbackConstants.CLOCK_TICK" in player_source
-    assert "VibrationEffect.EFFECT_TICK" in player_source
+    assert "HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING" in player_source
+    assert "vibrateDirect(15, 70);" in player_source
 
-    # Check click uses KEYBOARD_TAP or EFFECT_CLICK
+    # Check click uses KEYBOARD_TAP and vibrateDirect
     assert "HapticFeedbackConstants.KEYBOARD_TAP" in player_source
-    assert "VibrationEffect.EFFECT_CLICK" in player_source
+    assert "vibrateDirect(25, 140);" in player_source
 
-    # Check heavy click uses DRAG_START or LONG_PRESS or EFFECT_HEAVY_CLICK
+    # Check heavy click uses DRAG_START or LONG_PRESS and vibrateDirect
     assert "HapticFeedbackConstants.DRAG_START" in player_source
-    assert "VibrationEffect.EFFECT_HEAVY_CLICK" in player_source
+    assert "vibrateDirect(45, 230);" in player_source
+
+def test_scene_haptic_audio_processor(player_source):
+    """Test SceneHapticAudioSink and TeeAudioProcessor for universal anime scene vibration."""
+    assert "class SceneHapticAudioSink implements TeeAudioProcessor.AudioBufferSink" in player_source
+    assert "TeeAudioProcessor(new SceneHapticAudioSink())" in player_source
+    assert "handleBuffer(ByteBuffer buffer)" in player_source
+    assert "vibrateDirect(35, intensity);" in player_source
 
 def test_haptic_generator_helper_and_lifecycle(player_source):
     """Test HapticGeneratorHelper inner class and lifecycle management."""
