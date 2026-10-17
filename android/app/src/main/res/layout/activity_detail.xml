@@ -115,24 +115,78 @@
                         android:textStyle="bold"
                         android:lineSpacingExtra="2dp" />
 
-                    <TextView
-                        android:id="@+id/tv_detail_type_badge"
+                    <!-- Badges Row: Format, Score, Status -->
+                    <LinearLayout
+                        android:id="@+id/layout_detail_badges"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
-                        android:background="@drawable/bg_badge_type"
-                        android:paddingHorizontal="7dp"
-                        android:paddingVertical="3dp"
-                        android:text="TV SERIES"
-                        android:textColor="#E2E8F0"
-                        android:textSize="9.5sp"
-                        android:textStyle="bold" />
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="5dp">
+
+                        <TextView
+                            android:id="@+id/tv_detail_type_badge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/bg_badge_type"
+                            android:paddingHorizontal="7dp"
+                            android:paddingVertical="3dp"
+                            android:text="TV SERIES"
+                            android:textColor="#E2E8F0"
+                            android:textSize="9.5sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tv_detail_score"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/bg_detail_score"
+                            android:paddingHorizontal="6dp"
+                            android:paddingVertical="3dp"
+                            android:textColor="#F59E0B"
+                            android:textSize="9.5sp"
+                            android:textStyle="bold"
+                            app:drawableStartCompat="@drawable/ic_star_filled"
+                            app:drawableTint="#F59E0B"
+                            android:drawablePadding="3dp"
+                            android:gravity="center_vertical"
+                            android:visibility="gone"
+                            android:text="8.7" />
+
+                        <TextView
+                            android:id="@+id/tv_detail_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/bg_detail_status_ongoing"
+                            android:paddingHorizontal="6dp"
+                            android:paddingVertical="3dp"
+                            android:textColor="#38BDF8"
+                            android:textSize="9.5sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            android:text="ONGOING" />
+                    </LinearLayout>
+
+                    <!-- Info Line (Studio / Musim / Sumber) -->
+                    <TextView
+                        android:id="@+id/tv_detail_info_line"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="#94A3B8"
+                        android:textSize="10.5sp"
+                        android:maxLines="2"
+                        android:ellipsize="end"
+                        android:visibility="gone"
+                        android:text="Studio: Ufotable · Fall 2024" />
 
                     <TextView
                         android:id="@+id/tv_detail_slug"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="5dp"
+                        android:layout_marginTop="4dp"
                         android:text="Memuat episode..."
                         android:textColor="#8B95A5"
                         android:textSize="11sp" />
@@ -187,6 +241,23 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Genre Chips Row (Horizontal Scroll) -->
+            <HorizontalScrollView
+                android:id="@+id/hsv_detail_genres"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:scrollbars="none"
+                android:overScrollMode="never"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/ll_detail_genres"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
             <!-- Container Sinopsis Terlipat (Mobile Only) -->
             <LinearLayout
                 android:id="@+id/layout_detail_synopsis"
@@ -194,21 +265,27 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
                 android:layout_marginTop="10dp"
+                android:background="@drawable/bg_detail_synopsis"
+                android:padding="10dp"
                 android:visibility="gone">
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#1C202C"
-                    android:layout_marginBottom="8dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="SINOPSIS"
+                    android:textColor="#38BDF8"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="5dp" />
 
                 <TextView
                     android:id="@+id/tv_detail_synopsis"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:textColor="#94A3B8"
+                    android:textColor="#CBD5E1"
                     android:textSize="12sp"
-                    android:lineSpacingExtra="2.5dp"
+                    android:lineSpacingExtra="3dp"
                     android:maxLines="2"
                     android:ellipsize="end"
                     android:text="Memuat sinopsis..." />
@@ -218,14 +295,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
-                    android:layout_marginTop="3dp"
-                    android:paddingVertical="3dp"
-                    android:paddingHorizontal="6dp"
+                    android:layout_marginTop="6dp"
+                    android:paddingVertical="4dp"
+                    android:paddingHorizontal="10dp"
                     android:text="Selengkapnya ▼"
                     android:textColor="#38BDF8"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:background="?attr/selectableItemBackground"
+                    android:background="@drawable/bg_btn_toggle_synopsis"
                     android:clickable="true"
                     android:focusable="true" />
             </LinearLayout>

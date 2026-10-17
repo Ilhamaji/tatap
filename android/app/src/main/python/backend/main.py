@@ -267,6 +267,8 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 seen_slugs.add(slug)
                 cover = (m.get("coverImage") or {})
                 tot = m.get("episodes") or 0
+                studio_nodes = (m.get("studios") or {}).get("nodes") or []
+                studio_name = studio_nodes[0].get("name", "") if studio_nodes else ""
                 seasonal_items.append({
                     "id": slug,
                     "title": title,
@@ -278,13 +280,17 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     "eps_total": tot,
                     "eps_counter": f"{tot}/{tot}" if tot > 0 else "?/?",
                     "duration": (str(m.get("duration") or "") + "m") if m.get("duration") else "",
-                    "score": (m.get("averageScore") or 0) / 10.0 if m.get("averageScore") else 0,
+                    "score": round((m.get("averageScore") or 0) / 10.0, 1) if m.get("averageScore") else 0.0,
+                    "genres": m.get("genres") or [],
+                    "studio": studio_name,
+                    "season": f"{(m.get('season') or '').capitalize()} {m.get('seasonYear') or ''}".strip(),
+                    "source": (m.get("source") or "").replace("_", " ").title(),
                     "status": "finished",
                     "badge": "TAMAT",
                     "is_finished": True,
                     "is_long_running": False,
                     "lane": "seasonal",
-                    "synopsis": _clean(re.sub(r"<[^>]+>", "", m.get("description") or ""))[:280] if m.get("description") else "",
+                    "synopsis": al.clean_synopsis_text(m.get("description") or ""),
                     "anilist_id": m.get("id"),
                     "matched": True,
                 })
@@ -440,6 +446,8 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
             else:
                 eps_cnt = f"{eps_rel}/{eps_tot}" if eps_tot > 0 else (f"{eps_rel}/?" if eps_rel > 0 else "")
                 badge = "ONGOING"
+            studio_nodes = (m.get("studios") or {}).get("nodes") or []
+            studio_name = studio_nodes[0].get("name", "") if studio_nodes else ""
             items_out.append({
                 "id": slug,
                 "title": title,
@@ -451,11 +459,15 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 "eps_total": eps_tot,
                 "eps_counter": eps_cnt,
                 "duration": (str(m.get("duration") or "") + "m") if m.get("duration") else "",
-                "score": (m.get("averageScore") or 0) / 10.0 if m.get("averageScore") else 0,
+                "score": round((m.get("averageScore") or 0) / 10.0, 1) if m.get("averageScore") else 0.0,
+                "genres": m.get("genres") or [],
+                "studio": studio_name,
+                "season": f"{(m.get('season') or '').capitalize()} {m.get('seasonYear') or ''}".strip(),
+                "source": (m.get("source") or "").replace("_", " ").title(),
                 "status": status_str,
                 "badge": badge,
                 "is_finished": is_finished,
-                "synopsis": _clean(re.sub(r"<[^>]+>", "", m.get("description") or ""))[:280] if m.get("description") else "",
+                "synopsis": al.clean_synopsis_text(m.get("description") or ""),
                 "anilist_id": m.get("id"),
                 "site": m.get("siteUrl") or "",
                 "matched": True,
@@ -916,15 +928,46 @@ async def episodes(slug: str):
         if not eps:
             return fail("Daftar episode tidak ditemukan")
         syn_val = ""
+        detail_data = {}
         try:
             if not slug.startswith("otakudesu:"):
-                syn_val = await loop.run_in_executor(None, lambda: hi.hianime_synopsis(slug))
+                # Ambil metadata detail lengkap via hi.hianime_details (fallback ke hi.hianime_synopsis)
+                detail_data = await loop.run_in_executor(None, lambda: hi.hianime_details(slug))
+                if detail_data:
+                    syn_val = detail_data.get("synopsis", "") or hi.hianime_synopsis(slug)
+                else:
+                    syn_val = await loop.run_in_executor(None, lambda: hi.hianime_synopsis(slug))
         except Exception:
             pass
-        data = {"slug": slug, "episodes": eps, "total": len(eps), "synopsis": syn_val}
+        data = {
+            "slug": slug,
+            "episodes": eps,
+            "total": len(eps),
+            "synopsis": syn_val,
+            "detail": detail_data
+        }
         await set_browse_cache(cache_key, data)
         data["cached"] = False
         return ok(data)
+    except Exception as e:
+        return fail(str(e))
+
+@app.get("/api/anime/{slug}/detail")
+async def anime_detail_endpoint(slug: str):
+    """Ambil informasi metadata detail anime (sinopsis, score, genres, studio, musim, dll)."""
+    try:
+        if "hentai" in (slug or "").lower():
+            return fail("Konten genre Hentai diblokir")
+        cache_key = f"detail_v2|{slug}"
+        cached = await get_browse_cache(cache_key, ttl=86400)
+        if cached:
+            cached["cached"] = True
+            return ok(cached)
+        loop = asyncio.get_running_loop()
+        detail_data = await loop.run_in_executor(None, lambda: hi.hianime_details(slug))
+        await set_browse_cache(cache_key, detail_data)
+        detail_data["cached"] = False
+        return ok(detail_data)
     except Exception as e:
         return fail(str(e))
 

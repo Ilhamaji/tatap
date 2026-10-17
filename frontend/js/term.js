@@ -313,7 +313,7 @@ var Tui = (function () {
 
             d.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
+              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter,a);
             });
             frag.appendChild(d);
           } else {
@@ -377,7 +377,7 @@ var Tui = (function () {
 
             d2.addEventListener("click",function(){
               if(typeof App==="undefined"){log("App belum siap, coba lagi","err");return;}
-              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
+              App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter,a);
             });
             frag.appendChild(d2);
           }
@@ -437,7 +437,7 @@ var Tui = (function () {
           body.appendChild(meta);
           d.appendChild(body);
           if(!isUnavail){
-            d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);});
+            d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter,a);});
           }
           grid.appendChild(d);
         })(S.items[j],j);
@@ -509,7 +509,7 @@ var Tui = (function () {
     var a=S.items[S.sel];
     if(!a||a.is_header)return;
     if(!a.id){log("judul ini belum tersedia di hianime","err");return;}
-    App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter);
+    App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter,a);
   }
 
   function startSearch(q){

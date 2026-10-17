@@ -21,6 +21,13 @@ query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int, $statusIn: [
       averageScore
       season
       seasonYear
+      source
+      genres
+      studios(isMain: true) {
+        nodes {
+          name
+        }
+      }
       coverImage { large medium }
       siteUrl
       description(asHtml: false)
@@ -33,6 +40,20 @@ query ($season: MediaSeason, $year: Int, $page: Int, $perPage: Int, $statusIn: [
   }
 }
 """
+
+def clean_synopsis_text(desc: str) -> str:
+    """Bersihkan tag HTML, unescape entitas, dan normalkan spasi tanpa memotong panjang narasi."""
+    if not desc:
+        return ""
+    import html as _html, re
+    text = re.sub(r'<br\s*/?>', '\n', desc, flags=re.I)
+    text = re.sub(r'</?p>', '\n\n', text, flags=re.I)
+    text = re.sub(r'<[^>]+>', '', text)
+    text = _html.unescape(text)
+    text = re.sub(r'\n*\(Source:[^)]*\)', '', text, flags=re.I)
+    text = re.sub(r'\n*\[Written by MAL Rewrite\]', '', text, flags=re.I)
+    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+    return text
 
 def compute_episode_counts(m: dict) -> tuple:
     """Menghitung (eps_released, eps_total) dari objek media AniList.
@@ -62,6 +83,13 @@ query AiringFinished($page: Int, $perPage: Int) {
       averageScore
       season
       seasonYear
+      source
+      genres
+      studios(isMain: true) {
+        nodes {
+          name
+        }
+      }
       startDate { year month day }
       endDate { year month day }
       coverImage { large medium }

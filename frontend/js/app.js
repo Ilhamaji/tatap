@@ -110,12 +110,133 @@ function toggleModalBookmark(){
   }
 }
 
-function openTitle(slug,title,poster,type,epsCounter){
+function renderDetailMeta(meta){
+  var box = $("tm-detail-meta");
+  if(!box) return;
+  if(!meta){
+    box.classList.add("hidden");
+    return;
+  }
+  var hasAny = false;
+
+  // Score
+  var scoreEl = $("tm-score");
+  var scoreVal = $("tm-score-val");
+  if(scoreEl && scoreVal){
+    var sc = meta.score ? parseFloat(meta.score) : 0;
+    if(sc > 0){
+      scoreVal.textContent = sc.toFixed(1);
+      scoreEl.classList.remove("hidden");
+      hasAny = true;
+    } else {
+      scoreEl.classList.add("hidden");
+    }
+  }
+
+  // Status
+  var statEl = $("tm-status");
+  if(statEl){
+    var st = (meta.status || meta.badge || "").toLowerCase();
+    if(st.indexOf("finish") !== -1 || st.indexOf("tamat") !== -1 || st.indexOf("completed") !== -1){
+      statEl.textContent = "TAMAT";
+      statEl.className = "badge-status finished";
+      hasAny = true;
+    } else if(st.indexOf("releas") !== -1 || st.indexOf("airing") !== -1 || st.indexOf("ongoing") !== -1){
+      statEl.textContent = "ONGOING";
+      statEl.className = "badge-status ongoing";
+      hasAny = true;
+    } else {
+      statEl.className = "badge-status hidden";
+    }
+  }
+
+  // Info Line (Studio / Musim / Sumber)
+  var infoEl = $("tm-info-line");
+  if(infoEl){
+    var parts = [];
+    if(meta.studio) parts.push("Studio: " + meta.studio);
+    if(meta.season) parts.push(meta.season);
+    if(meta.source) parts.push("Sumber: " + meta.source);
+    if(parts.length > 0){
+      infoEl.textContent = parts.join(" · ");
+      infoEl.classList.remove("hidden");
+      hasAny = true;
+    } else {
+      infoEl.textContent = "";
+      infoEl.classList.add("hidden");
+    }
+  }
+
+  // Genres
+  var genEl = $("tm-genres");
+  if(genEl){
+    genEl.innerHTML = "";
+    var gList = meta.genres || [];
+    if(typeof gList === "string"){
+      try { gList = JSON.parse(gList); } catch(e){ gList = gList.split(","); }
+    }
+    var validGenres = [];
+    if(Array.isArray(gList)){
+      validGenres = gList.map(function(x){ return (x||"").trim(); }).filter(function(x){ return x && x.toLowerCase() !== "hentai"; });
+    }
+    if(validGenres.length > 0){
+      validGenres.forEach(function(g){
+        var span = document.createElement("span");
+        span.className = "genre-pill";
+        span.textContent = g;
+        genEl.appendChild(span);
+      });
+      genEl.classList.remove("hidden");
+      hasAny = true;
+    } else {
+      genEl.classList.add("hidden");
+    }
+  }
+
+  // Synopsis
+  var synBox = $("tm-synopsis-box");
+  var synText = $("tm-synopsis");
+  var synToggle = $("tm-synopsis-toggle");
+  if(synBox && synText && synToggle){
+    var desc = (meta.synopsis || "").trim();
+    if(desc){
+      synText.textContent = desc;
+      synText.classList.remove("expanded");
+      synText.classList.add("clamped");
+      synToggle.textContent = "Selengkapnya ▼";
+      synBox.classList.remove("hidden");
+      hasAny = true;
+
+      synToggle.onclick = function(){
+        if(synText.classList.contains("clamped")){
+          synText.classList.remove("clamped");
+          synText.classList.add("expanded");
+          synToggle.textContent = "Tutup Sinopsis ▲";
+        } else {
+          synText.classList.remove("expanded");
+          synText.classList.add("clamped");
+          synToggle.textContent = "Selengkapnya ▼";
+        }
+      };
+    } else {
+      synBox.classList.add("hidden");
+    }
+  }
+
+  if(hasAny){
+    box.classList.remove("hidden");
+  } else {
+    box.classList.add("hidden");
+  }
+}
+
+function openTitle(slug,title,poster,type,epsCounter,meta){
   cur.slug=slug;cur.title=title;cur.poster=poster||cur.poster||"";cur.type=type||cur.type||"";cur.eps=[];
   cur.eps_counter=epsCounter||"";
   cur.lastWatchedEp=null;
   cur.watched={};
   cur.activeEpRange=null;
+  cur.meta=meta||null;
   setPlaySpeed(1.0, false);
   renderSourceUI();
   $("tm-title").textContent=title;
@@ -126,6 +247,7 @@ function openTitle(slug,title,poster,type,epsCounter){
   $("ep-filter").value="";
   var sBar=$("tm-seasons");if(sBar)sBar.classList.add("hidden");
   var sChips=$("tm-seasons-chips");if(sChips)sChips.innerHTML="";
+  renderDetailMeta(meta);
   updateBookmarkBtn(false);
   checkModalBookmark(slug);
   $("title-modal").classList.remove("hidden");
@@ -313,6 +435,14 @@ function loadEps(){
     }
     cur.eps = r.data.episodes || [];
     _epsMemCache[thisSlug] = cur.eps;
+    if(r.data.detail || r.data.synopsis){
+      var detail = Object.assign({}, cur.meta || {}, r.data.detail || {});
+      if(r.data.synopsis && (!detail.synopsis || r.data.synopsis.length > detail.synopsis.length)){
+        detail.synopsis = r.data.synopsis;
+      }
+      cur.meta = detail;
+      renderDetailMeta(detail);
+    }
     window.Tatap.history().then(function(h){
       if(thisSlug !== cur.slug) return;
       var foundInHist = false;

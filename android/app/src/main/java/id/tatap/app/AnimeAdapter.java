@@ -189,6 +189,12 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         ImageLoader.load(poster, holder.ivPoster);
 
         String synopsis = item.optString("synopsis", "");
+        String studio = item.optString("studio", "");
+        String season = item.optString("season", "");
+        String status = item.optString("status", isFinished ? "finished" : (badge.equalsIgnoreCase("ONGOING") ? "releasing" : ""));
+        String source = item.optString("source", "");
+        org.json.JSONArray genresArr = item.optJSONArray("genres");
+        String genresStr = genresArr != null ? genresArr.toString() : "";
 
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, DetailActivity.class);
@@ -200,6 +206,12 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
             intent.putExtra("sub", sub);
             intent.putExtra("eps_counter", epsCounter);
             intent.putExtra("synopsis", synopsis);
+            intent.putExtra("score", score);
+            intent.putExtra("studio", studio);
+            intent.putExtra("season", season);
+            intent.putExtra("status", status);
+            intent.putExtra("source", source);
+            intent.putExtra("genres", genresStr);
             context.startActivity(intent);
         });
     }

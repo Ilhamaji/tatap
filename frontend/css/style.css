@@ -333,6 +333,29 @@ main{width:100%;margin:0;padding:var(--pad-y) var(--pad-x) calc(var(--status-h) 
 .season-chip.special{border-color:rgba(52,211,153,0.4);color:#34d399}
 .season-chip.special:hover{background:rgba(52,211,153,0.15)}
 .season-chip.active{background:var(--acc);color:#04121f;border-color:var(--acc);font-weight:700}
+/* DETAIL METADATA & SYNOPSIS (WEB DESKTOP) */
+.detail-meta-box{margin:8px 0 2px 0;display:flex;flex-direction:column;gap:8px}
+.detail-meta-box.hidden{display:none}
+.detail-badges-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.badge-score{display:inline-flex;align-items:center;gap:4px;background:#241b0d;color:#f59e0b;border:1px solid #78350f;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700}
+.badge-score.hidden{display:none}
+.badge-status{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.5px}
+.badge-status.hidden{display:none}
+.badge-status.finished{background:#0e281e;color:#10b981;border:1px solid #065f46}
+.badge-status.ongoing{background:#0c2538;color:#38bdf8;border:1px solid #0369a1}
+.detail-info-line{font-size:11px;color:#94a3b8}
+.detail-genres-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.detail-genres-row.hidden{display:none}
+.genre-pill{background:#151926;border:1px solid #232b3e;color:#cbd5e1;border-radius:4px;padding:3px 8px;font-size:11px;white-space:nowrap}
+.tm-synopsis-box{background:#0c0e14;border:1px solid #1c202c;border-radius:6px;padding:10px 12px;margin-top:4px;display:flex;flex-direction:column;gap:6px}
+.tm-synopsis-box.hidden{display:none}
+.tm-synopsis-header{display:flex;align-items:center;justify-content:space-between}
+.tm-synopsis-label{font-size:9.5px;letter-spacing:1.5px;color:#38bdf8;font-weight:700}
+.tm-synopsis-text{margin:0;font-size:12px;line-height:1.55;color:#cbd5e1;white-space:pre-line}
+.tm-synopsis-text.clamped{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.tm-synopsis-text.expanded{max-height:150px;overflow-y:auto;padding-right:4px;scrollbar-width:thin}
+.tm-synopsis-toggle{background:none;border:none;color:#38bdf8;font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:2px 0;align-self:flex-end;transition:color .15s}
+.tm-synopsis-toggle:hover{color:#7dd3fc;text-decoration:underline}
 .sheet-controls{display:flex;gap:clamp(6px,1vw,10px);align-items:center;flex-wrap:wrap;margin:12px 0}
 .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;flex:0 0 auto}
 .seg button{background:none;border:0;color:var(--dim);padding:clamp(6px,0.8vw,7px) clamp(11px,1.2vw,13px);cursor:pointer;font:inherit;font-size:11px}

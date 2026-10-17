@@ -13,6 +13,25 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.9.0] - 2026-10-17
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.8.3 -> 2.9.0)
+Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena penambahan fungsionalitas dan modul antarmuka baru yang backward-compatible (*backward-compatible new features*), yaitu:
+1. **Peningkatan Metadata Anime Detail (Android Mobile & Web Desktop):**
+   - Menghadirkan barisan metadata kaya pada view detail anime: **Rating Skor**, **Badge Status Penayangan** (`TAMAT` / `ONGOING`), **Daftar Genre Chips Interaktif**, dan **Baris Info Studio Animasi, Musim Rilis, serta Sumber Karya Asli (Manga/Light Novel)**.
+2. **Pembersihan & Penghapusan Pemotongan Sinopsis 280 Karakter:**
+   - Menghapus pemotongan artifisial 280 karakter di backend (`[:280]`) pada seluruh endpoint seasonal dan search.
+   - Menambahkan utilitas `clean_synopsis_text()` untuk membersihkan tag HTML, meng-unescape entitas karakter (`&quot;`, `&#039;`), serta membuang label atribusi mengganggu `(Source: ...)` dan `[Written by MAL Rewrite]`.
+3. **Smart In-Place Expand Tampilan Sinopsis:**
+   - Menata ulang kontainer sinopsis dengan styling dark cyberpunk (`#0C0E14` / `#1A1E29`) dan header aksen cyan `SINOPSIS`.
+   - Mengimplementasikan ekspansi terkontrol (preview ringkas -> expand penuh tanpa menggelembungkan kartu atau menggeser daftar episode ke luar layar).
+4. **Isolasi Penuh Antarmuka Android TV (10-Foot UI):**
+   - Seluruh elemen metadata mobile baru secara ketat diisolasi via `TvFocusHelper.isTv(this)` sehingga antarmuka Android TV tetap bersih dan navigasi D-pad remote tidak terganggu.
+5. **Perbaikan Tautan Statistik Unduhan di README.md:**
+   - Memperbarui tautan tombol statistik unduhan ke visualisator rilis GitHub publik SomSubhra.
+6. **Pembaruan Test Suite:**
+   - Menambahkan test suite baru `tests/test_detail_metadata.py` (5 pengujian baru, total 123 automated tests lulus 100%).
+
 ## [2.8.3] - 2026-10-17
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.8.2 -> 2.8.3)

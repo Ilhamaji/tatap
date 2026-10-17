@@ -12,9 +12,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
@@ -45,9 +48,17 @@ public class DetailActivity extends Activity {
     private String sub;
     private String epsCounter;
     private String synopsis;
+    private String studio;
+    private String season;
+    private String status;
+    private String source;
+    private String genresStr;
+    private double score = 0.0;
 
     private TextView tvTitle, tvTitleFull, tvSlug, tvTypeBadge;
-    private View layoutSynopsis;
+    private TextView tvScore, tvStatus, tvInfoLine;
+    private View layoutSynopsis, hsvGenres;
+    private LinearLayout llGenres;
     private TextView tvSynopsis, btnToggleSynopsis;
     private boolean isSynopsisExpanded = false;
     private ImageView ivPoster;
@@ -96,6 +107,12 @@ public class DetailActivity extends Activity {
         sub = getIntent().getStringExtra("sub");
         epsCounter = getIntent().getStringExtra("eps_counter");
         synopsis = getIntent().getStringExtra("synopsis");
+        score = getIntent().getDoubleExtra("score", 0.0);
+        studio = getIntent().getStringExtra("studio");
+        season = getIntent().getStringExtra("season");
+        status = getIntent().getStringExtra("status");
+        source = getIntent().getStringExtra("source");
+        genresStr = getIntent().getStringExtra("genres");
 
         prefs = getSharedPreferences("tatap_history", Context.MODE_PRIVATE);
 
@@ -103,6 +120,11 @@ public class DetailActivity extends Activity {
         tvTitleFull = findViewById(R.id.tv_detail_title_full);
         tvSlug = findViewById(R.id.tv_detail_slug);
         tvTypeBadge = findViewById(R.id.tv_detail_type_badge);
+        tvScore = findViewById(R.id.tv_detail_score);
+        tvStatus = findViewById(R.id.tv_detail_status);
+        tvInfoLine = findViewById(R.id.tv_detail_info_line);
+        hsvGenres = findViewById(R.id.hsv_detail_genres);
+        llGenres = findViewById(R.id.ll_detail_genres);
         layoutSynopsis = findViewById(R.id.layout_detail_synopsis);
         tvSynopsis = findViewById(R.id.tv_detail_synopsis);
         btnToggleSynopsis = findViewById(R.id.btn_toggle_synopsis);
@@ -119,6 +141,7 @@ public class DetailActivity extends Activity {
         tvTitle.setText(title != null ? title : "Detail Anime");
         tvTitleFull.setText(title != null ? title : "Anime");
         setupSynopsis(synopsis);
+        setupMetadata(score, status, studio, season, source, genresStr);
 
         String badgeText = (type != null && !type.isEmpty() ? type : "ANIME")
                 + (epsCounter != null && !epsCounter.isEmpty() ? " · " + epsCounter + " EP" : (eps != null && !eps.isEmpty() ? " · " + eps + " EP" : ""))
@@ -268,11 +291,31 @@ public class DetailActivity extends Activity {
                         list.add(epsArr.getJSONObject(i).getInt("ep"));
                     }
                     Collections.sort(list);
+                    JSONObject detailObj = dataObj.optJSONObject("detail");
+                    if (detailObj != null) {
+                        double apiScore = detailObj.optDouble("score", 0.0);
+                        String apiStatus = detailObj.optString("status", "");
+                        String apiStudio = detailObj.optString("studio", "");
+                        String apiSeason = detailObj.optString("season", "");
+                        String apiSource = detailObj.optString("source", "");
+                        JSONArray apiGenres = detailObj.optJSONArray("genres");
+                        String apiGenresStr = apiGenres != null ? apiGenres.toString() : "";
+                        runOnUiThread(() -> {
+                            if (score <= 0 && apiScore > 0) score = apiScore;
+                            if ((status == null || status.isEmpty()) && !apiStatus.isEmpty()) status = apiStatus;
+                            if ((studio == null || studio.isEmpty()) && !apiStudio.isEmpty()) studio = apiStudio;
+                            if ((season == null || season.isEmpty()) && !apiSeason.isEmpty()) season = apiSeason;
+                            if ((source == null || source.isEmpty()) && !apiSource.isEmpty()) source = apiSource;
+                            if ((genresStr == null || genresStr.isEmpty()) && !apiGenresStr.isEmpty()) genresStr = apiGenresStr;
+                            setupMetadata(score, status, studio, season, source, genresStr);
+                        });
+                    }
+
                     runOnUiThread(() -> {
                         if (pbLoading != null) pbLoading.setVisibility(View.GONE);
                         originalEpisodes.clear();
                         originalEpisodes.addAll(list);
-                        if ((synopsis == null || synopsis.trim().isEmpty()) && !apiSynopsis.trim().isEmpty()) {
+                        if ((synopsis == null || synopsis.trim().isEmpty() || apiSynopsis.length() > synopsis.length()) && !apiSynopsis.trim().isEmpty()) {
                             synopsis = apiSynopsis;
                             setupSynopsis(apiSynopsis);
                         }
@@ -306,6 +349,121 @@ public class DetailActivity extends Activity {
                 });
             }
         }).start();
+    }
+
+    private void setupMetadata(double scoreVal, String statusVal, String studioVal, String seasonVal, String sourceVal, String genresData) {
+        if (TvFocusHelper.isTv(this)) {
+            if (tvScore != null) tvScore.setVisibility(View.GONE);
+            if (tvStatus != null) tvStatus.setVisibility(View.GONE);
+            if (tvInfoLine != null) tvInfoLine.setVisibility(View.GONE);
+            if (hsvGenres != null) hsvGenres.setVisibility(View.GONE);
+            return;
+        }
+
+        // Score Badge
+        if (tvScore != null) {
+            if (scoreVal > 0) {
+                tvScore.setText(String.format(Locale.US, "%.1f", scoreVal));
+                tvScore.setVisibility(View.VISIBLE);
+            } else {
+                tvScore.setVisibility(View.GONE);
+            }
+        }
+
+        // Status Badge
+        if (tvStatus != null) {
+            if (statusVal != null && !statusVal.trim().isEmpty()) {
+                String sLower = statusVal.trim().toLowerCase();
+                if (sLower.contains("finish") || sLower.contains("tamat") || sLower.contains("completed")) {
+                    tvStatus.setText("TAMAT");
+                    tvStatus.setBackgroundResource(R.drawable.bg_detail_status_finished);
+                    tvStatus.setTextColor(0xFF10B981);
+                    tvStatus.setVisibility(View.VISIBLE);
+                } else if (sLower.contains("releas") || sLower.contains("airing") || sLower.contains("ongoing")) {
+                    tvStatus.setText("ONGOING");
+                    tvStatus.setBackgroundResource(R.drawable.bg_detail_status_ongoing);
+                    tvStatus.setTextColor(0xFF38BDF8);
+                    tvStatus.setVisibility(View.VISIBLE);
+                } else {
+                    tvStatus.setVisibility(View.GONE);
+                }
+            } else {
+                tvStatus.setVisibility(View.GONE);
+            }
+        }
+
+        // Info Line
+        if (tvInfoLine != null) {
+            List<String> metaParts = new ArrayList<>();
+            if (studioVal != null && !studioVal.trim().isEmpty()) {
+                metaParts.add("Studio: " + studioVal.trim());
+            }
+            if (seasonVal != null && !seasonVal.trim().isEmpty()) {
+                metaParts.add(seasonVal.trim());
+            }
+            if (sourceVal != null && !sourceVal.trim().isEmpty()) {
+                metaParts.add("Sumber: " + sourceVal.trim());
+            }
+            if (!metaParts.isEmpty()) {
+                tvInfoLine.setText(android.text.TextUtils.join(" · ", metaParts));
+                tvInfoLine.setVisibility(View.VISIBLE);
+            } else {
+                tvInfoLine.setVisibility(View.GONE);
+            }
+        }
+
+        // Genre Chips
+        if (llGenres != null && hsvGenres != null) {
+            if (genresData != null && !genresData.trim().isEmpty()) {
+                try {
+                    List<String> genreList = new ArrayList<>();
+                    if (genresData.startsWith("[")) {
+                        JSONArray jArr = new JSONArray(genresData);
+                        for (int i = 0; i < jArr.length(); i++) {
+                            String g = jArr.optString(i, "").trim();
+                            if (!g.isEmpty() && !"hentai".equalsIgnoreCase(g)) {
+                                genreList.add(g);
+                            }
+                        }
+                    } else {
+                        for (String g : genresData.split(",")) {
+                            String trimmed = g.trim();
+                            if (!trimmed.isEmpty() && !"hentai".equalsIgnoreCase(trimmed)) {
+                                genreList.add(trimmed);
+                            }
+                        }
+                    }
+
+                    if (!genreList.isEmpty()) {
+                        llGenres.removeAllViews();
+                        for (String genreName : genreList) {
+                            TextView chip = new TextView(this);
+                            chip.setText(genreName);
+                            chip.setTextColor(0xFFCBD5E1);
+                            chip.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
+                            chip.setBackgroundResource(R.drawable.bg_detail_genre_chip);
+                            int padH = (int) (8 * getResources().getDisplayMetrics().density);
+                            int padV = (int) (4 * getResources().getDisplayMetrics().density);
+                            chip.setPadding(padH, padV, padH, padV);
+                            chip.setFocusable(false);
+                            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                                    LinearLayout.LayoutParams.WRAP_CONTENT);
+                            lp.setMarginEnd((int) (6 * getResources().getDisplayMetrics().density));
+                            chip.setLayoutParams(lp);
+                            llGenres.addView(chip);
+                        }
+                        hsvGenres.setVisibility(View.VISIBLE);
+                    } else {
+                        hsvGenres.setVisibility(View.GONE);
+                    }
+                } catch (Exception ignored) {
+                    hsvGenres.setVisibility(View.GONE);
+                }
+            } else {
+                hsvGenres.setVisibility(View.GONE);
+            }
+        }
     }
 
     private void setupSynopsis(String synopsisText) {

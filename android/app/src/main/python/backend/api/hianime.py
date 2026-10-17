@@ -236,20 +236,86 @@ def _parse_browse_cards(html: str):
 
 def hianime_synopsis(slug: str) -> str:
     """Ambil sinopsis anime dari halaman detail HiAnime jika ada."""
+    d = hianime_details(slug)
+    return d.get("synopsis", "")
+
+def hianime_details(slug: str) -> dict:
+    """Ambil metadata detail lengkap (sinopsis, skor, genre, studio, status, durasi, musim) dari halaman film HiAnime."""
+    out = {
+        "synopsis": "",
+        "score": 0.0,
+        "status": "",
+        "season": "",
+        "duration": "",
+        "studio": "",
+        "genres": [],
+        "source": ""
+    }
     try:
         if not slug or "hentai" in slug.lower():
-            return ""
+            return out
         html_txt = _fetch(HI_BASE + "/" + slug)
+        if not html_txt:
+            return out
+        import html as _html
+
+        # Synopsis
         m = re.search(r'class="film-description[^\"]*"[^>]*>(.*?)</div>', html_txt, re.S)
         if not m:
             m = re.search(r'class="description[^\"]*"[^>]*>(.*?)</div>', html_txt, re.S)
         if m:
-            import html as _html
-            clean = re.sub(r"<[^>]+>", "", m.group(1)).strip()
-            return _html.unescape(" ".join(clean.split()))
+            clean = re.sub(r'<br\s*/?>', '\n', m.group(1), flags=re.I)
+            clean = re.sub(r'<[^>]+>', '', clean).strip()
+            out["synopsis"] = _html.unescape(clean)
+
+        # Score
+        m_score = re.search(r'class="item-head">MAL Score:</span>\s*<span[^>]*class="name"[^>]*>([^<]+)</span>', html_txt)
+        if m_score:
+            try:
+                out["score"] = float(m_score.group(1).strip())
+            except ValueError:
+                pass
+
+        # Status
+        m_stat = re.search(r'class="item-head">Status:</span>\s*<span[^>]*class="name"[^>]*>([^<]+)</span>', html_txt)
+        if m_stat:
+            out["status"] = m_stat.group(1).strip()
+
+        # Premiered / Season
+        m_prem = re.search(r'class="item-head">Premiered:</span>\s*<span[^>]*class="name"[^>]*>([^<]+)</span>', html_txt)
+        if not m_prem:
+            m_prem = re.search(r'class="item-head">Premiered:</span>\s*<a[^>]*>([^<]+)</a>', html_txt)
+        if m_prem:
+            out["season"] = m_prem.group(1).strip()
+
+        # Duration
+        m_dur = re.search(r'class="item-head">Duration:</span>\s*<span[^>]*class="name"[^>]*>([^<]+)</span>', html_txt)
+        if m_dur:
+            out["duration"] = m_dur.group(1).strip()
+
+        # Studios
+        studios = []
+        m_stu = re.search(r'class="item-head">Studios?:</span>\s*(.*?)(?:</div>|<span class="item-head")', html_txt, re.S)
+        if m_stu:
+            for s in re.finditer(r'<a[^>]*class="name"[^>]*>([^<]+)</a>', m_stu.group(1)):
+                studios.append(s.group(1).strip())
+        if studios:
+            out["studio"] = ", ".join(studios)
+
+        # Genres
+        genres = []
+        m_gen = re.search(r'class="item-head">Genres?:</span>\s*(.*?)(?:</div>|<span class="item-head")', html_txt, re.S)
+        if m_gen:
+            for g in re.finditer(r'<a[^>]*href="[^\"]*/genres/[^\"]*"[^>]*>([^<]+)</a>', m_gen.group(1)):
+                gtxt = g.group(1).strip()
+                if gtxt.lower() != 'hentai' and gtxt not in genres:
+                    genres.append(gtxt)
+        if genres:
+            out["genres"] = genres
+
     except Exception:
         pass
-    return ""
+    return out
 
 def _failover_proxies():
     """Direct dulu, warp proxy hanya failover. Urutan: [tanpa proxy, warp proxy]."""
