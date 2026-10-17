@@ -118,6 +118,8 @@ public class PlayerActivity extends Activity {
     private Button btnSkipOpEd;
     private float currentPlaybackSpeed = 1.0f;
     private boolean isHapticEnabled = true;
+    private boolean isGeneralHapticEnabled = true;
+    private boolean isSceneHapticEnabled = false; // Haptic scene audio dimatikan
     private volatile boolean isVideoPlaying = false;
     private volatile boolean isInOpEd = false;
     private Object hapticGenerator;
@@ -557,7 +559,9 @@ public class PlayerActivity extends Activity {
         try {
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
             autoSkipOpEd = sp.getBoolean("auto_skip_op_ed", false);
-            isHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_haptic", true);
+            isGeneralHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+            isHapticEnabled = isGeneralHapticEnabled;
+            isSceneHapticEnabled = false; // Haptic scene audio dimatikan
             currentResizeMode = TvFocusHelper.isTv(this)
                     ? AspectRatioFrameLayout.RESIZE_MODE_FIT
                     : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -832,7 +836,7 @@ public class PlayerActivity extends Activity {
         DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(this) {
             @Override
             protected AudioSink buildAudioSink(Context context, boolean enableFloatOutput, boolean enableAudioTrackPlaybackParams) {
-                if (TvFocusHelper.isTv(PlayerActivity.this)) {
+                if (TvFocusHelper.isTv(PlayerActivity.this) || !isSceneHapticEnabled) {
                     return super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams);
                 }
                 return new DefaultAudioSink.Builder(context)
@@ -1823,7 +1827,7 @@ public class PlayerActivity extends Activity {
 
         @Override
         public void handleBuffer(ByteBuffer buffer) {
-            if (!isHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;
+            if (!isSceneHapticEnabled || !isGeneralHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;
 
             ByteBuffer duplicate = buffer.asReadOnlyBuffer();
             duplicate.order(ByteOrder.LITTLE_ENDIAN);
@@ -3149,6 +3153,9 @@ public class PlayerActivity extends Activity {
     protected void onResume() {
         super.onResume();
         applySystemUiVisibility();
+        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+        isGeneralHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+        isHapticEnabled = isGeneralHapticEnabled;
         updateHapticGeneratorState();
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
@@ -3474,21 +3481,6 @@ public class PlayerActivity extends Activity {
             autoSkipOpEd = newAutoSkip;
             Toast.makeText(this, "Otomatis Lewati OP/ED: " + (newAutoSkip ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
         });
-
-        if (!TvFocusHelper.isTv(this)) {
-            String hapticLabel = isHapticEnabled ? "Aktif" : "Mati";
-            menuList.add("Umpan Balik Haptik / Getaran Adegan (" + hapticLabel + ")");
-            actionList.add(() -> {
-                boolean newHaptic = !isHapticEnabled;
-                sp.edit().putBoolean("pref_haptic", newHaptic).apply();
-                isHapticEnabled = newHaptic;
-                updateHapticGeneratorState();
-                if (newHaptic) {
-                    performHapticHeavyClick();
-                }
-                Toast.makeText(this, "Haptik Adegan: " + (newHaptic ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
-            });
-        }
 
         String[] menuArray = menuList.toArray(new String[0]);
         builder.setItems(menuArray, (dialog, which) -> {

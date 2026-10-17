@@ -67,6 +67,17 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
       - Menyinkronkan seluruh modul dan aturan regex secara identik antara `backend/api/translate.py` dan `android/app/src/main/python/backend/api/translate.py`.
     - **Automated Tests:**
       - Menambahkan 5 pengujian baru pada `tests/test_translate.py` (`test_pre_normalize_en_slang`, `test_smart_scene_military_protection`, `test_smart_scene_royal_protection`, `test_smart_scene_casual_fansub`, `test_slang_and_idioms_calque_sanitizer`), dengan total 131/131 pengujian automated lulus 100%.
+13. **Pemisahan Umpan Balik Haptik General ke Menu Perintah & Penonaktifan Haptic Scene Audio:**
+    - **Penonaktifan Haptic Scene (`SceneHapticAudioSink`):**
+      - Mematikan getaran adegan audio secara default (`isSceneHapticEnabled = false`) pada `PlayerActivity.java` dan membypass `TeeAudioProcessor` langsung ke `super.buildAudioSink(...)`, meniadakan getaran berlebih saat aksi pertempuran/ledakan dalam video.
+      - Menghapus entri opsi *"Getaran Adegan"* dari dialog opsi pemutar video agar antarmuka pemutar lebih ringkas dan fokus.
+    - **Pemisahan Haptic Feedback General UI ke Menu Perintah (`:haptic`):**
+      - Memindahkan kendali preferensi getaran haptik umum UI (gestur swipe volume, swipe brightness, seek, double tap play/pause, kunci layar) ke menu perintah utama (`MainActivity.java`).
+      - Menambahkan perintah CLI terminal `:haptic` (atau alias `:getar`) dengan argumen `[on|off|status|toggle]`.
+      - Menambahkan item utilitas perintah baru `cmd_item_haptic` pada dialog *Daftar Perintah* (`dialog_command_help.xml`) lengkap dengan badge status dinamis (`AKTIF` `#38BDF8` / `MATI` `#64748B`) dan deskripsi informatif.
+    - **Instant In-Place Auto-Toggle pada Menu Perintah:**
+      - Saat pengguna mengklik item perintah `:haptic` di dialog Daftar Perintah, fungsi secara otomatis beralih (*auto-toggle*) ON/OFF seketika tanpa menutup dialog atau keluar dari menu.
+      - Memperbarui teks dan warna badge seketika secara real-time, memberikan pulsa haptik konfirmasi saat diaktifkan, menampilkan Toast konfirmasi, dan menyimpan preferensi secara persisten ke `SharedPreferences` (`tatap_player_prefs` -> `pref_general_haptic`).
 
 ## [2.8.3] - 2026-10-17
 

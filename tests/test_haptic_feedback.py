@@ -22,6 +22,26 @@ def player_source():
     with open(PLAYER_ACTIVITY_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
+MAIN_ACTIVITY_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "android",
+    "app",
+    "src",
+    "main",
+    "java",
+    "id",
+    "tatap",
+    "app",
+    "MainActivity.java"
+)
+
+@pytest.fixture
+def main_source():
+    assert os.path.exists(MAIN_ACTIVITY_PATH), f"MainActivity.java not found at {MAIN_ACTIVITY_PATH}"
+    with open(MAIN_ACTIVITY_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
 def test_haptic_imports(player_source):
     """Test required Android haptic and audiofx imports are present."""
     assert "import android.media.audiofx.HapticGenerator;" in player_source
@@ -31,13 +51,15 @@ def test_haptic_imports(player_source):
 def test_haptic_state_fields(player_source):
     """Test haptic fields exist in PlayerActivity."""
     assert re.search(r"private\s+boolean\s+isHapticEnabled\s*=\s*true;", player_source)
+    assert re.search(r"private\s+boolean\s+isGeneralHapticEnabled\s*=\s*true;", player_source)
+    assert re.search(r"private\s+boolean\s+isSceneHapticEnabled\s*=\s*false;", player_source)
     assert re.search(r"private\s+Object\s+hapticGenerator;", player_source)
     assert re.search(r"private\s+int\s+lastHapticBrightnessStep\s*=\s*-1;", player_source)
 
 def test_haptic_tv_isolation(player_source):
     """Test that TV mode disables haptics completely."""
-    # In onCreate: isHapticEnabled = !TvFocusHelper.isTv(this) && ...
-    assert "!TvFocusHelper.isTv(this) && sp.getBoolean(\"pref_haptic\", true)" in player_source
+    # In onCreate: isGeneralHapticEnabled = !TvFocusHelper.isTv(this) && ...
+    assert "!TvFocusHelper.isTv(this) && sp.getBoolean(\"pref_general_haptic\"" in player_source
     # In performHapticTick, performHapticClick, performHapticHeavyClick, setupHapticGenerator
     assert "if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;" in player_source
     assert "if (TvFocusHelper.isTv(this)) return;" in player_source
@@ -70,6 +92,8 @@ def test_scene_haptic_audio_processor(player_source):
     assert "TeeAudioProcessor(new SceneHapticAudioSink())" in player_source
     assert "handleBuffer(ByteBuffer buffer)" in player_source
     assert "vibrateDirect(vibeDurationMs, intensity);" in player_source
+    # Verify scene haptics are safely bypassed when disabled
+    assert "!isSceneHapticEnabled" in player_source
 
 def test_scene_haptic_thread_safety(player_source):
     """Test that SceneHapticAudioSink does not touch player instance on audio thread."""
@@ -94,12 +118,17 @@ def test_haptic_generator_helper_and_lifecycle(player_source):
     assert "updateHapticGeneratorState();" in player_source
     assert "releaseHapticGenerator();" in player_source
 
-def test_haptic_preference_in_settings_dialog(player_source):
-    """Test user preference toggle in player settings dialog."""
-    assert "Umpan Balik Haptik / Getaran Adegan" in player_source
-    assert 'sp.edit().putBoolean("pref_haptic", newHaptic).apply();' in player_source
-    # Wrapped in !TvFocusHelper.isTv(this)
-    assert "!TvFocusHelper.isTv(this)" in player_source
+def test_general_haptic_in_command_menu_and_scene_disabled(player_source, main_source):
+    """Test user preference toggle in command menu and that scene haptics are disabled."""
+    # PlayerActivity has scene haptics disabled by default and reads general haptic
+    assert "isSceneHapticEnabled = false;" in player_source
+    assert "pref_general_haptic" in player_source
+    # MainActivity handles :haptic command and command dialog item
+    assert "handleHapticCommand" in main_source
+    assert 'case "haptic":' in main_source
+    assert 'case "getar":' in main_source
+    assert "cmd_item_haptic" in main_source
+    assert "tv_haptic_badge" in main_source
 
 def test_gesture_interactions_trigger_subtle_haptics(player_source):
     """Test gesture interactions call subtle haptics instead of crude vibrations."""
@@ -138,7 +167,10 @@ def test_anti_bgm_transient_onset_detector(player_source):
     # Check AniSkip integration
     assert "isInOpEd" in player_source
     assert "isInOpEd = (inIntro || inOutro);" in player_source
-    assert "if (!isHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;" in player_source
+    assert "if (!isSceneHapticEnabled || !isGeneralHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;" in player_source
+
+    # Check HAL HapticGenerator is disabled during playback to prevent BGM leakage
+    assert "HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, false);" in player_source
 
     # Check HAL HapticGenerator is disabled during playback to prevent BGM leakage
     assert "HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, false);" in player_source

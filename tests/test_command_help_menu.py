@@ -42,6 +42,7 @@ def test_dialog_command_help_retained_items():
         "cmd_item_logs",
         "cmd_item_update",
         "cmd_item_clear",
+        "cmd_item_haptic",
     ]
 
     for item_id in retained_ids:
@@ -89,6 +90,7 @@ def test_main_activity_show_command_help_dialog_sync():
         "cmd_item_logs",
         "cmd_item_update",
         "cmd_item_clear",
+        "cmd_item_haptic",
     ]
     for item_id in retained_ids:
         assert item_id in dialog_fn, f"ID {item_id} tidak ditemukan dalam showCommandHelpDialog()"
@@ -105,3 +107,5 @@ def test_terminal_commands_still_supported_in_main_activity():
     assert 'case "genre":' in content
     assert 'case "riwayat":' in content
     assert 'case "favorit":' in content
+    assert 'case "haptic":' in content
+    assert 'case "getar":' in content

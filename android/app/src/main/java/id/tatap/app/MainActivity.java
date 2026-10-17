@@ -16,6 +16,8 @@ import android.text.TextWatcher;
 import android.transition.AutoTransition;
 import android.transition.TransitionManager;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
+import android.content.SharedPreferences;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -1015,10 +1017,39 @@ public class MainActivity extends Activity {
                 checkForUpdates(true);
                 break;
 
+            case "haptic":
+            case "getar":
+                handleHapticCommand(args);
+                break;
+
             default:
                 showCommandOutput("> tatap$ Perintah tidak dikenal: :" + cmd + " (Ketik :help)", true);
                 break;
         }
+    }
+
+    private void handleHapticCommand(String args) {
+        SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+        boolean current = sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+        boolean target;
+        if ("on".equalsIgnoreCase(args) || "aktif".equalsIgnoreCase(args) || "1".equals(args)) {
+            target = true;
+        } else if ("off".equalsIgnoreCase(args) || "mati".equalsIgnoreCase(args) || "0".equals(args)) {
+            target = false;
+        } else {
+            target = !current;
+        }
+        sp.edit().putBoolean("pref_general_haptic", target).putBoolean("pref_haptic", target).apply();
+        if (target) {
+            try {
+                if (btnToggleMenu != null) {
+                    btnToggleMenu.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                }
+            } catch (Throwable ignored) {}
+        }
+        String statusStr = target ? "AKTIF" : "MATI";
+        showCommandOutput("> tatap$ :haptic " + (target ? "on" : "off") + " [Getaran Sentuh UI: " + statusStr + "]", false);
+        Toast.makeText(this, "Getaran Sentuh UI: " + (target ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
     }
 
     private void handleSeasonFilterCommand(String[] parts) {
@@ -1363,6 +1394,38 @@ public class MainActivity extends Activity {
             showTranslateLogsDialog();
         });
 
+        View itemHaptic = dialog.findViewById(R.id.cmd_item_haptic);
+        if (itemHaptic != null) {
+            TextView tvBadge = dialog.findViewById(R.id.tv_haptic_badge);
+            TextView tvDesc = dialog.findViewById(R.id.tv_haptic_desc);
+            SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+            Runnable updateHapticUI = () -> {
+                boolean isEnabled = sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+                if (tvBadge != null) {
+                    tvBadge.setText(isEnabled ? "AKTIF" : "MATI");
+                    tvBadge.setTextColor(isEnabled ? 0xFF38BDF8 : 0xFFEF4444);
+                }
+                if (tvDesc != null) {
+                    tvDesc.setText("Umpan balik getaran sentuh UI (saat ini: " + (isEnabled ? "AKTIF" : "MATI") + " - ketuk untuk beralih)");
+                }
+            };
+            updateHapticUI.run();
+
+            itemHaptic.setOnClickListener(v -> {
+                boolean current = sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+                boolean newHaptic = !current;
+                sp.edit().putBoolean("pref_general_haptic", newHaptic).putBoolean("pref_haptic", newHaptic).apply();
+                updateHapticUI.run();
+                if (newHaptic) {
+                    try {
+                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                    } catch (Throwable ignored) {}
+                }
+                showCommandOutput("> tatap$ :haptic " + (newHaptic ? "on" : "off") + " [Getaran Sentuh UI: " + (newHaptic ? "AKTIF" : "MATI") + "]", false);
+                Toast.makeText(this, "Getaran Sentuh UI: " + (newHaptic ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
+            });
+        }
+
         View itemUpdate = dialog.findViewById(R.id.cmd_item_update);
         if (itemUpdate != null) {
             itemUpdate.setOnClickListener(v -> {
@@ -1385,7 +1448,7 @@ public class MainActivity extends Activity {
             R.id.cmd_item_ping, R.id.cmd_item_ai, R.id.cmd_item_apikey,
             R.id.cmd_item_gemini, R.id.cmd_item_groq, R.id.cmd_item_ollama,
             R.id.cmd_item_model, R.id.cmd_item_logs,
-            R.id.cmd_item_update, R.id.cmd_item_clear
+            R.id.cmd_item_haptic, R.id.cmd_item_update, R.id.cmd_item_clear
         };
         for (int id : cmdItemIds) {
             View item = dialog.findViewById(id);
