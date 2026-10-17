@@ -13,6 +13,17 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.8.2] - 2026-10-17
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.8.1 -> 2.8.2)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan crash runtime (*critical thread violation bugfix*) pada pemutar video Android:
+1. **Perbaikan Thread-Safety Audio Sink (`IllegalStateException: Player is accessed on the wrong thread`):**
+   - Menghapus pemanggilan langsung `player.isPlaying()` dari dalam method `handleBuffer(ByteBuffer buffer)` pada kelas `SceneHapticAudioSink`.
+   - Method `handleBuffer` berjalan pada thread pemrosesan audio internal ExoPlayer (`ExoPlayer:Playback`), di mana pemanggilan metode apa pun pada instance `player` dilarang oleh arsitektur Media3 dan memicu crash `IllegalStateException`.
+   - Menggantikannya dengan state flag `volatile boolean isVideoPlaying` yang dikelola secara atomik di UI Thread (melalui callback `onIsPlayingChanged`, `onPause`, dan `onDestroy`) dan dibaca secara non-blocking serta bebas thread-violation oleh audio thread.
+2. **Pembaruan Test Suite:**
+   - Menambahkan unit test otomatis `test_scene_haptic_thread_safety` pada `tests/test_haptic_feedback.py` untuk memastikan `SceneHapticAudioSink` tidak pernah mengakses metode pada instance `player` secara lintas-thread.
+
 ## [2.8.1] - 2026-10-17
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.8.0 -> 2.8.1)

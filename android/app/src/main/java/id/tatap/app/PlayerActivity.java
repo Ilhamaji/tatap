@@ -117,6 +117,7 @@ public class PlayerActivity extends Activity {
     private Button btnSkipOpEd;
     private float currentPlaybackSpeed = 1.0f;
     private boolean isHapticEnabled = true;
+    private volatile boolean isVideoPlaying = false;
     private Object hapticGenerator;
     private int currentAudioSessionId = C.AUDIO_SESSION_ID_UNSET;
     private int lastHapticBrightnessStep = -1;
@@ -1003,6 +1004,7 @@ public class PlayerActivity extends Activity {
 
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
+                isVideoPlaying = isPlaying;
                 if (isPlaying) {
                     handler.removeCallbacks(subtitleSyncRunnable);
                     handler.post(subtitleSyncRunnable);
@@ -1715,7 +1717,7 @@ public class PlayerActivity extends Activity {
         if (TvFocusHelper.isTv(this)) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
         if (hapticGenerator instanceof HapticGenerator) {
-            boolean shouldEnable = isHapticEnabled && (player != null && player.isPlaying());
+            boolean shouldEnable = isHapticEnabled && isVideoPlaying;
             HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, shouldEnable);
         }
     }
@@ -1765,8 +1767,7 @@ public class PlayerActivity extends Activity {
 
         @Override
         public void handleBuffer(ByteBuffer buffer) {
-            if (!isHapticEnabled || TvFocusHelper.isTv(PlayerActivity.this)) return;
-            if (player == null || !player.isPlaying()) return;
+            if (!isHapticEnabled || !isVideoPlaying || TvFocusHelper.isTv(PlayerActivity.this)) return;
 
             long now = System.currentTimeMillis();
             if (now - lastHapticTriggerMs < 200) {
@@ -2992,6 +2993,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        isVideoPlaying = false;
         recordWatchProgress(true);
         if (player != null) player.pause();
         if (hapticGenerator instanceof HapticGenerator && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -3015,6 +3017,7 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        isVideoPlaying = false;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backInvokedCallback != null) {
             try {
                 getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backInvokedCallback);

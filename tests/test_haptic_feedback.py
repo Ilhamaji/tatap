@@ -71,6 +71,14 @@ def test_scene_haptic_audio_processor(player_source):
     assert "handleBuffer(ByteBuffer buffer)" in player_source
     assert "vibrateDirect(35, intensity);" in player_source
 
+def test_scene_haptic_thread_safety(player_source):
+    """Test that SceneHapticAudioSink does not touch player instance on audio thread."""
+    sink_match = re.search(r"class SceneHapticAudioSink\s+implements[^{]+\{(.*?)\n    \}", player_source, re.DOTALL)
+    assert sink_match is not None, "SceneHapticAudioSink class not found!"
+    sink_body = sink_match.group(1)
+    assert "player." not in sink_body, "SceneHapticAudioSink must not access player on audio thread!"
+    assert "isVideoPlaying" in sink_body, "SceneHapticAudioSink should check thread-safe volatile isVideoPlaying"
+
 def test_haptic_generator_helper_and_lifecycle(player_source):
     """Test HapticGeneratorHelper inner class and lifecycle management."""
     assert "class HapticGeneratorHelper" in player_source
