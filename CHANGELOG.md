@@ -53,6 +53,9 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
     - **Anti-Reverb Tail Lockout & Mandatory Attack Onset:** Mewajibkan lonjakan energi positif ($\Delta \text{RMS} \ge 1200$) pada deteksi ledakan dahsyat serta mengunci jendela gema selama 400ms (`now - lastExplosionTriggerMs < 400`), mencegah gema/asap pasca-ledakan memicu getaran palsu susulan di ruang kosong antara aksi.
     - **Dual-Cadence Cooldown:** Memisahkan cooldown tembakan (85ms) dan benturan/ledakan (200–400ms), mendukung getaran presisi pada tiap butir peluru tembakan beruntun (*burst-fire / semi-auto*).
     - **Profil Haptik Multi-Tier Berbasis Karakter Akustik:** Tembakan memicu pulsa klik mekanis tajam & renyah (15ms), benturan fisik/pukulan tinju solid (30ms), dan dentuman ledakan dahsyat berbobot berat (45ms).
+11. **Kalibrasi Akustik Youjo Senki Season 2 & Dukungan Angka Romawi Season:**
+    - **Kalibrasi Onset Attack ($\Delta \text{RMS} \ge 600$):** Berdasarkan kalibrasi empiris waveform PCM audio pertempuran udara dan artileri *Youjo Senki*, menambahkan syarat wajib kenaikan energi positif ($\Delta \text{RMS} \ge 600$) pada jalur deteksi `isAttackOnset`, meniadakan seluruh getaran palsu yang sebelumnya sempat bocor saat intensitas suara sedang meluruh/turun tajam ($\Delta \text{RMS} < 0$).
+    - **Dukungan Angka Romawi Penomoran Season:** Memperbarui ekstraktor musim (`_extract_season_num`) dan pembersih token judul (`_clean_title_tokens`) pada backend dan Chaquopy untuk mendukung angka Romawi (`II` -> season 2, `III` -> season 3, `IV` -> season 4, dst.), menjamin pencocokan judul seperti *Youjo Senki II*, *Mob Psycho 100 III*, dan *Overlord IV* terpetakan 100% akurat.
 
 ## [2.8.3] - 2026-10-17
 

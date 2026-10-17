@@ -1890,7 +1890,7 @@ public class PlayerActivity extends Activity {
 
             // B. Physical Strike / Heavy Attack Onset (pukulan tinju, tendangan):
             boolean isAttackOnset = (deltaRms >= 1400 && peak >= 16500) ||
-                                    (surgeRatio >= 1.55f && peak >= 17000 && rms >= 2600);
+                                    (surgeRatio >= 1.55f && peak >= 17000 && rms >= 2600 && deltaRms >= 600);
 
             // C. Heavy Explosion / Super-Move / Colossal Blast:
             // Dentuman dahsyat (bom, sihir kehancuran). Wajib attack onset (deltaRms >= 1200)

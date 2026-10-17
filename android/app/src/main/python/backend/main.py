@@ -529,13 +529,16 @@ def _extract_season_num(t: str) -> int:
                     return int(g)
                 except ValueError:
                     pass
+    m_roman = re.search(r"\b(ii|iii|iv|v|vi)\b", t)
+    if m_roman:
+        return {"ii": 2, "iii": 3, "iv": 4, "v": 5, "vi": 6}[m_roman.group(1)]
     return 1
 
 
 def _clean_title_tokens(t: str) -> set:
     import re
     t = (t or "").replace("&", " and ")
-    t = re.sub(r"\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+|saishuushou\s*\d+|finale\s*\d+)\b|(?:\b|\s)\d+$", "", t, flags=re.I)
+    t = re.sub(r"\b(?:season\s*\d+|\d+(?:nd|rd|th|st)\s*season|part\s*\d+|s\d+|saishuushou\s*\d+|finale\s*\d+|ii|iii|iv|v|vi)\b|(?:\b|\s)\d+$", "", t, flags=re.I)
     t = re.sub(r"[^a-zA-Z0-9\s]", " ", t)
     tokens = set()
     for tok in t.lower().split():
