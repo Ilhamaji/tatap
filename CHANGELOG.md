@@ -56,6 +56,17 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
 11. **Kalibrasi Akustik Youjo Senki Season 2 & Dukungan Angka Romawi Season:**
     - **Kalibrasi Onset Attack ($\Delta \text{RMS} \ge 600$):** Berdasarkan kalibrasi empiris waveform PCM audio pertempuran udara dan artileri *Youjo Senki*, menambahkan syarat wajib kenaikan energi positif ($\Delta \text{RMS} \ge 600$) pada jalur deteksi `isAttackOnset`, meniadakan seluruh getaran palsu yang sebelumnya sempat bocor saat intensitas suara sedang meluruh/turun tajam ($\Delta \text{RMS} < 0$).
     - **Dukungan Angka Romawi Penomoran Season:** Memperbarui ekstraktor musim (`_extract_season_num`) dan pembersih token judul (`_clean_title_tokens`) pada backend dan Chaquopy untuk mendukung angka Romawi (`II` -> season 2, `III` -> season 3, `IV` -> season 4, dst.), menjamin pencocokan judul seperti *Youjo Senki II*, *Mob Psycho 100 III*, dan *Overlord IV* terpetakan 100% akurat.
+12. **Kamus English Slang & Idiom Engine GTX+ & Optimasi Smart Scene Subtitle:**
+    - **Dual-Stage Pre- & Post-Normalizer:**
+      - *Stage 1 (Pre-GTX Normalizer):* Menyelaraskan idiom dan slang bahasa Inggris ambigu sebelum dikirim ke endpoint Google Translate (`gotta bounce` -> `gotta go now`, `no cap` -> `seriously, no lie`, `i'm down for that` -> `i agree to that`, `spill the tea` -> `reveal the secret`, `zero rizz` -> `zero charisma`, `touch grass` -> `face reality`, `caught in 4k` -> `caught red-handed with clear proof`, `deadass` -> `completely serious`, `hit the sack` -> `go to sleep`, `hold your horses` -> `wait a minute and be patient`, `piece of cake` -> `very easy task`).
+      - *Stage 2 (Post-GTX Calque & Slang Lexicon):* Menambahkan leksikon pembersih calque harfiah 200+ idiom dan istilah slang mesin ke padanan diksi fansub Indonesia alami (*"harus memantul"* -> *"harus cabut"*, *"tidak ada batasan/topi"* -> *"beneran"*, *"disimpan oleh bel"* -> *"selamat di saat kritis"*, *"sudah dimuntahkan"* -> *"cepat katakan"*, *"pegang kudamu"* -> *"sabar dulu"*, *"tidak mendapat rimpang"* -> *"tidak punya pesona"*, *"sentuh rumput"* -> *"sadar realita"*, *"baju besi plot"* -> *"kebal berkat skenario"*, *"energi karakter utama"* -> *"aura protagonis"*, *"bos penjara bawah tanah"* -> *"bos dungeon"*, *"tuan serikat"* -> *"ketua guild"*, *"bersihkan pesta"* -> *"seluruh party gugur"*, dll).
+    - **Smart Scene Subtitle Multi-Domain Context Classifier:**
+      - Mengklasifikasikan konteks percakapan secara cerdas menjadi **Militer/Taktikal** (`_SCENE_MILITARY_RE`), **Kerajaan/Monarki/Nobilitas** (`_SCENE_ROYAL_RE`), **Gaming/RPG/Dungeon** (`_SCENE_GAMING_RE`), dan **Kasual/Sekolah/Komedi** (`_CASUAL_FANSUB_RULES`).
+      - Melindungi dialog perwira militer (*Youjo Senki*, *86*, *Kingdom*) dan keluarga kerajaan (*Frieren*, *Overlord*) agar tidak terdistorsi menjadi bahasa gaul tongkrongan (*"nggak"*, *"udah"*, *"cewek/cowok"*), mempertahankan kesantunan, kedisiplinan, dan atmosfer cerita.
+    - **Paritas 100% Chaquopy Android:**
+      - Menyinkronkan seluruh modul dan aturan regex secara identik antara `backend/api/translate.py` dan `android/app/src/main/python/backend/api/translate.py`.
+    - **Automated Tests:**
+      - Menambahkan 5 pengujian baru pada `tests/test_translate.py` (`test_pre_normalize_en_slang`, `test_smart_scene_military_protection`, `test_smart_scene_royal_protection`, `test_smart_scene_casual_fansub`, `test_slang_and_idioms_calque_sanitizer`), dengan total 131/131 pengujian automated lulus 100%.
 
 ## [2.8.3] - 2026-10-17
 
