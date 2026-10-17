@@ -113,3 +113,13 @@ def test_gesture_interactions_trigger_subtle_haptics(player_source):
     assert "doSkipOpEd()" in player_source
     # Episode switch click
     assert "switchEpisode(int targetEp)" in player_source
+
+def test_erm_motor_adaptation_and_media_attributes(player_source):
+    """Test ERM motor pulse adaptation and USAGE_MEDIA attributes for Samsung One UI."""
+    assert "hasAmplitudeControl()" in player_source
+    assert "effectiveMs" in player_source
+    assert "AudioAttributes.USAGE_MEDIA" in player_source
+    assert "cachedVibrator" in player_source
+    # Calibrated scene haptic threshold for AAC anime streams
+    assert "peak > 17500" in player_source
+    assert "rms > 3800" in player_source

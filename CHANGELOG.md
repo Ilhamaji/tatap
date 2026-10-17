@@ -13,6 +13,28 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.8.3] - 2026-10-17
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.8.2 -> 2.8.3)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 untuk perbaikan kompatibilitas hardware dan vendor (*hardware compatibility & vendor policy bugfix*), khususnya perangkat dengan motor getar koin tipe ERM (seperti Samsung Galaxy A33 5G, A-series, Redmi, Poco, dll.) dan sistem operasi Samsung One UI:
+1. **Adaptasi Pulsa Inersia Motor ERM (`vibrateDirect`):**
+   - Menghitung kapabilitas kendali amplitudo perangkat secara dinamis (`v.hasAmplitudeControl()`).
+   - Pada ponsel dengan motor ERM koin (seperti Samsung Galaxy A33 5G), inersia mekanis rotor membutuhkan waktu ~35–50ms untuk mulai berputar. Pulsa pendek 15ms–25ms sebelumnya terputus sebelum motor sempat menghasilkan gaya getar yang terasa di tangan.
+   - Durasi pulsa getaran otomatis diskalakan saat `hasAmplitudeControl() == false`:
+     - *Tick (Volume & Kecerahan):* Ditingkatkan menjadi 45ms.
+     - *Click (Play/Pause, Seek, Skip):* Ditingkatkan menjadi 65ms.
+     - *Heavy Click (Kunci Layar & Toggle Menu):* Ditingkatkan menjadi 90ms.
+     - *Scene Explosion:* Ditingkatkan menjadi 80ms.
+2. **Pengaliran Getaran Media via `AudioAttributes.USAGE_MEDIA`:**
+   - Menambahkan atribut audio `AudioAttributes.USAGE_MEDIA` pada pemanggilan `v.vibrate(effect, attrs)`.
+   - Mengatasi kebijakan Samsung One UI yang secara agresif membungkam getaran tanpa atribut (`USAGE_UNKNOWN` / `USAGE_TOUCH`) saat pengguna menonaktifkan getaran sentuh keyboard atau saat mode hemat daya aktif.
+   - Menjadikan getaran terhubung secara resmi ke kanal pemutaran media aktif ExoPlayer.
+3. **Kalibrasi Ambang Batas Adegan Aksi Anime (`SceneHapticAudioSink`):**
+   - Menyesuaikan batas pemicu lonjakan audio dari `peak > 23000 && rms > 8500` menjadi `(peak > 17500 && rms > 3800) || (peak > 22000 && rms > 2800)`.
+   - Nilai sebelumnya (-11.7 dBFS RMS) terlalu tinggi untuk standar streaming anime AAC stereo (-23 LUFS) sehingga getaran adegan pertarungan jarang terpicu. Ambang batas baru merefleksikan dinamika adegan aksi anime secara akurat tanpa terpicu oleh dialog percakapan normal.
+4. **Pembaruan Test Suite:**
+   - Menambahkan pengujian `test_erm_motor_adaptation_and_media_attributes` pada `tests/test_haptic_feedback.py` (10/10 lulus).
+
 ## [2.8.2] - 2026-10-17
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.8.1 -> 2.8.2)

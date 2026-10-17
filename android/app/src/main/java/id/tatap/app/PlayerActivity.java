@@ -1611,19 +1611,27 @@ public class PlayerActivity extends Activity {
         handler.postDelayed(() -> tv.setVisibility(View.GONE), 350);
     }
 
+    private Vibrator cachedVibrator = null;
+
     private Vibrator getVibratorService() {
+        if (cachedVibrator != null) return cachedVibrator;
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 android.os.VibratorManager vm = (android.os.VibratorManager) getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
                 if (vm != null) {
                     Vibrator defVib = vm.getDefaultVibrator();
-                    if (defVib != null && defVib.hasVibrator()) return defVib;
+                    if (defVib != null && defVib.hasVibrator()) {
+                        cachedVibrator = defVib;
+                        return cachedVibrator;
+                    }
                 }
             }
-            return (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            cachedVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            return cachedVibrator;
         } catch (Throwable t) {
             try {
-                return (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                cachedVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                return cachedVibrator;
             } catch (Throwable ignored) {
                 return null;
             }
@@ -1634,16 +1642,47 @@ public class PlayerActivity extends Activity {
         if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;
         try {
             Vibrator v = getVibratorService();
-            if (v == null || !v.hasVibrator()) return;
+            if (v == null || !v.hasVibrator()) {
+                v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v == null || !v.hasVibrator()) return;
+            }
+
+            boolean hasAmp = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && v.hasAmplitudeControl();
+            long effectiveMs = ms;
+            // Adaptasi durasi untuk motor ERM (Samsung Galaxy A-series, Redmi, Poco, dll.)
+            // Motor ERM koin memiliki inersia fisik ~35-50ms sebelum massa eksentrik mulai berputar.
+            // Tanpa amplitudo kontrol (hasAmp == false), pulsa dinaikkan agar getaran terasa jelas di tangan.
+            if (!hasAmp) {
+                if (ms <= 20) {
+                    effectiveMs = 45; // Tick terasa di ERM
+                } else if (ms <= 30) {
+                    effectiveMs = 65; // Click terasa di ERM
+                } else if (ms <= 50) {
+                    effectiveMs = 90; // Heavy click terasa di ERM
+                } else {
+                    effectiveMs = Math.max(ms, 80); // Scene hit / ledakan di ERM
+                }
+            }
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 int amp = VibrationEffect.DEFAULT_AMPLITUDE;
-                if (amplitude > 0 && amplitude <= 255 && v.hasAmplitudeControl()) {
+                if (amplitude > 0 && amplitude <= 255 && hasAmp) {
                     amp = amplitude;
                 }
-                v.vibrate(VibrationEffect.createOneShot(ms, amp));
+                VibrationEffect effect = VibrationEffect.createOneShot(effectiveMs, amp);
+                try {
+                    // Gunakan USAGE_MEDIA agar lolos dari penyaringan sistem Samsung One UI
+                    // untuk feedback sentuh dan terikat dengan kanal playback media video aktif.
+                    android.media.AudioAttributes attrs = new android.media.AudioAttributes.Builder()
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .build();
+                    v.vibrate(effect, attrs);
+                } catch (Throwable fallbackAttr) {
+                    v.vibrate(effect);
+                }
             } else {
-                v.vibrate(ms);
+                v.vibrate(effectiveMs);
             }
         } catch (Throwable ignored) {}
     }
@@ -1795,11 +1834,11 @@ public class PlayerActivity extends Activity {
             int rms = (int) Math.sqrt((double) sumSquares / count);
 
             // Ambang batas ledakan/benturan anime:
-            // Dialog biasa: peak < 16000, rms < 5500.
-            // Ledakan/pukulan/tembakan/dentuman bass: peak > 23000 dan rms > 8500.
-            if (peak > 23000 && rms > 8500) {
+            // Dialog biasa: peak < 16000, rms < 3500.
+            // Ledakan/pukulan/tembakan/dentuman bass: peak > 17500 dan rms > 3800 (atau transien tajam peak > 22000).
+            if ((peak > 17500 && rms > 3800) || (peak > 22000 && rms > 2800)) {
                 lastHapticTriggerMs = now;
-                int intensity = Math.min(255, 120 + ((peak - 23000) * 135 / 9767));
+                int intensity = Math.min(255, 120 + ((peak - 17500) * 135 / 15267));
                 vibrateDirect(35, intensity);
             }
         }
@@ -3342,7 +3381,7 @@ public class PlayerActivity extends Activity {
                 isHapticEnabled = newHaptic;
                 updateHapticGeneratorState();
                 if (newHaptic) {
-                    performHapticClick();
+                    performHapticHeavyClick();
                 }
                 Toast.makeText(this, "Haptik Adegan: " + (newHaptic ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
             });
