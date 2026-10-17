@@ -30,7 +30,10 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
 5. **Perbaikan Tautan Statistik Unduhan di README.md:**
    - Memperbarui tautan tombol statistik unduhan ke visualisator rilis GitHub publik SomSubhra.
 6. **Pembaruan Test Suite:**
-   - Menambahkan test suite baru `tests/test_detail_metadata.py` (5 pengujian baru, total 123 automated tests lulus 100%).
+   - Menambahkan test suite baru `tests/test_detail_metadata.py` (5 pengujian baru, total 124 automated tests lulus 100%).
+7. **Pemberlakuan Direktif Unduhan Publik & Anti-404 README.md:**
+   - Menambahkan Master Directive #6 pada `AGENTS.md` dan baris panduan pada `PROJECT_MAP.md`: Seluruh tombol unduhan di `README.md` mutlak wajib selalu mengarah ke rilis publik aktif terakhir (`v2.8.3`), bukan rilis berstatus DRAFT, guna mencegah kegagalan unduhan publik (error 404).
+   - Memperbarui `tools/bump_version.py` dengan perintah `--sync-readme` dan audit target rilis publik pada `check_consistency()`.
 
 ## [2.8.3] - 2026-10-17
 
