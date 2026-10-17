@@ -1805,14 +1805,12 @@ public class PlayerActivity extends Activity {
     private class SceneHapticAudioSink implements TeeAudioProcessor.AudioBufferSink {
         private long lastHapticTriggerMs = 0;
         private float runningRms = 1500f;
-        private int consecutiveLoudBuffers = 0;
-        private long musicSuppressionUntilMs = 0;
+        private int prevRms = 1500;
 
         @Override
         public void flush(int sampleRateHz, int channelCount, int encoding) {
             runningRms = 1500f;
-            consecutiveLoudBuffers = 0;
-            musicSuppressionUntilMs = 0;
+            prevRms = 1500;
         }
 
         @Override
@@ -1820,12 +1818,6 @@ public class PlayerActivity extends Activity {
             if (!isHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;
 
             long now = System.currentTimeMillis();
-            if (now < musicSuppressionUntilMs) {
-                return;
-            }
-            if (now - lastHapticTriggerMs < 280) {
-                return;
-            }
 
             ByteBuffer duplicate = buffer.asReadOnlyBuffer();
             duplicate.order(ByteOrder.LITTLE_ENDIAN);
@@ -1847,45 +1839,35 @@ public class PlayerActivity extends Activity {
             if (count == 0) return;
             int rms = (int) Math.sqrt((double) sumSquares / count);
 
-            // Periksa apakah audio sedang dalam kategori keras (music beat / continuous audio)
-            boolean isLoud = (rms > 3500 || peak > 17500);
-            if (isLoud) {
-                consecutiveLoudBuffers++;
-            } else {
-                if (consecutiveLoudBuffers > 0) consecutiveLoudBuffers--;
-            }
-
-            // Anti-Sustain Music Guard:
-            // Jika audio keras bertahan terus-menerus lebih dari 3 buffer berturut-turut (~40-60ms),
-            // ini adalah ritme background music, vokal, atau drum roll berkelanjutan, BUKAN impak scene sesaat.
-            if (consecutiveLoudBuffers > 3) {
-                musicSuppressionUntilMs = now + 180;
-                // Adaptasikan runningRms agar mengejar volume musik
-                runningRms = 0.85f * runningRms + 0.15f * rms;
+            if (now - lastHapticTriggerMs < 250) {
+                prevRms = rms;
                 return;
             }
 
-            // Hitung Surge Ratio (lonjakan energi relatif terhadap baseline berjalan)
+            int deltaRms = rms - prevRms;
+            prevRms = rms;
+
             float effectiveBaseline = Math.max(1200f, runningRms);
             float surgeRatio = (float) rms / effectiveBaseline;
-            float crestFactor = (float) peak / Math.max(1, rms);
 
-            // Kondisi Scene Impact Asli:
-            // 1. Lonjakan energi tiba-tiba (surgeRatio >= 2.1x) dengan crest factor impak fisik (>= 3.8) dan peak > 17500 serta rms > 3800.
-            // 2. Transien dahsyat (super-move, ledakan masif) yang menembus musik: peak >= 27500 dan (rms - runningRms) >= 3500.
-            boolean isSceneImpact = (consecutiveLoudBuffers <= 2) && (
-                (surgeRatio >= 2.1f && crestFactor >= 3.8f && peak > 17500 && rms > 3800) ||
-                (peak >= 27500 && (rms - runningRms) >= 3500)
-            );
+            // Kriteria Akustik Adegan Anime:
+            // 1. Physical Impact / Strike (pukulan tinju, tendangan, benturan pedang/katana, tembakan):
+            //    Lonjakan tajam buffer-ke-buffer (deltaRms >= 1400) atau lonjakan relatif >= 1.55x di atas baseline berjalan.
+            boolean isAttackOnset = (deltaRms >= 1400 && peak >= 16500) ||
+                                    (surgeRatio >= 1.55f && peak >= 17000 && rms >= 2600);
 
-            // Update baseline secara mulus (EMA) untuk buffer non-impak
+            // 2. Heavy Explosion / Super-Move / Colossal Impact:
+            //    Dentuman dahsyat (bom, sihir kehancuran, transformasi Titan, Kamehameha) yang menembus musik pertempuran.
+            boolean isColossal = (peak >= 24000 && (rms - runningRms) >= 1200 && deltaRms >= 800);
+
+            boolean isSceneImpact = isAttackOnset || isColossal;
+
             if (!isSceneImpact) {
-                runningRms = 0.90f * runningRms + 0.10f * rms;
+                runningRms = 0.88f * runningRms + 0.12f * rms;
             } else {
                 lastHapticTriggerMs = now;
-                // Baseline dinaikkan moderat pasca impak
-                runningRms = Math.max(runningRms, (float) rms * 0.7f);
-                int intensity = Math.min(255, 120 + ((peak - 17500) * 135 / 15267));
+                runningRms = Math.max(runningRms, (float) rms * 0.75f);
+                int intensity = Math.min(255, 120 + ((peak - 16500) * 135 / 16267));
                 vibrateDirect(35, intensity);
             }
         }

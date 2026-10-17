@@ -121,18 +121,19 @@ def test_erm_motor_adaptation_and_media_attributes(player_source):
     assert "AudioAttributes.USAGE_MEDIA" in player_source
     assert "cachedVibrator" in player_source
     # Calibrated scene haptic threshold for AAC anime streams
-    assert "peak > 17500" in player_source
-    assert "rms > 3800" in player_source
+    assert "peak >= 16500" in player_source
+    assert "deltaRms >= 1400" in player_source
 
 
 def test_anti_bgm_transient_onset_detector(player_source):
-    """Test adaptive transient onset detector, anti-sustain music guard, and AniSkip isolation."""
-    # Check running baseline and anti-sustain fields
+    """Test adaptive transient onset detector, energy derivative, and AniSkip isolation."""
+    # Check running baseline and attack derivative fields
     assert "runningRms" in player_source
-    assert "consecutiveLoudBuffers" in player_source
-    assert "musicSuppressionUntilMs" in player_source
+    assert "prevRms" in player_source
+    assert "deltaRms" in player_source
     assert "surgeRatio" in player_source
-    assert "crestFactor" in player_source
+    assert "isAttackOnset" in player_source
+    assert "isColossal" in player_source
 
     # Check AniSkip integration
     assert "isInOpEd" in player_source
@@ -146,78 +147,62 @@ def test_anti_bgm_transient_onset_detector(player_source):
 def test_dsp_simulation_scene_vs_bgm():
     """Simulate DSP logic: ensure sustained BGM is rejected while scene impacts trigger cleanly."""
     running_rms = 1500.0
-    consecutive_loud = 0
-    music_suppression_until = 0
+    prev_rms = 1500.0
     last_trigger = -1000
 
     def process_buffer(now_ms, peak, rms, in_op_ed=False):
-        nonlocal running_rms, consecutive_loud, music_suppression_until, last_trigger
+        nonlocal running_rms, prev_rms, last_trigger
         if in_op_ed:
+            running_rms = 3500.0
+            prev_rms = 3500.0
             return False
-        if now_ms < music_suppression_until:
-            return False
-        if now_ms - last_trigger < 280:
+        if now_ms - last_trigger < 250:
+            prev_rms = rms
             return False
 
-        is_loud = (rms > 3500 or peak > 17500)
-        if is_loud:
-            consecutive_loud += 1
-        else:
-            if consecutive_loud > 0:
-                consecutive_loud -= 1
-
-        if consecutive_loud > 3:
-            music_suppression_until = now_ms + 180
-            running_rms = 0.85 * running_rms + 0.15 * rms
-            return False
+        delta_rms = rms - prev_rms
+        prev_rms = rms
 
         effective_baseline = max(1200.0, running_rms)
         surge_ratio = rms / effective_baseline
-        crest_factor = peak / max(1, rms)
 
-        is_impact = (consecutive_loud <= 2) and (
-            (surge_ratio >= 2.1 and crest_factor >= 3.8 and peak > 17500 and rms > 3800) or
-            (peak >= 27500 and (rms - running_rms) >= 3500)
-        )
+        is_attack_onset = (delta_rms >= 1400 and peak >= 16500) or (surge_ratio >= 1.55 and peak >= 17000 and rms >= 2600)
+        is_colossal = (peak >= 24000 and (rms - running_rms) >= 1200 and delta_rms >= 800)
+
+        is_impact = (is_attack_onset or is_colossal)
 
         if not is_impact:
-            running_rms = 0.90 * running_rms + 0.10 * rms
+            running_rms = 0.88 * running_rms + 0.12 * rms
             return False
         else:
             last_trigger = now_ms
-            running_rms = max(running_rms, rms * 0.7)
+            running_rms = max(running_rms, rms * 0.75)
             return True
 
     # 1. Test Dialogue (should not trigger)
-    assert not process_buffer(0, peak=12000, rms=1800)
-    assert not process_buffer(20, peak=14000, rms=2100)
+    assert not process_buffer(0, peak=10000, rms=1600)
+    assert not process_buffer(20, peak=12000, rms=1800)
 
-    # 2. Test Sudden Scene Impact (Punch / Explosion) from dialogue baseline
-    # Peak jumps to 24000, RMS jumps to 5500 (surge ratio ~3.0x, crest ~4.36)
-    assert process_buffer(100, peak=24000, rms=5500)
+    # 2. Test Sudden Scene Impact (Punch / Sword Clash) from dialogue baseline
+    # Peak jumps to 20000, RMS jumps to 3600 (delta = 1800, surge = 2.0x)
+    assert process_buffer(100, peak=20000, rms=3600)
 
-    # 3. Test Lingering Rumble after explosion (should not trigger duplicate vibrations)
-    assert not process_buffer(120, peak=20000, rms=4500)
-    assert not process_buffer(140, peak=19000, rms=4000)
+    # 3. Test Lingering Rumble after punch (should not trigger duplicate vibrations)
+    assert not process_buffer(120, peak=16000, rms=2800)
 
-    # 4. Test Sustained Loud BGM (Rock/EDM/Drums with peak 22000, RMS 5500 over consecutive buffers)
-    # Reset baseline for music passage
-    running_rms = 5000.0
-    now = 500
-    triggers = 0
-    for i in range(20): # 20 consecutive buffers = ~400ms of sustained loud music
-        if process_buffer(now, peak=22000, rms=5500):
-            triggers += 1
-        now += 20
-    # BGM with continuous high RMS should produce ZERO triggers because surge_ratio is ~1.1x and consecutive_loud > 3!
-    assert triggers == 0
+    # 4. Test Continuous Loud Battle Music (BGM playing during fight scene)
+    # Running RMS adapts to 4500. Music beats fluctuate smoothly (4200 -> 4700 -> 4300)
+    for t in range(500, 1200, 20):
+        is_beat = (t % 400 == 0)
+        p = 20000 if is_beat else 16000
+        r = 4700 if is_beat else 4200
+        assert not process_buffer(t, p, r), f"False trigger on rhythm at t={t}"
 
-    # 5. Test Huge Super-Move Blast piercing through loud BGM
-    # Peak 29000, RMS jumps to 9500 (delta >= 3500, extreme peak >= 27500)
-    now += 200 # brief gap
-    consecutive_loud = 1
-    assert process_buffer(now, peak=29500, rms=9500)
+    # 5. Test Punch / Explosion occurring DURING the loud battle BGM!
+    # prev_rms was 4200, explosion lands on top of BGM: peak 26000, rms 6200 (delta = 2000!)
+    assert process_buffer(1300, peak=26000, rms=6200)
 
     # 6. Test AniSkip OP/ED Theme (always false)
-    assert not process_buffer(now + 500, peak=30000, rms=10000, in_op_ed=True)
+    assert not process_buffer(2000, peak=28000, rms=8000, in_op_ed=True)
+
 

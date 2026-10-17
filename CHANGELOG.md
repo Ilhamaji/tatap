@@ -34,9 +34,11 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
 7. **Pemberlakuan Direktif Unduhan Publik & Anti-404 README.md:**
    - Menambahkan Master Directive #6 pada `AGENTS.md` dan baris panduan pada `PROJECT_MAP.md`: Seluruh tombol unduhan di `README.md` mutlak wajib selalu mengarah ke rilis publik aktif terakhir (`v2.8.3`), bukan rilis berstatus DRAFT, guna mencegah kegagalan unduhan publik (error 404).
    - Memperbarui `tools/bump_version.py` dengan perintah `--sync-readme` dan audit target rilis publik pada `check_consistency()`.
-8. **Optimasi Akurasi Haptic Feedback Scene (Anti-BGM & Anti-Sustain Filter):**
-   - Mengimplementasikan deteksi transien berbasis *Adaptive Onset Surge Ratio* dengan pelacak energi baseline berjalan (EMA) pada `SceneHapticAudioSink`. Hanya lonjakan impak fisik tiba-tiba ($\ge 2.1\times$ baseline) yang memicu getaran.
-   - Menambahkan *Anti-Sustain Music Guard* untuk memblokir getaran pada suara keras berkelanjutan (>40ms) agar ketukan drum, bassline, dan raungan instrumen musik latar (BGM/OST) tidak memicu getaran berulang.
+8. **Optimasi Akurasi Haptic Feedback Scene (Anti-BGM & Dual-Path Onset Transient Detector):**
+   - Menghapus deadlock state-machine (`consecutiveLoudBuffers > 3`) yang sebelumnya mengunci detektor dalam status supresi permanen saat musik pertarungan (*battle BGM*) diputar.
+   - Mengimplementasikan deteksi dua jalur (*Dual-Path Onset Transient Detector*):
+     - *Physical Impact / Strikes* (pukulan tinju, tendangan, benturan pedang/katana, tembakan): mendeteksi lonjakan energi instan $\Delta \text{RMS} \ge 1400$ buffer-ke-buffer atau lonjakan relatif $\ge 1.55\times$ di atas baseline berjalan dengan $\text{Peak} \ge 16500$.
+     - *Heavy Explosions & Super-Moves* (ledakan granat/bom, transformasi Titan, pelepasan energi Kamehameha/Domain Expansion): mendeteksi transien $\text{Peak} \ge 24000$ dan lonjakan energi $\text{RMS} - \text{baseline} \ge 1200$, bahkan di tengah musik pertempuran yang sedang kencang.
    - Menghubungkan status segmen *AniSkip* (`isInOpEd`) untuk membungkam getaran haptik secara otomatis selama lagu pembuka (*Opening*) dan penutup (*Ending*) berlangsung.
    - Menonaktifkan efek HAL `HapticGenerator` bawaan Android selama pemutaran media agar tidak bocor dan bergetar sendiri mengikuti bass musik, mengalihkan kendali penuh ke filter akustik cerdas `SceneHapticAudioSink`.
    - Menambahkan test suite baru `test_anti_bgm_transient_onset_detector` dan `test_dsp_simulation_scene_vs_bgm` pada `tests/test_haptic_feedback.py` (total 126 automated tests lulus 100%).
