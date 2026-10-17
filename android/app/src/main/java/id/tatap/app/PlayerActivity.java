@@ -118,6 +118,7 @@ public class PlayerActivity extends Activity {
     private float currentPlaybackSpeed = 1.0f;
     private boolean isHapticEnabled = true;
     private volatile boolean isVideoPlaying = false;
+    private volatile boolean isInOpEd = false;
     private Object hapticGenerator;
     private int currentAudioSessionId = C.AUDIO_SESSION_ID_UNSET;
     private int lastHapticBrightnessStep = -1;
@@ -316,6 +317,7 @@ public class PlayerActivity extends Activity {
                 && posMs >= introStartMs && posMs < introEndMs);
         boolean inOutro = (outroEndMs > outroStartMs && (outroEndMs - outroStartMs) >= 10_000
                 && posMs >= outroStartMs && posMs < outroEndMs);
+        isInOpEd = (inIntro || inOutro);
 
         if (autoSkipOpEd && (inIntro || inOutro)) {
             currentSkipTargetMs = (inIntro ? introEndMs : outroEndMs) + 500;
@@ -1756,8 +1758,10 @@ public class PlayerActivity extends Activity {
         if (TvFocusHelper.isTv(this)) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
         if (hapticGenerator instanceof HapticGenerator) {
-            boolean shouldEnable = isHapticEnabled && isVideoPlaying;
-            HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, shouldEnable);
+            // Isolasi getaran adegan: HapticGenerator bawaan Android dinonaktifkan (false)
+            // agar tidak bergetar secara buta mengikuti bass background music (BGM/OST).
+            // Seluruh haptic scene dikendalikan secara presisi oleh SceneHapticAudioSink.
+            HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, false);
         }
     }
 
@@ -1800,16 +1804,26 @@ public class PlayerActivity extends Activity {
 
     private class SceneHapticAudioSink implements TeeAudioProcessor.AudioBufferSink {
         private long lastHapticTriggerMs = 0;
+        private float runningRms = 1500f;
+        private int consecutiveLoudBuffers = 0;
+        private long musicSuppressionUntilMs = 0;
 
         @Override
-        public void flush(int sampleRateHz, int channelCount, int encoding) {}
+        public void flush(int sampleRateHz, int channelCount, int encoding) {
+            runningRms = 1500f;
+            consecutiveLoudBuffers = 0;
+            musicSuppressionUntilMs = 0;
+        }
 
         @Override
         public void handleBuffer(ByteBuffer buffer) {
-            if (!isHapticEnabled || !isVideoPlaying || TvFocusHelper.isTv(PlayerActivity.this)) return;
+            if (!isHapticEnabled || !isVideoPlaying || isInOpEd || TvFocusHelper.isTv(PlayerActivity.this)) return;
 
             long now = System.currentTimeMillis();
-            if (now - lastHapticTriggerMs < 200) {
+            if (now < musicSuppressionUntilMs) {
+                return;
+            }
+            if (now - lastHapticTriggerMs < 280) {
                 return;
             }
 
@@ -1833,11 +1847,44 @@ public class PlayerActivity extends Activity {
             if (count == 0) return;
             int rms = (int) Math.sqrt((double) sumSquares / count);
 
-            // Ambang batas ledakan/benturan anime:
-            // Dialog biasa: peak < 16000, rms < 3500.
-            // Ledakan/pukulan/tembakan/dentuman bass: peak > 17500 dan rms > 3800 (atau transien tajam peak > 22000).
-            if ((peak > 17500 && rms > 3800) || (peak > 22000 && rms > 2800)) {
+            // Periksa apakah audio sedang dalam kategori keras (music beat / continuous audio)
+            boolean isLoud = (rms > 3500 || peak > 17500);
+            if (isLoud) {
+                consecutiveLoudBuffers++;
+            } else {
+                if (consecutiveLoudBuffers > 0) consecutiveLoudBuffers--;
+            }
+
+            // Anti-Sustain Music Guard:
+            // Jika audio keras bertahan terus-menerus lebih dari 3 buffer berturut-turut (~40-60ms),
+            // ini adalah ritme background music, vokal, atau drum roll berkelanjutan, BUKAN impak scene sesaat.
+            if (consecutiveLoudBuffers > 3) {
+                musicSuppressionUntilMs = now + 180;
+                // Adaptasikan runningRms agar mengejar volume musik
+                runningRms = 0.85f * runningRms + 0.15f * rms;
+                return;
+            }
+
+            // Hitung Surge Ratio (lonjakan energi relatif terhadap baseline berjalan)
+            float effectiveBaseline = Math.max(1200f, runningRms);
+            float surgeRatio = (float) rms / effectiveBaseline;
+            float crestFactor = (float) peak / Math.max(1, rms);
+
+            // Kondisi Scene Impact Asli:
+            // 1. Lonjakan energi tiba-tiba (surgeRatio >= 2.1x) dengan crest factor impak fisik (>= 3.8) dan peak > 17500 serta rms > 3800.
+            // 2. Transien dahsyat (super-move, ledakan masif) yang menembus musik: peak >= 27500 dan (rms - runningRms) >= 3500.
+            boolean isSceneImpact = (consecutiveLoudBuffers <= 2) && (
+                (surgeRatio >= 2.1f && crestFactor >= 3.8f && peak > 17500 && rms > 3800) ||
+                (peak >= 27500 && (rms - runningRms) >= 3500)
+            );
+
+            // Update baseline secara mulus (EMA) untuk buffer non-impak
+            if (!isSceneImpact) {
+                runningRms = 0.90f * runningRms + 0.10f * rms;
+            } else {
                 lastHapticTriggerMs = now;
+                // Baseline dinaikkan moderat pasca impak
+                runningRms = Math.max(runningRms, (float) rms * 0.7f);
                 int intensity = Math.min(255, 120 + ((peak - 17500) * 135 / 15267));
                 vibrateDirect(35, intensity);
             }

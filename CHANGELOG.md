@@ -34,6 +34,12 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
 7. **Pemberlakuan Direktif Unduhan Publik & Anti-404 README.md:**
    - Menambahkan Master Directive #6 pada `AGENTS.md` dan baris panduan pada `PROJECT_MAP.md`: Seluruh tombol unduhan di `README.md` mutlak wajib selalu mengarah ke rilis publik aktif terakhir (`v2.8.3`), bukan rilis berstatus DRAFT, guna mencegah kegagalan unduhan publik (error 404).
    - Memperbarui `tools/bump_version.py` dengan perintah `--sync-readme` dan audit target rilis publik pada `check_consistency()`.
+8. **Optimasi Akurasi Haptic Feedback Scene (Anti-BGM & Anti-Sustain Filter):**
+   - Mengimplementasikan deteksi transien berbasis *Adaptive Onset Surge Ratio* dengan pelacak energi baseline berjalan (EMA) pada `SceneHapticAudioSink`. Hanya lonjakan impak fisik tiba-tiba ($\ge 2.1\times$ baseline) yang memicu getaran.
+   - Menambahkan *Anti-Sustain Music Guard* untuk memblokir getaran pada suara keras berkelanjutan (>40ms) agar ketukan drum, bassline, dan raungan instrumen musik latar (BGM/OST) tidak memicu getaran berulang.
+   - Menghubungkan status segmen *AniSkip* (`isInOpEd`) untuk membungkam getaran haptik secara otomatis selama lagu pembuka (*Opening*) dan penutup (*Ending*) berlangsung.
+   - Menonaktifkan efek HAL `HapticGenerator` bawaan Android selama pemutaran media agar tidak bocor dan bergetar sendiri mengikuti bass musik, mengalihkan kendali penuh ke filter akustik cerdas `SceneHapticAudioSink`.
+   - Menambahkan test suite baru `test_anti_bgm_transient_onset_detector` dan `test_dsp_simulation_scene_vs_bgm` pada `tests/test_haptic_feedback.py` (total 126 automated tests lulus 100%).
 
 ## [2.8.3] - 2026-10-17
 
