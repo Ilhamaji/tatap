@@ -42,6 +42,12 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
    - Menghubungkan status segmen *AniSkip* (`isInOpEd`) untuk membungkam getaran haptik secara otomatis selama lagu pembuka (*Opening*) dan penutup (*Ending*) berlangsung.
    - Menonaktifkan efek HAL `HapticGenerator` bawaan Android selama pemutaran media agar tidak bocor dan bergetar sendiri mengikuti bass musik, mengalihkan kendali penuh ke filter akustik cerdas `SceneHapticAudioSink`.
    - Menambahkan test suite baru `test_anti_bgm_transient_onset_detector` dan `test_dsp_simulation_scene_vs_bgm` pada `tests/test_haptic_feedback.py` (total 126 automated tests lulus 100%).
+9. **Sinkronisasi Garis Waktu & Optimasi Akurasi Haptic Scene (Timeline Lag Compensation & Stereo Fusion):**
+   - Mengeliminasi desinkronisasi awal (~200–300ms mendahului adegan) akibat ring buffer internal hardware `AudioTrack` ExoPlayer menggunakan `ForwardingAudioSink` yang membandingkan `presentationTimeUs` dengan `getCurrentPositionUs(false)`.
+   - Mengintegrasikan penjadwalan getaran terkompensasi inersia motor (~20ms rise time) via `handler.postDelayed`, menghasilkan sinkronisasi milidetik presisi (*frame-perfect visual-acoustic haptic sync*).
+   - Menghilangkan *stereo channel blindness*: loop sampling kini membaca saluran Kiri (L) dan Kanan (R) secara simultan (`Math.max(|Left|, |Right|)`), menangkap seluruh efek ledakan dan benturan stereo di sisi kanan layar.
+   - Menambahkan filter *Bipolar 200Hz Low-Pass* (`SubRatio`) dan *Crest Factor* untuk menyaring teriakan vokal karakter anime (*anti-scream rejection*) dan membedakan benturan fisik kinetik dari vokal maupun BGM.
+   - Menjamin pembatalan getaran tertunda secara bersih (*cancellation hygiene*) pada saat pengguna melakukan *seek*, jeda (*pause*), pergantian episode, atau keluar dari aplikasi.
 
 ## [2.8.3] - 2026-10-17
 
