@@ -3,6 +3,7 @@ package id.tatap.app;
 import android.app.Activity;
 import android.content.Context;
 import android.media.AudioManager;
+import android.media.audiofx.HapticGenerator;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,6 +12,7 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.GestureDetector;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -49,6 +51,7 @@ import androidx.media3.common.PlaybackParameters;
 import androidx.media3.common.Player;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.analytics.AnalyticsListener;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter;
@@ -106,6 +109,10 @@ public class PlayerActivity extends Activity {
     private Button btnSubSelector;
     private Button btnSkipOpEd;
     private float currentPlaybackSpeed = 1.0f;
+    private boolean isHapticEnabled = true;
+    private Object hapticGenerator;
+    private int currentAudioSessionId = C.AUDIO_SESSION_ID_UNSET;
+    private int lastHapticBrightnessStep = -1;
 
     // Watch Portrait View components
     private View flPlayerWrapper;
@@ -278,6 +285,7 @@ public class PlayerActivity extends Activity {
             long sec = currentSkipTargetMs / 1000;
             currentSkipTargetMs = 0;
             String timeStr = String.format("%02d:%02d", sec / 60, sec % 60);
+            performHapticClick();
             Toast.makeText(this, "Melompat ke " + timeStr, Toast.LENGTH_SHORT).show();
         }
     }
@@ -538,6 +546,7 @@ public class PlayerActivity extends Activity {
         try {
             SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
             autoSkipOpEd = sp.getBoolean("auto_skip_op_ed", false);
+            isHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_haptic", true);
             currentResizeMode = TvFocusHelper.isTv(this)
                     ? AspectRatioFrameLayout.RESIZE_MODE_FIT
                     : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -820,6 +829,14 @@ public class PlayerActivity extends Activity {
                 .setSeekBackIncrementMs(5000)
                 .build();
 
+        player.addAnalyticsListener(new AnalyticsListener() {
+            @Override
+            public void onAudioSessionIdChanged(EventTime eventTime, int audioSessionId) {
+                currentAudioSessionId = audioSessionId;
+                setupHapticGenerator(audioSessionId);
+            }
+        });
+
         player.setVideoScalingMode(C.VIDEO_SCALING_MODE_SCALE_TO_FIT);
 
         forwardingPlayer = new ForwardingPlayer(player) {
@@ -942,6 +959,13 @@ public class PlayerActivity extends Activity {
                         player.seekTo(pendingResumePosMs);
                         pendingResumePosMs = -1;
                     }
+                    if (hapticGenerator == null && player != null) {
+                        int sessionId = player.getAudioSessionId();
+                        if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId > 0) {
+                            currentAudioSessionId = sessionId;
+                            setupHapticGenerator(sessionId);
+                        }
+                    }
                 } else if (playbackState == Player.STATE_ENDED) {
                     if (layoutBuffering != null) {
                         layoutBuffering.setVisibility(View.GONE);
@@ -966,6 +990,7 @@ public class PlayerActivity extends Activity {
                 if (playerView != null) {
                     playerView.setKeepScreenOn(isPlaying);
                 }
+                updateHapticGeneratorState();
                 updateExoButtonStates();
             }
 
@@ -1084,7 +1109,7 @@ public class PlayerActivity extends Activity {
                         player.play();
                     }
                 }
-                vibrate(25);
+                performHapticClick();
                 return true;
             }
 
@@ -1119,6 +1144,7 @@ public class PlayerActivity extends Activity {
                     int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
                     currentVolumeFraction = maxVol > 0 ? ((float) curVol / (float) maxVol) : 0f;
                 }
+                lastHapticBrightnessStep = (int) (currentBrightness * 100) / 5;
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 currentVolumeFraction = -1f;
             }
@@ -1143,7 +1169,7 @@ public class PlayerActivity extends Activity {
         if (btnScreenLock != null) {
             btnScreenLock.setVisibility(View.GONE);
         }
-        vibrate(25);
+        performHapticHeavyClick();
         Toast.makeText(this, "Layar terkunci. Ketuk layar untuk membuka kunci.", Toast.LENGTH_SHORT).show();
         showUnlockButtonBriefly();
     }
@@ -1162,7 +1188,7 @@ public class PlayerActivity extends Activity {
         if (btnScreenLock != null && !TvFocusHelper.isTv(this)) {
             btnScreenLock.setVisibility(View.VISIBLE);
         }
-        vibrate(25);
+        performHapticClick();
         Toast.makeText(this, "Layar terbuka", Toast.LENGTH_SHORT).show();
     }
 
@@ -1525,6 +1551,7 @@ public class PlayerActivity extends Activity {
         int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         if (targetVol != curVol) {
             audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, targetVol, 0);
+            performHapticTick();
         }
 
         int pct = Math.round(currentVolumeFraction * 100);
@@ -1538,6 +1565,11 @@ public class PlayerActivity extends Activity {
         getWindow().setAttributes(lp);
 
         int pct = (int) (currentBrightness * 100);
+        int step = pct / 5;
+        if (step != lastHapticBrightnessStep) {
+            lastHapticBrightnessStep = step;
+            performHapticTick();
+        }
         showOsd("BRT", pct);
     }
 
@@ -1557,13 +1589,142 @@ public class PlayerActivity extends Activity {
         handler.postDelayed(() -> tv.setVisibility(View.GONE), 350);
     }
 
+    private void performHapticTick() {
+        if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;
+        try {
+            boolean handled = false;
+            if (playerView != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    handled = playerView.performHapticFeedback(HapticFeedbackConstants.SEGMENT_TICK);
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    handled = playerView.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                }
+            }
+            if (!handled) {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(8, 40));
+                    } else {
+                        v.vibrate(8);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void performHapticClick() {
+        if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;
+        try {
+            boolean handled = false;
+            if (playerView != null) {
+                handled = playerView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            }
+            if (!handled) {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK));
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(12, 70));
+                    } else {
+                        v.vibrate(12);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private void performHapticHeavyClick() {
+        if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;
+        try {
+            boolean handled = false;
+            if (playerView != null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    handled = playerView.performHapticFeedback(HapticFeedbackConstants.DRAG_START);
+                } else {
+                    handled = playerView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                }
+            }
+            if (!handled) {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        v.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK));
+                    } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        v.vibrate(VibrationEffect.createOneShot(25, 150));
+                    } else {
+                        v.vibrate(25);
+                    }
+                }
+            }
+        } catch (Throwable ignored) {}
+    }
+
     private void vibrate(long ms) {
-        Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-        if (v != null && v.hasVibrator()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
-            } else {
-                v.vibrate(ms);
+        if (!isHapticEnabled || TvFocusHelper.isTv(this)) return;
+        performHapticClick();
+    }
+
+    private void setupHapticGenerator(int audioSessionId) {
+        if (TvFocusHelper.isTv(this)) return;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET || audioSessionId <= 0) return;
+
+        releaseHapticGenerator();
+
+        try {
+            hapticGenerator = HapticGeneratorHelper.create(audioSessionId);
+            updateHapticGeneratorState();
+        } catch (Throwable t) {
+            hapticGenerator = null;
+        }
+    }
+
+    private void updateHapticGeneratorState() {
+        if (TvFocusHelper.isTv(this)) return;
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        if (hapticGenerator instanceof HapticGenerator) {
+            boolean shouldEnable = isHapticEnabled && (player != null && player.isPlaying());
+            HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, shouldEnable);
+        }
+    }
+
+    private void releaseHapticGenerator() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+        if (hapticGenerator instanceof HapticGenerator) {
+            HapticGeneratorHelper.release((HapticGenerator) hapticGenerator);
+            hapticGenerator = null;
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.S)
+    private static class HapticGeneratorHelper {
+        static HapticGenerator create(int audioSessionId) {
+            try {
+                if (HapticGenerator.isAvailable()) {
+                    return HapticGenerator.create(audioSessionId);
+                }
+            } catch (Throwable ignored) {}
+            return null;
+        }
+
+        static void setEnabled(HapticGenerator generator, boolean enabled) {
+            if (generator != null) {
+                try {
+                    generator.setEnabled(enabled);
+                } catch (Throwable ignored) {}
+            }
+        }
+
+        static void release(HapticGenerator generator) {
+            if (generator != null) {
+                try {
+                    generator.setEnabled(false);
+                    generator.release();
+                } catch (Throwable ignored) {}
             }
         }
     }
@@ -2758,6 +2919,9 @@ public class PlayerActivity extends Activity {
         super.onPause();
         recordWatchProgress(true);
         if (player != null) player.pause();
+        if (hapticGenerator instanceof HapticGenerator && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            HapticGeneratorHelper.setEnabled((HapticGenerator) hapticGenerator, false);
+        }
         handler.removeCallbacks(subtitleSyncRunnable);
         handler.removeCallbacks(preResolveRunnable);
     }
@@ -2766,6 +2930,7 @@ public class PlayerActivity extends Activity {
     protected void onResume() {
         super.onResume();
         applySystemUiVisibility();
+        updateHapticGeneratorState();
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
             handler.post(subtitleSyncRunnable);
@@ -2786,6 +2951,7 @@ public class PlayerActivity extends Activity {
         handler.removeCallbacks(preResolveRunnable);
         handler.removeCallbacks(hideTopBarRunnable);
         handler.removeCallbacks(hideUnlockButtonRunnable);
+        releaseHapticGenerator();
         if (player != null) {
             player.release();
             player = null;
@@ -3089,6 +3255,21 @@ public class PlayerActivity extends Activity {
             Toast.makeText(this, "Otomatis Lewati OP/ED: " + (newAutoSkip ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
         });
 
+        if (!TvFocusHelper.isTv(this)) {
+            String hapticLabel = isHapticEnabled ? "Aktif" : "Mati";
+            menuList.add("Umpan Balik Haptik / Getaran Adegan (" + hapticLabel + ")");
+            actionList.add(() -> {
+                boolean newHaptic = !isHapticEnabled;
+                sp.edit().putBoolean("pref_haptic", newHaptic).apply();
+                isHapticEnabled = newHaptic;
+                updateHapticGeneratorState();
+                if (newHaptic) {
+                    performHapticClick();
+                }
+                Toast.makeText(this, "Haptik Adegan: " + (newHaptic ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
+            });
+        }
+
         String[] menuArray = menuList.toArray(new String[0]);
         builder.setItems(menuArray, (dialog, which) -> {
             if (which >= 0 && which < actionList.size()) {
@@ -3234,6 +3415,7 @@ public class PlayerActivity extends Activity {
 
     private void switchEpisode(int targetEp) {
         if (ep == targetEp) return;
+        performHapticClick();
         recordWatchProgress(true);
         ep = targetEp;
         hasPromptedResume = false;

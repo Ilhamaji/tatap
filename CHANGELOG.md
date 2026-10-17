@@ -13,6 +13,31 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.8.0] - 2026-10-17
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.7.2 -> 2.8.0)
+Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan fungsionalitas dan kapabilitas baru yang backward-compatible tanpa merusak arsitektur eksisting:
+1. **Audio-Coupled Anime Scene Haptics (`HapticGenerator`):**
+   - Mengintegrasikan API native `android.media.audiofx.HapticGenerator` (Android 12+ / API 31+) yang terikat langsung ke `audioSessionId` dari ExoPlayer via `AnalyticsListener.onAudioSessionIdChanged`.
+   - Mengubah sinyal efek audio adegan anime (dentuman ledakan, benturan pertarungan, efek suara sakti, dan bass drop) menjadi getaran taktil yang presisi dan tersinkronisasi secara otomatis dengan gelombang suara video.
+   - Menggunakan static helper wrapper `HapticGeneratorHelper` dengan anotasi `@RequiresApi(Build.VERSION_CODES.S)` demi menjamin keamanan runtime dan backward-compatibility 100% pada versi Android terdahulu tanpa risiko class verification error.
+2. **Modern Subtle Gesture Haptics:**
+   - Menggantikan getaran kasar/monolitik lama (`Vibrator.vibrate`) dengan tactile feedback modern yang halus dan reaktif (`HapticFeedbackConstants` dan `VibrationEffect.createPredefined`):
+     - **Gesture Volume:** Trigger `performHapticTick()` (`SEGMENT_TICK` / `CLOCK_TICK` / `EFFECT_TICK`) pada setiap perubahan level volume (`targetVol != curVol`).
+     - **Gesture Kecerahan (Brightness):** Trigger `performHapticTick()` pada setiap kelipatan 5% kecerahan layar.
+     - **Double-Tap Seek & Play/Pause:** Trigger `performHapticClick()` (`KEYBOARD_TAP` / `EFFECT_CLICK`) yang responsif.
+     - **Kunci & Buka Layar (Screen Lock/Unlock):** Trigger `performHapticHeavyClick()` (`DRAG_START` / `LONG_PRESS` / `EFFECT_HEAVY_CLICK`) saat mengunci dan `performHapticClick()` saat membuka kunci.
+     - **Navigasi Episode & Skip OP/ED:** Trigger `performHapticClick()` saat tombol Lewati Opening/Ending ditekan maupun saat beralih episode di tampilan potret.
+3. **Preferensi Pengguna & Unified Settings Dialog:**
+   - Menambahkan opsi menu baru pada dialog pengaturan pemutar: `"Umpan Balik Haptik / Getaran Adegan: [Aktif / Mati]"`.
+   - Preferensi disimpan secara persisten di `SharedPreferences` (`tatap_player_prefs`, key `"pref_haptic"`).
+   - Mengaktifkan atau menonaktifkan `HapticGenerator` dan gesture feedback secara langsung tanpa perlu memuat ulang video.
+4. **Isolasi Mutlak Android TV (10-Foot UI):**
+   - Seluruh logika haptik (HapticGenerator, View haptic feedback, maupun fallback vibrator) memiliki proteksi awal `if (TvFocusHelper.isTv(this)) return;`.
+   - Menu pengaturan haptik disembunyikan otomatis pada Android TV agar pengalaman 10-Foot UI tetap bersih, steril, dan bebas overhead.
+5. **Automated Test Suite:**
+   - Menambahkan test suite baru `tests/test_haptic_feedback.py` (7 unit tests) yang mencakup validasi import, isolasi Android TV, penyimpanan preferensi `pref_haptic`, siklus hidup ExoPlayer `AnalyticsListener`, dan pemicu interaksi gesture.
+
 ## [2.7.2] - 2026-10-16
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.7.1 -> 2.7.2)
