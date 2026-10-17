@@ -5,7 +5,7 @@
 
   <p>
     <a href="https://github.com/asfaraguest/tatap/releases/latest"><img src="https://img.shields.io/github/v/release/asfaraguest/tatap?style=flat-square&color=00dbeb&label=Rilis" alt="Release"></a>
-    <a href="https://somsubhra.github.io/github-release-stats/?username=asfaraguest&repository=tatap" target="_blank" title="Lihat Statistik Unduhan Lengkap"><img src="https://img.shields.io/github/downloads/asfaraguest/tatap/total?style=flat-square&color=3fb950&label=Unduhan" alt="Downloads"></a>
+    <a href="https://somsubhra.github.io/github-release-stats/?username=asfaraguest&repository=tatap" target="_blank" title="Lihat Statistik Unduhan Lengkap"><img src="https://img.shields.io/github/downloads/asfaraguest/tatap/total?style=flat-square&color=3fb950&label=Statistik%20Unduhan" alt="Statistik Unduhan"></a>
     <a href="https://github.com/asfaraguest/tatap/stargazers"><img src="https://img.shields.io/github/stars/asfaraguest/tatap?style=flat-square&logo=github&color=e3b341&label=Stars" alt="Stars"></a>
     <a href="https://github.com/asfaraguest/tatap/network/members"><img src="https://img.shields.io/github/forks/asfaraguest/tatap?style=flat-square&logo=github&color=58a6ff&label=Forks" alt="Forks"></a>
     <a href="https://hits.sh/github.com/asfaraguest/tatap/"><img src="https://hits.sh/github.com/asfaraguest/tatap.svg?style=flat-square&label=Kunjungan&color=00dbeb" alt="Views"></a>
@@ -75,7 +75,7 @@ Pilih paket instalasi resmi sesuai perangkat Anda:
 | **Windows (x64)** | [![Unduh Windows Portable](https://img.shields.io/badge/Download-Windows%20Portable-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-windows-x64-portable.zip) | `.zip` (~26 MB) | Standalone Portable (Ekstrak zip & jalankan `Tatap.exe`) |
 | **Linux (x86_64)** | [![Unduh Linux AppImage](https://img.shields.io/badge/Download-Linux%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/asfaraguest/tatap/releases/latest/download/Tatap-x86_64.AppImage) | `.AppImage` (~58 MB) | Standalone AppImage (Berikan izin `chmod +x` lalu jalankan) |
 
-Seluruh arsip versi rilis stabil sebelumnya tersedia di [Halaman Rilis Resmi GitHub](https://github.com/asfaraguest/tatap/releases).
+Seluruh arsip versi rilis stabil sebelumnya tersedia di [Halaman Rilis Resmi GitHub](https://github.com/asfaraguest/tatap/releases). Untuk memantau grafik dan riwayat total unduhan secara transparan, kunjungi [Dasbor Statistik Unduhan Tatap](https://somsubhra.github.io/github-release-stats/?username=asfaraguest&repository=tatap).
 
 ### Menjalankan Versi Self-Hosted (Web Server / VPS / Localhost)
 
