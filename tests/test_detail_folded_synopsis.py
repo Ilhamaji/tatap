@@ -23,6 +23,17 @@ def test_activity_detail_folded_synopsis_xml():
     # Pastikan layout menganimasikan perubahan ukuran (smooth transition)
     assert "android:animateLayoutChanges=\"true\"" in content
 
+    # Pastikan juga layout-land (Android TV) memiliki kontainer sinopsis yang valid
+    land_path = os.path.join(ROOT_DIR, "android/app/src/main/res/layout-land/activity_detail.xml")
+    assert os.path.exists(land_path), f"Layout landscape tidak ditemukan: {land_path}"
+    with open(land_path, "r", encoding="utf-8") as f:
+        land_content = f.read()
+
+    assert "android:id=\"@+id/layout_detail_synopsis\"" in land_content
+    assert "android:id=\"@+id/tv_detail_synopsis\"" in land_content
+    assert "android:id=\"@+id/btn_toggle_synopsis\"" in land_content
+
+
 
 def test_detail_activity_logic_and_tv_isolation():
     java_path = os.path.join(ROOT_DIR, "android/app/src/main/java/id/tatap/app/DetailActivity.java")
@@ -45,7 +56,7 @@ def test_detail_activity_logic_and_tv_isolation():
     # Pastikan mekanisme 2-state toggle (Selengkapnya vs Lipat ke Judul)
     assert "Selengkapnya ▼" in code
     assert "Lipat ke Judul ▲" in code
-    assert "tvSynopsis.setMaxLines(2)" in code
+    assert "tvSynopsis.setMaxLines(defaultLines)" in code
     assert "tvSynopsis.setMaxLines(Integer.MAX_VALUE)" in code
 
 

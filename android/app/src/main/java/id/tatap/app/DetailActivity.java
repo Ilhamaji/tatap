@@ -174,6 +174,9 @@ public class DetailActivity extends Activity {
         rvEpisodes.setLayoutManager(new GridLayoutManager(this, epSpan));
         adapter = new EpisodeAdapter();
         rvEpisodes.setAdapter(adapter);
+        if (TvFocusHelper.isTv(this)) {
+            rvEpisodes.setItemViewCacheSize(8);
+        }
 
         if (rvEpisodeRanges != null) {
             rvEpisodeRanges.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(this, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false));
@@ -360,14 +363,6 @@ public class DetailActivity extends Activity {
     }
 
     private void setupMetadata(double scoreVal, String statusVal, String studioVal, String seasonVal, String sourceVal, String genresData) {
-        if (TvFocusHelper.isTv(this)) {
-            if (tvScore != null) tvScore.setVisibility(View.GONE);
-            if (tvStatus != null) tvStatus.setVisibility(View.GONE);
-            if (tvInfoLine != null) tvInfoLine.setVisibility(View.GONE);
-            if (hsvGenres != null) hsvGenres.setVisibility(View.GONE);
-            return;
-        }
-
         // Score Badge
         if (tvScore != null) {
             if (scoreVal > 0) {
@@ -476,7 +471,7 @@ public class DetailActivity extends Activity {
     }
 
     private void setupSynopsis(String synopsisText) {
-        if (TvFocusHelper.isTv(this) || layoutSynopsis == null || tvSynopsis == null || btnToggleSynopsis == null) {
+        if (layoutSynopsis == null || tvSynopsis == null || btnToggleSynopsis == null) {
             if (layoutSynopsis != null) layoutSynopsis.setVisibility(View.GONE);
             return;
         }
@@ -489,8 +484,13 @@ public class DetailActivity extends Activity {
         layoutSynopsis.setVisibility(View.VISIBLE);
         tvSynopsis.setText(synopsisText.trim());
         isSynopsisExpanded = false;
-        tvSynopsis.setMaxLines(2);
+        final int defaultLines = TvFocusHelper.isTv(this) ? 3 : 2;
+        tvSynopsis.setMaxLines(defaultLines);
         btnToggleSynopsis.setText("Selengkapnya ▼");
+
+        if (TvFocusHelper.isTv(this)) {
+            TvFocusHelper.attachFocusScale(btnToggleSynopsis, 1.05f, 4f);
+        }
 
         View.OnClickListener toggleListener = v -> {
             HapticHelper.performClick(v);
@@ -499,7 +499,7 @@ public class DetailActivity extends Activity {
                 tvSynopsis.setMaxLines(Integer.MAX_VALUE);
                 btnToggleSynopsis.setText("Lipat ke Judul ▲");
             } else {
-                tvSynopsis.setMaxLines(2);
+                tvSynopsis.setMaxLines(defaultLines);
                 btnToggleSynopsis.setText("Selengkapnya ▼");
             }
         };

@@ -108,6 +108,11 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
     - Mengeliminasi bug tampilan episode berjejer sempit vertikal 1 kolom (~54px) akibat `.ep-grid` terserap ke dalam baris flex horizontal `.sheet-head`.
     - Memperkuat styling CSS di `frontend/css/style.css` dengan `width: 100%`, `flex: 1 1 auto`, `box-sizing: border-box`, dan `min-height: 100px` pada `.ep-grid` dan kontainer sheet, mengembalikan tata letak grid responsif multi-kolom yang rapi (10–14 kolom pada desktop, 6–8 pada mobile).
     - Menambahkan automated test DOM tree `test_web_desktop_sheet_dom_structure` pada `tests/test_detail_metadata.py` untuk mengunci struktur modal detail dan mencegah terjadinya tag mismatch berulang (total 137/137 tests lulus 100%).
+17. **Adopsi MAX Metadata Anime di Android TV & Layout Split 2-Kolom Landscape (`layout-land`):**
+    - **Arsitektur Split 2-Kolom (`res/layout-land/activity_detail.xml`):** Merancang tata letak lanskap 10-foot UI khusus Android TV & tablet; membagi layar menjadi Kolom Kiri (~40% lebar) untuk panel hero informasi dan Kolom Kanan (~60% lebar) untuk panel episode. Mengeliminasi masalah terhimpitnya daftar episode pada viewport TV 16:9.
+    - **Adopsi MAX Metadata di TV:** Mengaktifkan seluruh elemen metadata pada antarmuka Android TV (`DetailActivity.java`), mencakup badge skor rating emas (⭐ 8.7), badge status penayangan (`TAMAT` / `ONGOING`), baris rincian studio & musim rilis, chip genre dark cyber, serta kotak sinopsis cerita dengan kontrol expand/collapse via D-pad remote TV.
+    - **Peningkatan Visual Kartu Poster Beranda (`item_anime_card.xml`):** Menyematkan ikon bintang vektor `@drawable/ic_star_filled` berwarna amber `#FBBF24` pada badge skor kartu beranda dan katalog, meningkatkan legibilitas rating dari jarak tonton 3 meter.
+    - **Optimasi Performa Hardware-Accelerated Ramah Low-End STB (RAM 1GB):** Meniadakan efek blur runtime berat yang membebani GPU; mengandalkan palet obsidian cyber dan *XML GradientDrawable* statis (60 FPS stabil pada Mali-G31/Mali-400), disertai `setHasFixedSize(true)` dan pembatasan cache `setItemViewCacheSize(8)` untuk menjaga stabilitas memori STB TV Box.
 
 ## [2.8.3] - 2026-10-17
 

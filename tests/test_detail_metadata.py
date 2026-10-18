@@ -49,6 +49,19 @@ def test_android_layout_detail_metadata():
     assert 'android:id="@+id/tv_detail_synopsis"' in xml
     assert 'android:id="@+id/btn_toggle_synopsis"' in xml
 
+    # Pastikan layout landscape / Android TV juga memiliki metadata lengkap
+    layout_land_path = os.path.join(ROOT_DIR, "android/app/src/main/res/layout-land/activity_detail.xml")
+    assert os.path.exists(layout_land_path)
+    with open(layout_land_path, "r", encoding="utf-8") as f:
+        land_xml = f.read()
+
+    assert 'android:id="@+id/tv_detail_score"' in land_xml
+    assert 'android:id="@+id/tv_detail_status"' in land_xml
+    assert 'android:id="@+id/tv_detail_info_line"' in land_xml
+    assert 'android:id="@+id/hsv_detail_genres"' in land_xml
+    assert 'android:id="@+id/layout_detail_synopsis"' in land_xml
+    assert 'android:id="@+id/rv_episodes"' in land_xml
+
 
 def test_android_detail_activity_and_adapter_metadata():
     detail_java_path = os.path.join(ROOT_DIR, "android/app/src/main/java/id/tatap/app/DetailActivity.java")
