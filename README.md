@@ -75,6 +75,10 @@ Pilih paket instalasi resmi sesuai perangkat Anda:
 | **Windows (x64)** | [![Unduh Windows Portable](https://img.shields.io/badge/Download-Windows%20Portable-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/asfaraguest/tatap/releases/latest/download/tatap-windows-x64-portable.zip) | `.zip` (~26 MB) | Standalone Portable (Ekstrak zip & jalankan `Tatap.exe`) |
 | **Linux (x86_64)** | [![Unduh Linux AppImage](https://img.shields.io/badge/Download-Linux%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/asfaraguest/tatap/releases/latest/download/Tatap-x86_64.AppImage) | `.AppImage` (~58 MB) | Standalone AppImage (Berikan izin `chmod +x` lalu jalankan) |
 
+> [!TIP]
+> **Mengalami Kendala Pemasangan pada Android (Samsung One UI, Xiaomi/HyperOS, dll.)?**  
+> Jika ponsel Anda (khususnya Samsung One UI 6.0+) memblokir pemasangan dengan pesan *"Pemasangan diblokir (Auto Blocker)"* atau *"Diblokir oleh Play Protect"*, ikuti solusi langkah-demi-langkah pada **[Panduan Pemecahan Masalah Instalasi Android](docs/TROUBLESHOOTING_ANDROID.md)**.
+
 Seluruh arsip versi rilis stabil sebelumnya tersedia di [Halaman Rilis Resmi GitHub](https://github.com/asfaraguest/tatap/releases). Untuk memantau grafik dan riwayat total unduhan secara transparan, kunjungi [Dasbor Statistik Unduhan Tatap](https://somsubhra.github.io/github-release-stats/?username=asfaraguest&repository=tatap).
 
 ### Menjalankan Versi Self-Hosted (Web Server / VPS / Localhost)
