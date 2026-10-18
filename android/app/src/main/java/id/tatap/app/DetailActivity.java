@@ -229,12 +229,30 @@ public class DetailActivity extends Activity {
 
     private void updateQuickPlayButton() {
         int lastEp = prefs.getInt("last_ep_" + slug, -1);
-        if (lastEp > 0) {
-            btnQuickPlay.setText("Lanjutkan Ep " + lastEp);
-            btnQuickPlay.setBackgroundColor(0xFF1E2433);
+        if (btnQuickPlay instanceof com.google.android.material.button.MaterialButton) {
+            com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnQuickPlay;
+            mb.setIconResource(R.drawable.ic_play);
+            if (lastEp > 0) {
+                mb.setText("Lanjutkan Ep " + lastEp);
+                mb.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+                mb.setTextColor(0xFF080C14);
+                mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFF080C14));
+                mb.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+                mb.setStrokeWidth((int) (1 * getResources().getDisplayMetrics().density));
+            } else {
+                mb.setText("Putar Ep 1");
+                mb.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF161C28));
+                mb.setTextColor(0xFF38BDF8);
+                mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+                mb.setStrokeColor(android.content.res.ColorStateList.valueOf(0xFF38BDF8));
+                mb.setStrokeWidth((int) (1 * getResources().getDisplayMetrics().density));
+            }
         } else {
-            btnQuickPlay.setText("Putar Ep 1");
-            btnQuickPlay.setBackgroundColor(0xFF161922);
+            if (lastEp > 0) {
+                btnQuickPlay.setText("Lanjutkan Ep " + lastEp);
+            } else {
+                btnQuickPlay.setText("Putar Ep 1");
+            }
         }
     }
 
@@ -593,6 +611,7 @@ public class DetailActivity extends Activity {
             if (ep == cachedLastPlayedEp) {
                 // Last played episode
                 holder.card.setCardBackgroundColor(0xFF1C2230);
+                holder.card.setStrokeColor(0xFF38BDF8);
                 holder.tvTitle.setTextColor(0xFF38BDF8);
                 holder.tvBadge.setVisibility(View.VISIBLE);
                 holder.tvBadge.setText("TERAKHIR");
@@ -600,6 +619,7 @@ public class DetailActivity extends Activity {
             } else if (cachedWatchedSet.contains(ep)) {
                 // Watched episode
                 holder.card.setCardBackgroundColor(0xFF0E1017);
+                holder.card.setStrokeColor(0xFF1C202C);
                 holder.tvTitle.setTextColor(0xFF64748B);
                 holder.tvBadge.setVisibility(View.VISIBLE);
                 holder.tvBadge.setText("DITONTON");
@@ -607,6 +627,7 @@ public class DetailActivity extends Activity {
             } else {
                 // Unwatched episode
                 holder.card.setCardBackgroundColor(0xFF11141C);
+                holder.card.setStrokeColor(0xFF1C202C);
                 holder.tvTitle.setTextColor(0xFFF1F5F9);
                 holder.tvBadge.setVisibility(View.GONE);
             }
@@ -623,7 +644,7 @@ public class DetailActivity extends Activity {
         }
 
         class EpisodeViewHolder extends RecyclerView.ViewHolder {
-            CardView card;
+            MaterialCardView card;
             TextView tvTitle;
             TextView tvBadge;
 

@@ -54,7 +54,8 @@ def test_vector_drawables_exist_and_valid():
         "ic_close.xml",
         "ic_star_outline.xml",
         "ic_star_filled.xml",
-        "ic_skip_next.xml"
+        "ic_skip_next.xml",
+        "ic_play.xml"
     ]
     
     drawable_dir = os.path.join(RES_DIR, "drawable")
@@ -107,3 +108,35 @@ def test_adaptive_icons_and_mipmaps():
         assert im.size == (320, 180)
     with Image.open(banner_640) as im:
         assert im.size == (640, 360)
+
+def test_quick_play_resume_button_ui_and_contract():
+    """
+    Asserts that btn_quick_play in portrait and landscape activity_detail.xml
+    uses MaterialButton with proper dimensions, insets (0dp), 10dp cornerRadius,
+    ic_play vector icon, and DetailActivity does not use destructive setBackgroundColor.
+    """
+    for layout_rel in ["layout/activity_detail.xml", "layout-land/activity_detail.xml"]:
+        xml_path = os.path.join(RES_DIR, layout_rel)
+        assert os.path.exists(xml_path)
+        with open(xml_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        assert 'id="@+id/btn_quick_play"' in content
+        assert 'app:icon="@drawable/ic_play"' in content
+        assert 'app:cornerRadius="10dp"' in content
+        assert 'android:insetTop="0dp"' in content
+        assert 'android:insetBottom="0dp"' in content
+        assert 'com.google.android.material.button.MaterialButton' in content
+
+    # Check DetailActivity.java
+    detail_java = os.path.join(JAVA_DIR, "id", "tatap", "app", "DetailActivity.java")
+    assert os.path.exists(detail_java)
+    with open(detail_java, "r", encoding="utf-8") as f:
+        java_code = f.read()
+
+    # Must NOT call btnQuickPlay.setBackgroundColor (which wipes out MaterialShapeDrawable)
+    assert "btnQuickPlay.setBackgroundColor" not in java_code
+    # Must use MaterialButton background tinting and icon
+    assert "mb.setIconResource(R.drawable.ic_play)" in java_code
+    assert "mb.setBackgroundTintList" in java_code
+    assert "0xFF38BDF8" in java_code  # Electric Cyber Cyan accent
+
