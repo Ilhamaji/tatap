@@ -96,6 +96,13 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
       - Menampilkan status gabungan (UI Haptic & Scene Haptic) pada `:haptic status`.
     - **Automated Tests:**
       - Menambahkan 5 pengujian baru pada `tests/test_haptic_feedback.py` (`test_haptic_helper_comprehensive`, `test_detail_activity_haptics`, `test_anime_adapter_haptics`, `test_main_activity_all_ui_haptics`, `test_player_timebar_scrubbing_and_buttons_haptics`), total 136/136 automated tests lulus 100%.
+15. **Panduan Pemecahan Masalah Instalasi Android (`docs/TROUBLESHOOTING_ANDROID.md`):**
+    - Menyusun dokumen panduan teknis resmi penanganan instalasi mandiri (*sideload APK*) untuk mengatasi kebijakan proteksi vendor ponsel:
+      - Penonaktifan sementara *Pemblokir Otomatis (Auto Blocker)* pada Samsung One UI 6.0/6.1/7/8.
+      - Penanganan peringatan dialog *Google Play Protect* (*More details > Install anyway*).
+      - Pemberian izin *Install Unknown Apps* pada browser / File Manager.
+      - Penanganan error *App Not Installed* akibat konflik signature serta *Parse Error* akibat unduhan tidak lengkap.
+    - Menautkan panduan troubleshooting pada berkas `README.md` di bawah tabel unduhan langsung.
 
 ## [2.8.3] - 2026-10-17
 
