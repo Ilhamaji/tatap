@@ -111,3 +111,43 @@ def test_backend_anime_detail_endpoint_security():
     with open(chaquopy_main, "r", encoding="utf-8") as f:
         chaquopy_code = f.read()
     assert "@app.get(\"/api/anime/{slug}/detail\")" in chaquopy_code
+
+
+def test_web_desktop_sheet_dom_structure():
+    """Memastikan struktur DOM #title-modal dan .sheet tidak mengalami tag mismatch/unclosed head."""
+    from bs4 import BeautifulSoup
+    html_path = os.path.join(ROOT_DIR, "frontend/index.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+    soup = BeautifulSoup(html, "html.parser")
+
+    title_modal = soup.find(id="title-modal")
+    assert title_modal is not None
+
+    # Sheet harus child langsung dari title-modal
+    sheet = title_modal.find(class_="sheet")
+    assert sheet is not None
+    assert sheet.parent == title_modal
+
+    # sheet-head harus ditutup dengan benar, direct children sheet:
+    # sheet-head, tm-detail-meta, tm-seasons, sheet-controls, tm-ep-ranges, tm-eps
+    sheet_children = [c.get("id") or (c.get("class")[0] if c.get("class") else c.name) for c in sheet.find_all(recursive=False)]
+    assert "sheet-head" in sheet_children
+    assert "tm-detail-meta" in sheet_children
+    assert "tm-seasons" in sheet_children
+    assert "sheet-controls" in sheet_children
+    assert "tm-ep-ranges" in sheet_children
+    assert "tm-eps" in sheet_children
+
+    # Pastikan .sheet-head TIDAK menelan tm-eps atau tm-detail-meta
+    sheet_head = sheet.find(class_="sheet-head")
+    head_children = [c.get("id") or (c.get("class")[0] if c.get("class") else c.name) for c in sheet_head.find_all(recursive=False)]
+    assert "tm-eps" not in head_children
+    assert "tm-detail-meta" not in head_children
+    assert "sheet-controls" not in head_children
+
+    # Pastikan player-modal bukan child dari title-modal (tag balance)
+    player_modal = soup.find(id="player-modal")
+    assert player_modal is not None
+    assert player_modal.parent != title_modal
+
