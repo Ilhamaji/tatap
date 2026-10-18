@@ -843,7 +843,10 @@ function pickSubtitleUrl(subtitles, preferLang){
     // Match kode bahasa (English → en/id/ja).
     var langMap={"english":"en","indonesian":"id","japanese":"ja","spanish":"es","portuguese":"pt",
                  "french":"fr","german":"de","italian":"it","korean":"ko","chinese":"zh","arabic":"ar",
-                 "russian":"ru","thai":"th","vietnamese":"vi","turkish":"tr","hindi":"hi"};
+                 "russian":"ru","thai":"th","vietnamese":"vi","turkish":"tr","hindi":"hi",
+                 "czech":"cs","danish":"da","dutch":"nl","finnish":"fi","greek":"el","hungarian":"hu",
+                 "norwegian":"no","polish":"pl","romanian":"ro","slovak":"sk","swedish":"sv",
+                 "malay":"ms","tagalog":"tl"};
     var code=langMap[low];
     if(code){
       for(var k=0;k<subtitles.length;k++){
@@ -855,10 +858,15 @@ function pickSubtitleUrl(subtitles, preferLang){
     if((low==="indonesian"||low==="id"||low==="indonesian (gtx+)"||low==="indonesian (aigtx)"||low==="indonesian (ai)"||low==="indonesian (gtx)"||cur.translate)){
       var enTrack=null;
       for(var e=0;e<subtitles.length;e++){
-        var elab=(subtitles[e].label||"").toLowerCase();
-        var elang=(subtitles[e].lang||"").toLowerCase();
-        if(elang==="en"||elab.indexOf("english")===0||elab==="en"){
+        if(isExactEnglishSubTrack(subtitles[e])){
           enTrack=subtitles[e];break;
+        }
+      }
+      if(!enTrack){
+        for(var e2=0;e2<subtitles.length;e2++){
+          if(isPureEnglishSubTrack(subtitles[e2])){
+            enTrack=subtitles[e2];break;
+          }
         }
       }
       if(enTrack&&enTrack.url){
@@ -868,11 +876,13 @@ function pickSubtitleUrl(subtitles, preferLang){
       }
     }
   }
-  // Prioritaskan English jika ada
+  // Prioritaskan exact English jika ada
+  for(var nx=0;nx<subtitles.length;nx++){
+    if(isExactEnglishSubTrack(subtitles[nx]))return subtitles[nx].url;
+  }
+  // Prioritaskan varian English jika ada
   for(var n=0;n<subtitles.length;n++){
-    var nlab=(subtitles[n].label||"").toLowerCase();
-    var nlang=(subtitles[n].lang||"").toLowerCase();
-    if(nlang==="en"||nlab.indexOf("english")===0||nlab.indexOf("eng")===0)return subtitles[n].url;
+    if(isPureEnglishSubTrack(subtitles[n]))return subtitles[n].url;
   }
   // Fallback: default:true (selama bukan Arabic)
   for(var m=0;m<subtitles.length;m++){
@@ -887,6 +897,30 @@ function pickSubtitleUrl(subtitles, preferLang){
     if(plang!=="ar"&&plab.indexOf("arab")===-1)return subtitles[p].url;
   }
   return subtitles[0].url;
+}
+
+var _NON_EN_SUB_KEYWORDS = [
+  "arabic", "arab", "indonesia", "bahasa", "spanish", "espanol", "español",
+  "portuguese", "french", "francais", "german", "deutsch", "italian", "korean",
+  "chinese", "russian", "thai", "vietnamese", "turkish", "hindi", "czech",
+  "danish", "dutch", "finnish", "greek", "hungarian", "norwegian", "polish",
+  "romanian", "slovak", "swedish", "malay", "tagalog", "filipino", "japanese"
+];
+
+function isPureEnglishSubTrack(s){
+  if(!s)return false;
+  var lab=((s.label||"")+"").toLowerCase().trim();
+  var l=((s.lang||"")+"").toLowerCase().trim();
+  for(var k=0;k<_NON_EN_SUB_KEYWORDS.length;k++){
+    if(lab.indexOf(_NON_EN_SUB_KEYWORDS[k])!==-1)return false;
+  }
+  return l==="en"||lab.indexOf("english")===0||lab.indexOf("eng")===0;
+}
+
+function isExactEnglishSubTrack(s){
+  if(!s)return false;
+  var lab=((s.label||"")+"").toLowerCase().trim();
+  return isPureEnglishSubTrack(s)&&(lab==="english"||lab==="english [full]"||lab==="eng");
 }
 
 function renderSubtitles(subtitles, activeUrl){
@@ -908,7 +942,8 @@ function renderSubtitles(subtitles, activeUrl){
   offOpt.textContent="Off";
   sel.appendChild(offOpt);
   // Tambah opsi "Indonesian (AI)", "Indonesian (GTX+)", dan "Indonesian (Google GTX)" kalau ada track English.
-  var englishTrack=null;
+  var exactEnTrack=null;
+  var anyEnTrack=null;
   for(var i=0;i<subtitles.length;i++){
     (function(s){
       var o=document.createElement("option");
@@ -918,15 +953,14 @@ function renderSubtitles(subtitles, activeUrl){
       if(activeUrl&&s.url===activeUrl)o.selected=true;
       sel.appendChild(o);
       // deteksi track English untuk AI-translate source
-      if(!englishTrack){
-        var lab=(s.label||"").toLowerCase();
-        var lcode=(s.lang||"").toLowerCase();
-        if(lcode==="en"||lab.indexOf("english")===0||lab==="en"){
-          englishTrack=s;
-        }
+      if(!exactEnTrack && isExactEnglishSubTrack(s)){
+        exactEnTrack=s;
+      } else if(!anyEnTrack && isPureEnglishSubTrack(s)){
+        anyEnTrack=s;
       }
     })(subtitles[i]);
   }
+  var englishTrack=exactEnTrack||anyEnTrack;
   if(englishTrack&&englishTrack.url){
     var gtxOpt=document.createElement("option");
     gtxOpt.value="gtx:"+englishTrack.url;

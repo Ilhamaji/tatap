@@ -13,6 +13,30 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.9.2] - 2026-10-18
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.9.1 -> 2.9.2)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug normalisasi track subtitle dan sumber terjemahan autosub (*backward-compatible bug fixes*) pada seluruh platform Tatap tanpa adanya perubahan breaking changes maupun penambahan modul antarmuka baru:
+1. **Perbaikan Seleksi Subtitle Default English Murni (Kasus Multi-Track CDN ZokoAnime / Heavenly Delusion):**
+   - Mengatasi anomali kritis pada server stream upstream (seperti ZokoAnime pada Episode 8–13 anime *Heavenly Delusion* / *Tengoku Daimakyou*) di mana CDN menyetel dummy attribute `lang: "en"` ke seluruh track subtitle multi-bahasa Eropa (Czech, Danish, Dutch, Finnish, Greek, Hungarian, Norwegian, Polish, Romanian, Slovak, Swedish).
+   - Memperluas pemetaan kamus ISO-639-1 `_label_to_lang` dan `_LANG_NAME` di backend (`backend/api/hianime.py`) dan Chaquopy parity (`android/app/src/main/python/backend/api/hianime.py`) untuk memetakan seluruh nama bahasa Eropa dan Asia ke kode bahasa aslinya (`Czech` $\to$ `cs`, `Danish` $\to$ `da`, `Dutch` $\to$ `nl`, dsb.).
+   - Mencegah dummy `lang: "en"` menimpa bahasa asli jika label menyebutkan nama bahasa non-Inggris (`_NON_ENGLISH_KEYWORDS`).
+   - Menerapkan prioritas bertingkat pada normalisasi track default (`_normalize_subtitles`):
+     1. Track native `Indonesian` (jika tersedia).
+     2. Track `English` yang memiliki atribut upstream `raw_default == True`.
+     3. Track berlabel persis `English` (`english`, `english [full]`, `eng`).
+     4. Track varian `English` lainnya.
+     5. Track non-Arabic pertama.
+   - Mengeliminasi situasi di mana track bahasa Ceko (*Czech*) terpilih sebagai default karena urutan abjad C mendahului E.
+2. **Perbaikan Sumber Terjemahan Autosub (Anti-Ngaco):**
+   - Memperbaiki helper prewarming terjemahan backend `_check_and_prewarm` di `backend/main.py` dan Chaquopy parity agar URL sumber subtitle bahasa Inggris (`en_url`) memfilter kata kunci bahasa non-Inggris dan memprioritaskan track English exact.
+   - Dengan masukan teks subtitle bahasa Inggris asli (bukan bahasa Ceko), autosub (GTX+, AI Fansub, dan Pure Google GTX) menghasilkan terjemahan bahasa Indonesia yang akurat, natural, dan bersih tanpa teks acak/rusak (*"autosub anti-ngaco"*).
+3. **Hardening Layer Client (Android Native & Web Desktop):**
+   - Pada `PlayerActivity.java` (Android Native), memperketat deteksi `isEnglish` dengan array pengecualian kata kunci bahasa non-Inggris (`nonEnKeywords`) serta memprioritaskan `foundExactEnSub` sebelum fallback ke varian English lainnya.
+   - Pada `frontend/js/app.js` (Web Desktop), memperluas `langMap` dengan bahasa-bahasa Eropa serta menambahkan filter `isPureEnglishSubTrack` dan `isExactEnglishSubTrack` pada pemilih subtitle (`pickSubtitleUrl`) dan dropdown generator (`renderSubtitles`).
+4. **Penambahan Test Suite Subtitle:**
+   - Menambahkan berkas test suite baru `tests/test_subtitle_selection.py` (5 unit test baru, seluruh 147 test suite Tatap lulus 100%).
+
 ## [2.9.1] - 2026-10-18
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.9.0 -> 2.9.1)

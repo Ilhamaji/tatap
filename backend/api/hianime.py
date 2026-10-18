@@ -606,11 +606,26 @@ def _normalize_subtitles(raw_tracks, referer: str = ""):
             continue
         raw_label = (t.get("label") or t.get("lang") or t.get("language")
                      or f"Subtitle {i + 1}").strip()
-        inferred = (_label_to_lang(raw_label)
-                    or _label_to_lang(t.get("lang") or "")
+        raw_default = bool(t.get("default"))
+
+        # Ekstraksi bahasa: Dahulukan inferensi dari label asli agar dummy 'lang: en'
+        # dari CDN upstream tidak membajak bahasa non-Inggris (seperti Czech/Danish pada ZokoAnime).
+        inferred = _label_to_lang(raw_label)
+        if not inferred:
+            # Hanya infer dari field lang/srclang jika label tidak mengindikasikan bahasa non-Inggris
+            if not any(k in raw_label.lower() for k in _NON_ENGLISH_KEYWORDS):
+                inferred = (
+                    _label_to_lang(t.get("lang") or "")
                     or _label_to_lang(t.get("language") or "")
-                    or _label_to_lang(t.get("srclang") or ""))
-        lang = inferred or (t.get("lang") or t.get("language") or t.get("srclang") or "").strip().lower()
+                    or _label_to_lang(t.get("srclang") or "")
+                )
+
+        # Jika raw_label menyebut bahasa non-Inggris, jangan biarkan lang jatuh ke 'en'
+        upstream_lang = (t.get("lang") or t.get("language") or t.get("srclang") or "").strip().lower()
+        if any(k in raw_label.lower() for k in _NON_ENGLISH_KEYWORDS) and upstream_lang == "en":
+            lang = inferred or ""
+        else:
+            lang = inferred or upstream_lang
 
         # Format label readable
         label = raw_label
@@ -624,6 +639,7 @@ def _normalize_subtitles(raw_tracks, referer: str = ""):
             "lang": lang,
             "url": url,
             "default": False,
+            "raw_default": raw_default,
         })
 
     if not out:
@@ -631,12 +647,23 @@ def _normalize_subtitles(raw_tracks, referer: str = ""):
 
     # Tetapkan tepat 1 track default:
     # Prioritas 1: Indonesian (jika ada native)
-    # Prioritas 2: English (hindari Arabic yang sering di posisi 0 secara alfabetis)
-    # Prioritas 3: Track non-Arabic pertama
-    # Prioritas 4: Track 0 jika semua track adalah Arabic
-    def is_en(o):
-        l = (o.get("lang") or "").lower()
-        lbl = (o.get("label") or "").lower()
+    # Prioritas 2: English track dengan upstream default == True (misal ZokoAnime)
+    # Prioritas 3: Exact "English" label
+    # Prioritas 4: Any English track (misal "English 2", "English [Signs & Songs]")
+    # Prioritas 5: Track non-Arabic pertama
+    # Prioritas 6: Track 0 jika semua track adalah Arabic
+    def is_exact_en(o):
+        lbl = (o.get("label") or "").strip().lower()
+        l = (o.get("lang") or "").strip().lower()
+        if any(k in lbl for k in _NON_ENGLISH_KEYWORDS):
+            return False
+        return lbl in ("english", "english [full]", "english (full)", "eng") or (l == "en" and lbl == "english")
+
+    def is_any_en(o):
+        lbl = (o.get("label") or "").strip().lower()
+        l = (o.get("lang") or "").strip().lower()
+        if any(k in lbl for k in _NON_ENGLISH_KEYWORDS):
+            return False
         return l == "en" or "english" in lbl or lbl.startswith("eng")
 
     def is_id(o):
@@ -651,15 +678,35 @@ def _normalize_subtitles(raw_tracks, referer: str = ""):
 
     def_track = next((o for o in out if is_id(o)), None)
     if not def_track:
-        def_track = next((o for o in out if is_en(o)), None)
+        def_track = next((o for o in out if o.get("raw_default") and is_any_en(o)), None)
+    if not def_track:
+        def_track = next((o for o in out if is_exact_en(o)), None)
+    if not def_track:
+        def_track = next((o for o in out if is_any_en(o)), None)
     if not def_track:
         def_track = next((o for o in out if not is_ar(o)), None)
     if not def_track:
         def_track = out[0]
 
     def_track["default"] = True
+
+    for item in out:
+        item.pop("raw_default", None)
+
     return out
 
+
+# Kata kunci bahasa non-Inggris untuk mencegah dummy 'lang: en' dari CDN upstream
+# salah diidentifikasi sebagai track bahasa Inggris.
+_NON_ENGLISH_KEYWORDS = (
+    "arabic", "arab", "indonesia", "bahasa", "spanish", "espanol", "español",
+    "portuguese", "português", "french", "français", "francais", "german", "deutsch",
+    "italian", "italiano", "korean", "chinese", "russian", "thai", "vietnamese",
+    "turkish", "hindi", "czech", "danish", "dutch", "finnish", "greek",
+    "hungarian", "norwegian", "polish", "romanian", "slovak", "swedish",
+    "malay", "tagalog", "filipino", "ukrainian", "bulgarian", "croatian",
+    "japanese", "japan",
+)
 
 # Peta kode bahasa 2-3 char → nama readable (untuk label dropdown).
 _LANG_NAME = {
@@ -679,6 +726,22 @@ _LANG_NAME = {
     "vi": "Vietnamese", "vie": "Vietnamese",
     "tr": "Turkish", "tur": "Turkish",
     "hi": "Hindi", "hin": "Hindi",
+    "cs": "Czech", "ces": "Czech", "cze": "Czech",
+    "da": "Danish", "dan": "Danish",
+    "nl": "Dutch", "nld": "Dutch", "dut": "Dutch",
+    "fi": "Finnish", "fin": "Finnish",
+    "el": "Greek", "ell": "Greek", "gre": "Greek",
+    "hu": "Hungarian", "hun": "Hungarian",
+    "no": "Norwegian", "nor": "Norwegian", "nob": "Norwegian",
+    "pl": "Polish", "pol": "Polish",
+    "ro": "Romanian", "ron": "Romanian", "rum": "Romanian",
+    "sk": "Slovak", "slk": "Slovak", "slo": "Slovak",
+    "sv": "Swedish", "swe": "Swedish",
+    "ms": "Malay", "msa": "Malay", "may": "Malay",
+    "tl": "Tagalog", "fil": "Filipino",
+    "uk": "Ukrainian", "ukr": "Ukrainian",
+    "bg": "Bulgarian", "bul": "Bulgarian",
+    "hr": "Croatian", "hrv": "Croatian",
 }
 
 
@@ -721,6 +784,38 @@ def _label_to_lang(label):
         return "tr"
     if "hindi" in lab or lab.startswith("hin") or lab == "hi":
         return "hi"
+    if "czech" in lab or lab.startswith("cze") or lab.startswith("ces") or lab == "cs":
+        return "cs"
+    if "danish" in lab or lab.startswith("dan") or lab == "da":
+        return "da"
+    if "dutch" in lab or lab.startswith("nld") or lab.startswith("dut") or lab == "nl":
+        return "nl"
+    if "finnish" in lab or lab.startswith("fin") or lab == "fi":
+        return "fi"
+    if "greek" in lab or lab.startswith("ell") or lab.startswith("gre") or lab == "el":
+        return "el"
+    if "hungarian" in lab or lab.startswith("hun") or lab == "hu":
+        return "hu"
+    if "norwegian" in lab or lab.startswith("nor") or lab.startswith("nob") or lab == "no":
+        return "no"
+    if "polish" in lab or lab.startswith("pol") or lab == "pl":
+        return "pl"
+    if "romanian" in lab or lab.startswith("ron") or lab.startswith("rum") or lab == "ro":
+        return "ro"
+    if "slovak" in lab or lab.startswith("slk") or lab.startswith("slo") or lab == "sk":
+        return "sk"
+    if "swedish" in lab or lab.startswith("swe") or lab == "sv":
+        return "sv"
+    if "malay" in lab or lab.startswith("msa") or lab.startswith("may") or lab == "ms":
+        return "ms"
+    if "tagalog" in lab or "filipino" in lab or lab.startswith("fil") or lab == "tl":
+        return "tl"
+    if "ukrainian" in lab or lab.startswith("ukr") or lab == "uk":
+        return "uk"
+    if "bulgarian" in lab or lab.startswith("bul") or lab == "bg":
+        return "bg"
+    if "croatian" in lab or lab.startswith("hrv") or lab == "hr":
+        return "hr"
     return ""
 
 

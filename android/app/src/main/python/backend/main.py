@@ -1077,15 +1077,28 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                 if sub_lang in ("indonesian", "id") or auto_tr in ("1", "true"):
                     subs = ep_data.get("subtitles") or []
                     en_url = ""
+                    # 1. Cari exact English
                     for s in subs:
-                        l = (s.get("lang") or "").lower()
-                        lbl = (s.get("label") or "").lower()
-                        if l == "en" or "english" in lbl or lbl.startswith("eng"):
+                        l = (s.get("lang") or "").lower().strip()
+                        lbl = (s.get("label") or "").lower().strip()
+                        if any(k in lbl for k in hi._NON_ENGLISH_KEYWORDS):
+                            continue
+                        if lbl in ("english", "english [full]", "english (full)", "eng"):
                             en_url = s.get("url") or ""
                             break
+                    # 2. Cari varian English jika exact tidak ditemukan
+                    if not en_url:
+                        for s in subs:
+                            l = (s.get("lang") or "").lower().strip()
+                            lbl = (s.get("label") or "").lower().strip()
+                            if any(k in lbl for k in hi._NON_ENGLISH_KEYWORDS):
+                                continue
+                            if "english" in lbl or lbl.startswith("eng") or l == "en":
+                                en_url = s.get("url") or ""
+                                break
                     if not en_url and ep_data.get("sub"):
-                        sub_l = (ep_data.get("sub_lang") or "").lower()
-                        if "arab" not in sub_l and sub_l != "ar":
+                        sub_l = (ep_data.get("sub_lang") or "").lower().strip()
+                        if not any(k in sub_l for k in hi._NON_ENGLISH_KEYWORDS):
                             en_url = ep_data.get("sub") or ""
                     if en_url:
                         asyncio.create_task(_prewarm_sub_translation(en_url, ep_data.get("referer") or "", "en", "id"))

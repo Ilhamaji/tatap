@@ -2089,25 +2089,48 @@ public class PlayerActivity extends Activity {
                     JSONArray subArr = data.optJSONArray("subtitles");
                     subtitleTracks.clear();
                     String foundEnSub = "";
+                    String foundExactEnSub = "";
+                    String foundAnyEnSub = "";
                     String foundIdSub = "";
                     String foundDefSub = "";
                     String foundNonArSub = "";
+
+                    String[] nonEnKeywords = new String[]{
+                        "arabic", "arab", "indonesia", "bahasa", "spanish", "espanol",
+                        "portuguese", "french", "francais", "german", "deutsch", "italian",
+                        "korean", "chinese", "russian", "thai", "vietnamese", "turkish",
+                        "hindi", "czech", "danish", "dutch", "finnish", "greek",
+                        "hungarian", "norwegian", "polish", "romanian", "slovak", "swedish",
+                        "malay", "tagalog", "filipino", "japanese"
+                    };
 
                     if (subArr != null) {
                         for (int i = 0; i < subArr.length(); i++) {
                             JSONObject s = subArr.getJSONObject(i);
                             subtitleTracks.add(s);
-                            String lang = s.optString("lang", "").toLowerCase();
-                            String lbl = s.optString("label", "").toLowerCase();
+                            String lang = s.optString("lang", "").toLowerCase().trim();
+                            String lbl = s.optString("label", "").toLowerCase().trim();
                             String url = s.optString("url", "");
                             boolean isDef = s.optBoolean("default", false);
 
                             boolean isArabic = lang.equals("ar") || lang.equals("ara") || lbl.contains("arabic") || lbl.contains("arab");
-                            boolean isEnglish = lang.equals("en") || lang.equals("eng") || lbl.contains("english") || lbl.startsWith("eng");
                             boolean isIndo = lang.equals("id") || lang.equals("ind") || lbl.contains("indonesia") || lbl.contains("bahasa");
 
-                            if (foundEnSub.isEmpty() && isEnglish && !url.isEmpty()) {
-                                foundEnSub = url;
+                            boolean hasNonEnKeyword = false;
+                            for (String kw : nonEnKeywords) {
+                                if (lbl.contains(kw)) {
+                                    hasNonEnKeyword = true;
+                                    break;
+                                }
+                            }
+
+                            boolean isEnglish = !hasNonEnKeyword && (lang.equals("en") || lang.equals("eng") || lbl.contains("english") || lbl.startsWith("eng"));
+                            boolean isExactEnglish = isEnglish && (lbl.equals("english") || lbl.equals("english [full]") || lbl.equals("eng"));
+
+                            if (isExactEnglish && !url.isEmpty() && foundExactEnSub.isEmpty()) {
+                                foundExactEnSub = url;
+                            } else if (isEnglish && !url.isEmpty() && foundAnyEnSub.isEmpty()) {
+                                foundAnyEnSub = url;
                             }
                             if (foundIdSub.isEmpty() && isIndo && !url.isEmpty()) {
                                 foundIdSub = url;
@@ -2119,6 +2142,12 @@ public class PlayerActivity extends Activity {
                                 foundNonArSub = url;
                             }
                         }
+                    }
+
+                    if (!foundExactEnSub.isEmpty()) {
+                        foundEnSub = foundExactEnSub;
+                    } else if (!foundAnyEnSub.isEmpty()) {
+                        foundEnSub = foundAnyEnSub;
                     }
 
                     // Backend juga menyediakan resolved default sub di data.optString("sub")
