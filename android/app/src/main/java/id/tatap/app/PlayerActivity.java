@@ -120,6 +120,7 @@ public class PlayerActivity extends Activity {
     private boolean isHapticEnabled = true;
     private boolean isGeneralHapticEnabled = true;
     private boolean isSceneHapticEnabled = false; // Haptic scene audio dimatikan
+    private boolean isTimeBarListenerAttached = false;
     private volatile boolean isVideoPlaying = false;
     private volatile boolean isInOpEd = false;
     private Object hapticGenerator;
@@ -435,21 +436,32 @@ public class PlayerActivity extends Activity {
             }
 
             if (btnPortraitSub != null) {
-                btnPortraitSub.setOnClickListener(v -> showSubtitleSelectorDialog());
+                btnPortraitSub.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    showSubtitleSelectorDialog();
+                });
             }
             if (btnPortraitQuality != null) {
-                btnPortraitQuality.setOnClickListener(v -> showQualitySelectorDialog());
+                btnPortraitQuality.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    showQualitySelectorDialog();
+                });
             }
             if (btnPortraitSpeed != null) {
-                btnPortraitSpeed.setOnClickListener(v -> showSpeedSelectorDialog());
+                btnPortraitSpeed.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    showSpeedSelectorDialog();
+                });
             }
             if (btnPortraitFullscreen != null) {
                 btnPortraitFullscreen.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
                     setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
                 });
             }
             if (btnPortraitSort != null) {
                 btnPortraitSort.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
                     isPortraitAscending = !isPortraitAscending;
                     btnPortraitSort.setText(isPortraitAscending ? "Urutan: 1 - N" : "Urutan: N - 1");
                     updatePortraitEpisodeDisplay();
@@ -504,29 +516,44 @@ public class PlayerActivity extends Activity {
 
         btnAspect = findViewById(R.id.btn_aspect);
         if (btnAspect != null) {
-            btnAspect.setOnClickListener(v -> cycleAspectRatio());
+            btnAspect.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                cycleAspectRatio();
+            });
         }
 
         btnQuality = findViewById(R.id.btn_quality);
         if (btnQuality != null) {
-            btnQuality.setOnClickListener(v -> showQualitySelectorDialog());
+            btnQuality.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                showQualitySelectorDialog();
+            });
         }
 
         btnSpeed = findViewById(R.id.btn_speed);
         if (btnSpeed != null) {
-            btnSpeed.setOnClickListener(v -> showSpeedSelectorDialog());
+            btnSpeed.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                showSpeedSelectorDialog();
+            });
         }
         currentPlaybackSpeed = 1.0f;
         updateSpeedButtonLabel();
 
         btnSubStyle = findViewById(R.id.btn_sub_style);
         if (btnSubStyle != null) {
-            btnSubStyle.setOnClickListener(v -> showSubtitleStyleDialog());
+            btnSubStyle.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                showSubtitleStyleDialog();
+            });
         }
 
         btnSubSelector = findViewById(R.id.btn_sub_selector);
         if (btnSubSelector != null) {
-            btnSubSelector.setOnClickListener(v -> showSubtitleSelectorDialog());
+            btnSubSelector.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                showSubtitleSelectorDialog();
+            });
         }
 
         btnSkipOpEd = findViewById(R.id.btn_skip_op_ed);
@@ -561,7 +588,7 @@ public class PlayerActivity extends Activity {
             autoSkipOpEd = sp.getBoolean("auto_skip_op_ed", false);
             isGeneralHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
             isHapticEnabled = isGeneralHapticEnabled;
-            isSceneHapticEnabled = false; // Haptic scene audio dimatikan
+            isSceneHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_scene_haptic", false);
             currentResizeMode = TvFocusHelper.isTv(this)
                     ? AspectRatioFrameLayout.RESIZE_MODE_FIT
                     : sp.getInt("aspect_mode", AspectRatioFrameLayout.RESIZE_MODE_FIT);
@@ -767,6 +794,7 @@ public class PlayerActivity extends Activity {
     }
 
     private void handleBackAction() {
+        performHapticTick();
         if (isScreenLocked) {
             showUnlockButtonBriefly();
             Toast.makeText(this, "Layar terkunci. Buka kunci layar terlebih dahulu.", Toast.LENGTH_SHORT).show();
@@ -3156,6 +3184,7 @@ public class PlayerActivity extends Activity {
         SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
         isGeneralHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
         isHapticEnabled = isGeneralHapticEnabled;
+        isSceneHapticEnabled = !TvFocusHelper.isTv(this) && sp.getBoolean("pref_scene_haptic", false);
         updateHapticGeneratorState();
         if (player != null && player.isPlaying()) {
             handler.removeCallbacks(subtitleSyncRunnable);
@@ -3353,17 +3382,53 @@ public class PlayerActivity extends Activity {
 
     private void bindExoControlButtons() {
         if (playerView == null) return;
+
+        androidx.media3.ui.TimeBar timeBar = playerView.findViewById(androidx.media3.ui.R.id.exo_progress);
+        if (timeBar != null && !isTimeBarListenerAttached) {
+            isTimeBarListenerAttached = true;
+            timeBar.addListener(new androidx.media3.ui.TimeBar.OnScrubListener() {
+                private long lastScrubStep = -1;
+
+                @Override
+                public void onScrubStart(androidx.media3.ui.TimeBar timeBar, long position) {
+                    lastScrubStep = position / 5000;
+                    HapticHelper.performClick(playerView);
+                }
+
+                @Override
+                public void onScrubMove(androidx.media3.ui.TimeBar timeBar, long position) {
+                    long step = position / 5000;
+                    if (step != lastScrubStep) {
+                        lastScrubStep = step;
+                        HapticHelper.performTick(playerView);
+                    }
+                }
+
+                @Override
+                public void onScrubStop(androidx.media3.ui.TimeBar timeBar, long position, boolean canceled) {
+                    lastScrubStep = -1;
+                    HapticHelper.performClick(playerView);
+                }
+            });
+        }
+
         if (btnExoNext == null) {
             btnExoNext = playerView.findViewById(androidx.media3.ui.R.id.exo_next);
             if (btnExoNext != null) {
-                btnExoNext.setOnClickListener(v -> playNextEpisode());
+                btnExoNext.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    playNextEpisode();
+                });
                 TvFocusHelper.attachFocusScale(btnExoNext, 1.15f, 6f);
             }
         }
         if (btnExoPrev == null) {
             btnExoPrev = playerView.findViewById(androidx.media3.ui.R.id.exo_prev);
             if (btnExoPrev != null) {
-                btnExoPrev.setOnClickListener(v -> playPrevEpisode());
+                btnExoPrev.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    playPrevEpisode();
+                });
                 TvFocusHelper.attachFocusScale(btnExoPrev, 1.15f, 6f);
             }
         }
@@ -3371,7 +3436,10 @@ public class PlayerActivity extends Activity {
             btnExoSub = playerView.findViewById(androidx.media3.ui.R.id.exo_subtitle);
             if (btnExoSub != null) {
                 btnExoSub.setVisibility(View.VISIBLE);
-                btnExoSub.setOnClickListener(v -> showSubtitleSelectorDialog());
+                btnExoSub.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    showSubtitleSelectorDialog();
+                });
                 TvFocusHelper.attachFocusScale(btnExoSub, 1.15f, 6f);
             }
         }
@@ -3379,7 +3447,10 @@ public class PlayerActivity extends Activity {
             btnExoSettings = playerView.findViewById(androidx.media3.ui.R.id.exo_settings);
             if (btnExoSettings != null) {
                 btnExoSettings.setVisibility(View.VISIBLE);
-                btnExoSettings.setOnClickListener(v -> showPlayerUnifiedSettingsDialog());
+                btnExoSettings.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
+                    showPlayerUnifiedSettingsDialog();
+                });
                 TvFocusHelper.attachFocusScale(btnExoSettings, 1.15f, 6f);
             }
         }
@@ -3388,6 +3459,7 @@ public class PlayerActivity extends Activity {
             if (btnExoFullscreen != null) {
                 btnExoFullscreen.setVisibility(View.VISIBLE);
                 btnExoFullscreen.setOnClickListener(v -> {
+                    HapticHelper.performClick(v);
                     if (TvFocusHelper.isTv(this)) {
                         cycleAspectRatio();
                     } else {
@@ -3900,6 +3972,7 @@ public class PlayerActivity extends Activity {
 
             holder.itemView.setOnClickListener(v -> {
                 if (itemEp != ep) {
+                    HapticHelper.performClick(v);
                     switchEpisode(itemEp);
                 }
             });
@@ -3957,6 +4030,7 @@ public class PlayerActivity extends Activity {
                 holder.tvLabel.setTextColor(0xFF94A3B8);
             }
             holder.itemView.setOnClickListener(v -> {
+                HapticHelper.performTick(v);
                 selectedRange = r;
                 activePortraitRange = r;
                 notifyDataSetChanged();

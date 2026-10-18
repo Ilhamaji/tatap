@@ -42,6 +42,66 @@ def main_source():
     with open(MAIN_ACTIVITY_PATH, "r", encoding="utf-8") as f:
         return f.read()
 
+HAPTIC_HELPER_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "android",
+    "app",
+    "src",
+    "main",
+    "java",
+    "id",
+    "tatap",
+    "app",
+    "HapticHelper.java"
+)
+
+@pytest.fixture
+def haptic_helper_source():
+    assert os.path.exists(HAPTIC_HELPER_PATH), f"HapticHelper.java not found at {HAPTIC_HELPER_PATH}"
+    with open(HAPTIC_HELPER_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
+DETAIL_ACTIVITY_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "android",
+    "app",
+    "src",
+    "main",
+    "java",
+    "id",
+    "tatap",
+    "app",
+    "DetailActivity.java"
+)
+
+@pytest.fixture
+def detail_source():
+    assert os.path.exists(DETAIL_ACTIVITY_PATH), f"DetailActivity.java not found at {DETAIL_ACTIVITY_PATH}"
+    with open(DETAIL_ACTIVITY_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
+ANIME_ADAPTER_PATH = os.path.join(
+    os.path.dirname(__file__),
+    "..",
+    "android",
+    "app",
+    "src",
+    "main",
+    "java",
+    "id",
+    "tatap",
+    "app",
+    "AnimeAdapter.java"
+)
+
+@pytest.fixture
+def anime_adapter_source():
+    assert os.path.exists(ANIME_ADAPTER_PATH), f"AnimeAdapter.java not found at {ANIME_ADAPTER_PATH}"
+    with open(ANIME_ADAPTER_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
 def test_haptic_imports(player_source):
     """Test required Android haptic and audiofx imports are present."""
     assert "import android.media.audiofx.HapticGenerator;" in player_source
@@ -236,5 +296,88 @@ def test_dsp_simulation_scene_vs_bgm():
 
     # 6. Test AniSkip OP/ED Theme (always false)
     assert not process_buffer(2000, peak=28000, rms=8000, in_op_ed=True)
+
+
+def test_haptic_helper_comprehensive(haptic_helper_source):
+    """Test HapticHelper utility methods, ERM motor adaptation, and TV isolation."""
+    assert "public final class HapticHelper" in haptic_helper_source
+    assert "public static boolean isHapticEnabled(Context context)" in haptic_helper_source
+    assert "public static boolean isSceneHapticEnabled(Context context)" in haptic_helper_source
+    assert "public static void performTick(View view)" in haptic_helper_source
+    assert "public static void performClick(View view)" in haptic_helper_source
+    assert "public static void performHeavyClick(View view)" in haptic_helper_source
+    assert "public static void vibrateDirect(Context context, long ms, int amplitude)" in haptic_helper_source
+    assert "TvFocusHelper.isTv(context)" in haptic_helper_source
+    assert "HapticFeedbackConstants.SEGMENT_TICK" in haptic_helper_source
+    assert "HapticFeedbackConstants.KEYBOARD_TAP" in haptic_helper_source
+    assert "HapticFeedbackConstants.DRAG_START" in haptic_helper_source
+    assert "AudioAttributes.USAGE_MEDIA" in haptic_helper_source
+    assert "hasAmplitudeControl()" in haptic_helper_source
+    assert "effectiveMs" in haptic_helper_source
+
+
+def test_detail_activity_haptics(detail_source):
+    """Test DetailActivity uses HapticHelper across navigation, bookmark, chips, and adapters."""
+    assert "HapticHelper.performTick(v)" in detail_source or "HapticHelper.performTick(btnBack)" in detail_source
+    assert "HapticHelper.performHeavyClick(btnBookmark)" in detail_source or "HapticHelper.performHeavyClick(v)" in detail_source
+    assert "HapticHelper.performTick(btnSortOrder)" in detail_source or "HapticHelper.performTick(v)" in detail_source
+    assert "HapticHelper.performClick(btnQuickPlay)" in detail_source or "HapticHelper.performClick(v)" in detail_source
+    # Synopsis click
+    assert "HapticHelper.performClick(v);" in detail_source
+    # Metadata genre chip
+    assert "HapticHelper.performTick(chip);" in detail_source or "HapticHelper.performTick(v);" in detail_source
+    # Adapters
+    assert "EpisodeAdapter" in detail_source
+    assert "RangeAdapter" in detail_source
+    assert "SeasonAdapter" in detail_source
+
+
+def test_anime_adapter_haptics(anime_adapter_source):
+    """Test AnimeAdapter triggers HapticHelper on card click."""
+    assert "HapticHelper.performClick(v);" in anime_adapter_source
+
+
+def test_main_activity_all_ui_haptics(main_source):
+    """Test MainActivity integrates HapticHelper on tabs, chips, pagination, refresh, and command handling."""
+    # Tab click haptics
+    assert "btnTabMusim.setOnClickListener(v -> {\n            HapticHelper.performClick(v);" in main_source
+    assert "btnTabAiring.setOnClickListener(v -> {\n            HapticHelper.performClick(v);" in main_source
+    assert "btnTabJadwal.setOnClickListener(v -> {\n                HapticHelper.performClick(v);" in main_source
+    assert "btnTabRiwayat.setOnClickListener(v -> {\n                HapticHelper.performClick(v);" in main_source
+    assert "btnTabFavorit.setOnClickListener(v -> {\n                HapticHelper.performClick(v);" in main_source
+    assert "btnTabKatalog.setOnClickListener(v -> {\n            HapticHelper.performClick(v);" in main_source
+    assert "btnTabGenre.setOnClickListener(v -> {\n                HapticHelper.performClick(v);" in main_source
+
+    # Day chips haptics
+    assert "HapticHelper.performTick(v);" in main_source
+    # Pagination
+    assert "btnPrevPage.setOnClickListener" in main_source
+    assert "btnNextPage.setOnClickListener" in main_source
+    # Clear search & Pull to refresh
+    assert "btnClearSearch.setOnClickListener(v -> {\n                HapticHelper.performTick(v);" in main_source
+    assert "HapticHelper.performTick(swipeRefreshLayout);" in main_source
+
+    # Command menu :haptic scene support
+    assert "pref_scene_haptic" in main_source
+    assert 'trimmed.startsWith("scene")' in main_source
+
+
+def test_player_timebar_scrubbing_and_buttons_haptics(player_source):
+    """Test PlayerActivity timeline scrubbing and playback control buttons tactile feedback."""
+    # Timeline scrubbing listener
+    assert "TimeBar" in player_source
+    assert "OnScrubListener" in player_source
+    assert "onScrubStart" in player_source
+    assert "onScrubMove" in player_source
+    assert "onScrubStop" in player_source
+    assert "lastScrubStep" in player_source
+
+    # Player buttons tactile clicks
+    assert "btnExoNext" in player_source
+    assert "btnExoPrev" in player_source
+    assert "btnExoSub" in player_source
+    assert "btnExoSettings" in player_source
+    assert "btnExoFullscreen" in player_source
+
 
 

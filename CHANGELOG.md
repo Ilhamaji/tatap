@@ -78,6 +78,24 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena p
     - **Instant In-Place Auto-Toggle pada Menu Perintah:**
       - Saat pengguna mengklik item perintah `:haptic` di dialog Daftar Perintah, fungsi secara otomatis beralih (*auto-toggle*) ON/OFF seketika tanpa menutup dialog atau keluar dari menu.
       - Memperbarui teks dan warna badge seketika secara real-time, memberikan pulsa haptik konfirmasi saat diaktifkan, menampilkan Toast konfirmasi, dan menyimpan preferensi secara persisten ke `SharedPreferences` (`tatap_player_prefs` -> `pref_general_haptic`).
+14. **Sentralisasi `HapticHelper` & Penerapan Menyeluruh Umpan Balik Taktil UI Android:**
+    - **Kelas Sentralisasi `HapticHelper` (`id.tatap.app.HapticHelper`):**
+      - Standarisasi seluruh pemicu sentuhan haptik di level aplikasi (`performTick`, `performClick`, `performHeavyClick`, `vibrateDirect`).
+      - Isolasi total Android TV via `TvFocusHelper.isTv(...)` agar remote D-pad tidak bergetar dan tidak memicu overhead.
+      - Adaptasi inersia motor koin ERM (skala dinamis 45ms–90ms pada perangkat tanpa kendali amplitudo).
+      - Integrasi atribut audio `AudioAttributes.USAGE_MEDIA` agar getaran tidak dibungkam kebijakan mute sentuhan Samsung One UI.
+    - **Penerapan Luas di Seluruh Antarmuka UI Android:**
+      - *Katalog Utama (`MainActivity.java`):* Respon sentuhan getar pada seluruh 7 tab navigasi, chip hari jadwal penayangan, tombol paginasi (*prev/next*), tombol bersihkan pencarian (*clear search*), *pull-to-refresh*, dan tombol coba lagi (*empty retry*).
+      - *Kartu Anime (`AnimeAdapter.java`):* Respon klik taktil saat memilih anime di beranda/katalog sebelum membuka rincian detail.
+      - *Halaman Rincian (`DetailActivity.java`):* Respon taktil pada tombol kembali, tombol bookmark/favorit (*heavy click*), urutan sort episode (*tick*), tombol putar cepat / episode 1, expand/collapse sinopsis, chip genre, item episode, chip range episode, dan relasi musim/prequel/sequel.
+      - *Pemutar Video (`PlayerActivity.java`):*
+        - Timeline scrubbing taktil presisi: implementasi `androidx.media3.ui.TimeBar.OnScrubListener` pada `exo_progress` (klik saat mulai/selesai geser, tick halus per kelipatan 5 detik).
+        - Tombol kontrol pemutar: tombol portrait & landscape (*back*, *quality*, *speed*, *aspect*, *subs*, *sub style*, *fullscreen*, *sort*, *next*, *prev*).
+    - **Ekspansi Perintah Terminal `:haptic scene`:**
+      - Mendukung argumen `:haptic scene [on|off|toggle|status]` untuk mengaktifkan kembali getaran adegan audio secara on-demand bagi pengguna yang menginginkannya.
+      - Menampilkan status gabungan (UI Haptic & Scene Haptic) pada `:haptic status`.
+    - **Automated Tests:**
+      - Menambahkan 5 pengujian baru pada `tests/test_haptic_feedback.py` (`test_haptic_helper_comprehensive`, `test_detail_activity_haptics`, `test_anime_adapter_haptics`, `test_main_activity_all_ui_haptics`, `test_player_timebar_scrubbing_and_buttons_haptics`), total 136/136 automated tests lulus 100%.
 
 ## [2.8.3] - 2026-10-17
 

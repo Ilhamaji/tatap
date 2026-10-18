@@ -153,13 +153,19 @@ public class DetailActivity extends Activity {
             ImageLoader.load(poster, ivPoster);
         }
 
-        btnBack.setOnClickListener(v -> finish());
+        btnBack.setOnClickListener(v -> {
+            HapticHelper.performTick(v);
+            finish();
+        });
         TvFocusHelper.attachFocusScale(btnBack, 1.1f, 6f);
         TvFocusHelper.attachFocusScale(btnQuickPlay, 1.05f, 6f);
         btnBookmark = findViewById(R.id.btn_detail_bookmark);
         if (btnBookmark != null) {
             TvFocusHelper.attachFocusScale(btnBookmark, 1.05f, 6f);
-            btnBookmark.setOnClickListener(v -> toggleBookmark());
+            btnBookmark.setOnClickListener(v -> {
+                HapticHelper.performHeavyClick(v);
+                toggleBookmark();
+            });
             checkBookmarkStatus();
         }
         TvFocusHelper.attachFocusScale(btnSortOrder, 1.05f, 6f);
@@ -182,12 +188,14 @@ public class DetailActivity extends Activity {
         }
 
         btnSortOrder.setOnClickListener(v -> {
+            HapticHelper.performTick(v);
             isAscending = !isAscending;
             btnSortOrder.setText(isAscending ? "1 - N" : "N - 1");
             updateEpisodeDisplay();
         });
 
         btnQuickPlay.setOnClickListener(v -> {
+            HapticHelper.performClick(v);
             int targetEp = prefs.getInt("last_ep_" + slug, -1);
             if (targetEp <= 0) {
                 if (!originalEpisodes.isEmpty()) {
@@ -451,6 +459,7 @@ public class DetailActivity extends Activity {
                                     LinearLayout.LayoutParams.WRAP_CONTENT);
                             lp.setMarginEnd((int) (6 * getResources().getDisplayMetrics().density));
                             chip.setLayoutParams(lp);
+                            chip.setOnClickListener(v -> HapticHelper.performTick(v));
                             llGenres.addView(chip);
                         }
                         hsvGenres.setVisibility(View.VISIBLE);
@@ -484,6 +493,7 @@ public class DetailActivity extends Activity {
         btnToggleSynopsis.setText("Selengkapnya ▼");
 
         View.OnClickListener toggleListener = v -> {
+            HapticHelper.performClick(v);
             isSynopsisExpanded = !isSynopsisExpanded;
             if (isSynopsisExpanded) {
                 tvSynopsis.setMaxLines(Integer.MAX_VALUE);
@@ -601,7 +611,10 @@ public class DetailActivity extends Activity {
                 holder.tvBadge.setVisibility(View.GONE);
             }
 
-            holder.itemView.setOnClickListener(v -> playEpisode(ep));
+            holder.itemView.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
+                playEpisode(ep);
+            });
         }
 
         @Override
@@ -657,6 +670,7 @@ public class DetailActivity extends Activity {
                 holder.tvLabel.setTextColor(0xFF94A3B8);
             }
             holder.itemView.setOnClickListener(v -> {
+                HapticHelper.performTick(v);
                 selectedRange = r;
                 activeRange = r;
                 notifyDataSetChanged();
@@ -767,6 +781,7 @@ public class DetailActivity extends Activity {
             }
 
             holder.itemView.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 Intent intent = new Intent(DetailActivity.this, DetailActivity.class);
                 intent.putExtra("slug", relSlug);
                 intent.putExtra("title", relTitle);

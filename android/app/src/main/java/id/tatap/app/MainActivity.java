@@ -495,32 +495,38 @@ public class MainActivity extends Activity {
         }
 
         btnTabMusim.setOnClickListener(v -> {
+            HapticHelper.performClick(v);
             resetFiltersToTab("musim");
         });
 
         btnTabAiring.setOnClickListener(v -> {
+            HapticHelper.performClick(v);
             resetFiltersToTab("airing");
         });
 
         if (btnTabJadwal != null) {
             btnTabJadwal.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 resetFiltersToTab("jadwal");
             });
         }
 
         if (btnTabRiwayat != null) {
             btnTabRiwayat.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 resetFiltersToTab("riwayat");
             });
         }
 
         if (btnTabFavorit != null) {
             btnTabFavorit.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 resetFiltersToTab("favorit");
             });
         }
 
         btnTabKatalog.setOnClickListener(v -> {
+            HapticHelper.performClick(v);
             if ("katalog".equals(currentView)) {
                 showCatalogFilterDialog();
             } else {
@@ -530,20 +536,22 @@ public class MainActivity extends Activity {
 
         if (btnTabGenre != null) {
             btnTabGenre.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 showGenreSelectorDialog();
             });
         }
 
-        if (btnDaySenin != null) btnDaySenin.setOnClickListener(v -> switchScheduleDay("monday"));
-        if (btnDaySelasa != null) btnDaySelasa.setOnClickListener(v -> switchScheduleDay("tuesday"));
-        if (btnDayRabu != null) btnDayRabu.setOnClickListener(v -> switchScheduleDay("wednesday"));
-        if (btnDayKamis != null) btnDayKamis.setOnClickListener(v -> switchScheduleDay("thursday"));
-        if (btnDayJumat != null) btnDayJumat.setOnClickListener(v -> switchScheduleDay("friday"));
-        if (btnDaySabtu != null) btnDaySabtu.setOnClickListener(v -> switchScheduleDay("saturday"));
-        if (btnDayMinggu != null) btnDayMinggu.setOnClickListener(v -> switchScheduleDay("sunday"));
+        if (btnDaySenin != null) btnDaySenin.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("monday"); });
+        if (btnDaySelasa != null) btnDaySelasa.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("tuesday"); });
+        if (btnDayRabu != null) btnDayRabu.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("wednesday"); });
+        if (btnDayKamis != null) btnDayKamis.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("thursday"); });
+        if (btnDayJumat != null) btnDayJumat.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("friday"); });
+        if (btnDaySabtu != null) btnDaySabtu.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("saturday"); });
+        if (btnDayMinggu != null) btnDayMinggu.setOnClickListener(v -> { HapticHelper.performTick(v); switchScheduleDay("sunday"); });
 
         btnPrevPage.setOnClickListener(v -> {
             if (currentPage > 1) {
+                HapticHelper.performClick(v);
                 currentPage--;
                 showLoadingState("Memuat halaman " + currentPage + "...");
                 fetchData();
@@ -551,6 +559,7 @@ public class MainActivity extends Activity {
         });
 
         btnNextPage.setOnClickListener(v -> {
+            HapticHelper.performClick(v);
             currentPage++;
             showLoadingState("Memuat halaman " + currentPage + "...");
             fetchData();
@@ -606,6 +615,7 @@ public class MainActivity extends Activity {
 
         if (btnClearSearch != null) {
             btnClearSearch.setOnClickListener(v -> {
+                HapticHelper.performTick(v);
                 etSearch.setText("");
                 if ("cari".equals(currentView)) {
                     resetFiltersToTab("musim");
@@ -632,6 +642,7 @@ public class MainActivity extends Activity {
             swipeRefreshLayout.setColorSchemeColors(0xFF00DBEB, 0xFF0E7490);
             swipeRefreshLayout.setProgressBackgroundColorSchemeColor(0xFF0E121C);
             swipeRefreshLayout.setOnRefreshListener(() -> {
+                HapticHelper.performTick(swipeRefreshLayout);
                 tabDataCache.clear();
                 fetchData();
             });
@@ -639,6 +650,7 @@ public class MainActivity extends Activity {
 
         if (btnEmptyRetry != null) {
             btnEmptyRetry.setOnClickListener(v -> {
+                HapticHelper.performClick(v);
                 tabDataCache.clear();
                 fetchData();
             });
@@ -1030,22 +1042,48 @@ public class MainActivity extends Activity {
 
     private void handleHapticCommand(String args) {
         SharedPreferences sp = getSharedPreferences("tatap_player_prefs", MODE_PRIVATE);
+        String trimmed = (args != null) ? args.trim().toLowerCase() : "";
+
+        if (trimmed.startsWith("scene") || trimmed.startsWith("adegan")) {
+            String sceneSub = trimmed.replaceFirst("^(scene|adegan)\\s*", "");
+            boolean currentScene = sp.getBoolean("pref_scene_haptic", false);
+            boolean targetScene;
+            if ("on".equals(sceneSub) || "aktif".equals(sceneSub) || "1".equals(sceneSub)) {
+                targetScene = true;
+            } else if ("off".equals(sceneSub) || "mati".equals(sceneSub) || "0".equals(sceneSub)) {
+                targetScene = false;
+            } else {
+                targetScene = !currentScene;
+            }
+            sp.edit().putBoolean("pref_scene_haptic", targetScene).apply();
+            if (targetScene && btnToggleMenu != null) {
+                HapticHelper.performHeavyClick(btnToggleMenu);
+            }
+            String stScene = targetScene ? "AKTIF" : "MATI";
+            showCommandOutput("> tatap$ :haptic scene " + (targetScene ? "on" : "off") + " [Getaran Adegan Audio: " + stScene + "]", false);
+            Toast.makeText(this, "Getaran Adegan Audio: " + (targetScene ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if ("status".equals(trimmed)) {
+            boolean uiHaptic = sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
+            boolean sceneHaptic = sp.getBoolean("pref_scene_haptic", false);
+            showCommandOutput("> tatap$ [STATUS HAPTIK] UI: " + (uiHaptic ? "AKTIF" : "MATI") + " | Adegan Audio: " + (sceneHaptic ? "AKTIF" : "MATI"), false);
+            return;
+        }
+
         boolean current = sp.getBoolean("pref_general_haptic", sp.getBoolean("pref_haptic", true));
         boolean target;
-        if ("on".equalsIgnoreCase(args) || "aktif".equalsIgnoreCase(args) || "1".equals(args)) {
+        if ("on".equalsIgnoreCase(trimmed) || "aktif".equalsIgnoreCase(trimmed) || "1".equals(trimmed)) {
             target = true;
-        } else if ("off".equalsIgnoreCase(args) || "mati".equalsIgnoreCase(args) || "0".equals(args)) {
+        } else if ("off".equalsIgnoreCase(trimmed) || "mati".equalsIgnoreCase(trimmed) || "0".equals(trimmed)) {
             target = false;
         } else {
             target = !current;
         }
         sp.edit().putBoolean("pref_general_haptic", target).putBoolean("pref_haptic", target).apply();
-        if (target) {
-            try {
-                if (btnToggleMenu != null) {
-                    btnToggleMenu.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                }
-            } catch (Throwable ignored) {}
+        if (target && btnToggleMenu != null) {
+            HapticHelper.performHeavyClick(btnToggleMenu);
         }
         String statusStr = target ? "AKTIF" : "MATI";
         showCommandOutput("> tatap$ :haptic " + (target ? "on" : "off") + " [Getaran Sentuh UI: " + statusStr + "]", false);
@@ -1406,7 +1444,7 @@ public class MainActivity extends Activity {
                     tvBadge.setTextColor(isEnabled ? 0xFF38BDF8 : 0xFFEF4444);
                 }
                 if (tvDesc != null) {
-                    tvDesc.setText("Umpan balik getaran sentuh UI (saat ini: " + (isEnabled ? "AKTIF" : "MATI") + " - ketuk untuk beralih)");
+                    tvDesc.setText("Umpan balik getaran sentuh UI (" + (isEnabled ? "AKTIF" : "MATI") + " - ketuk untuk beralih). Adegan audio: :haptic scene");
                 }
             };
             updateHapticUI.run();
@@ -1417,9 +1455,7 @@ public class MainActivity extends Activity {
                 sp.edit().putBoolean("pref_general_haptic", newHaptic).putBoolean("pref_haptic", newHaptic).apply();
                 updateHapticUI.run();
                 if (newHaptic) {
-                    try {
-                        v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                    } catch (Throwable ignored) {}
+                    HapticHelper.performHeavyClick(v);
                 }
                 showCommandOutput("> tatap$ :haptic " + (newHaptic ? "on" : "off") + " [Getaran Sentuh UI: " + (newHaptic ? "AKTIF" : "MATI") + "]", false);
                 Toast.makeText(this, "Getaran Sentuh UI: " + (newHaptic ? "Aktif" : "Mati"), Toast.LENGTH_SHORT).show();
