@@ -13,6 +13,23 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.9.1] - 2026-10-18
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.9.0 -> 2.9.1)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug ergonomi kontrol sentuh (*backward-compatible bug fixes*) pada pemutar video Android tanpa adanya penambahan modul arsitektur baru maupun breaking changes, yaitu:
+1. **Pencegahan Ketidaksengajaan Kecerahan Redup / Volume Anjlok Saat Tarik Notifikasi (Top & Bottom Exclusion Zones):**
+   - Menambahkan area pengecualian (*exclusion zone*) di tepi atas layar ($\le \max(56\text{dp}, 16\% \text{ tinggi layar})$). Sentuhan awal pengguna dari tepi atas untuk menarik bilah notifikasi, melihat jam, atau memeriksa baterai di mode layar penuh tidak lagi memicu kontrol volume atau kecerahan.
+   - Menambahkan area pengecualian di tepi bawah layar ($\ge \text{tinggi} - \max(44\text{dp}, 12\% \text{ tinggi})$) agar usapan bilah navigasi (*gesture pill / home navigation*) tidak memicu perubahan volume secara mendadak.
+2. **Penyempitan Zona Gesture ke Tepi Layar & Zona Aman Tengah (Side-Edge Zoning & 30% Central Deadzone):**
+   - Membatasi area sentuh aktif murni ke tepi luar layar: Kecerahan hanya merespons di sepertiga kiri ($X \le 35\%$ lebar layar) dan Volume hanya merespons di sepertiga kanan ($X \ge 65\%$ lebar layar).
+   - Menjadikan area tengah layar ($35\% < X < 65\%$, selebar 30% layar) sebagai zona aman netral (*deadzone*). Sentuhan santai atau usapan di tengah tidak lagi mengubah pengaturan kecerahan/volume.
+3. **Peredaman Sensitivitas & Ambang Batas Gerak Awal (Sensitivity Dampening & Slop Confirmation):**
+   - Menurunkan faktor akselerasi gesture dari `1.2x` menjadi `0.85x`, menghasilkan pergeseran slider kecerahan dan volume yang halus, bertahap, dan tidak melonjak drastis.
+   - Mewajibkan ambang batas pergeseran awal ($\ge 14\text{dp}$) dengan rasio vertikal dominan $|\Delta Y| > 1.25 \times |\Delta X|$ sebelum sesi gesture dinyatakan aktif, mengeliminasi jitter mikro dan kedipan OSD HUD akibat sentuhan tidak sengaja.
+   - Mengimplementasikan state tracking disiplin (`activeGestureZone`) per-stroke sentuhan dengan penguncian arah dan reset bersih saat `ACTION_UP` atau `ACTION_CANCEL`.
+4. **Proteksi Isolasi Android TV:**
+   - Menambahkan pengaman `TvFocusHelper.isTv(...)` pada `onScroll` untuk mencegah pemicuan gesture sentuh bayangan pada perangkat TV atau remote box.
+
 ## [2.9.0] - 2026-10-17
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.8.3 -> 2.9.0)

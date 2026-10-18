@@ -172,6 +172,7 @@ public class PlayerActivity extends Activity {
     private boolean autoSkipOpEd = false;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
+    private int activeGestureZone = 0; // 0 = none / deadzone, 1 = brightness (left edge), 2 = volume (right edge)
     private long pendingResumePosMs = -1;
     private boolean hasPromptedResume = false;
     private long lastProgressSaveMs = 0;
@@ -1172,16 +1173,43 @@ public class PlayerActivity extends Activity {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                if (e1 == null || e2 == null) return false;
-                float deltaY = e1.getY() - e2.getY();
-                float screenWidth = playerView.getWidth();
+                if (TvFocusHelper.isTv(PlayerActivity.this)) return false;
+                if (e1 == null || e2 == null || playerView == null) return false;
 
-                if (Math.abs(distanceY) > Math.abs(distanceX)) {
-                    if (e1.getX() < screenWidth * 0.5f) {
-                        adjustBrightness(distanceY / playerView.getHeight());
-                    } else {
-                        adjustVolume(distanceY / playerView.getHeight());
+                float viewHeight = playerView.getHeight();
+                float viewWidth = playerView.getWidth();
+                if (viewHeight <= 0 || viewWidth <= 0) return false;
+
+                // Exclusion zones: cegah pemicuan volume/kecerahan saat pengguna menarik bilah notifikasi/jam di atas atau bilah navigasi di bawah
+                float topExclusion = Math.max(dpToPx(56), viewHeight * 0.16f);
+                float bottomExclusion = viewHeight - Math.max(dpToPx(44), viewHeight * 0.12f);
+                if (e1.getY() < topExclusion || e1.getY() > bottomExclusion) {
+                    return false;
+                }
+
+                // Disambiguasi awal dan penguncian zona (Edge zoning: kiri 35% kecerahan, kanan 35% volume, tengah 30% deadzone)
+                if (activeGestureZone == 0) {
+                    float totalDeltaY = Math.abs(e1.getY() - e2.getY());
+                    float totalDeltaX = Math.abs(e1.getX() - e2.getX());
+                    if (totalDeltaY < dpToPx(14) || totalDeltaY <= totalDeltaX * 1.25f) {
+                        return false;
                     }
+                    if (e1.getX() <= viewWidth * 0.35f) {
+                        activeGestureZone = 1;
+                    } else if (e1.getX() >= viewWidth * 0.65f) {
+                        activeGestureZone = 2;
+                    } else {
+                        // Deadzone di tengah layar (35% s/d 65% lebar layar)
+                        return false;
+                    }
+                }
+
+                // Eksekusi penyesuaian nilai sesuai zona yang terkunci
+                if (activeGestureZone == 1) {
+                    adjustBrightness(distanceY / viewHeight);
+                    return true;
+                } else if (activeGestureZone == 2) {
+                    adjustVolume(distanceY / viewHeight);
                     return true;
                 }
                 return false;
@@ -1196,6 +1224,7 @@ public class PlayerActivity extends Activity {
                 return true;
             }
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                activeGestureZone = 0;
                 if (audioManager != null) {
                     int maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
                     int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
@@ -1204,9 +1233,10 @@ public class PlayerActivity extends Activity {
                 lastHapticBrightnessStep = (int) (currentBrightness * 100) / 5;
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 currentVolumeFraction = -1f;
+                activeGestureZone = 0;
             }
-            gestureDetector.onTouchEvent(event);
-            return false;
+            boolean handled = gestureDetector.onTouchEvent(event);
+            return handled || activeGestureZone != 0;
         });
     }
 
@@ -1603,7 +1633,7 @@ public class PlayerActivity extends Activity {
         }
 
         // Akumulator float kontinu (sama seperti brightness) agar gerakan lambat tidak terpotong menjadi 0
-        currentVolumeFraction = Math.max(0.0f, Math.min(1.0f, currentVolumeFraction + (percent * 1.2f)));
+        currentVolumeFraction = Math.max(0.0f, Math.min(1.0f, currentVolumeFraction + (percent * 0.85f)));
         int targetVol = Math.round(currentVolumeFraction * maxVol);
         int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
         if (targetVol != curVol) {
@@ -1616,7 +1646,7 @@ public class PlayerActivity extends Activity {
     }
 
     private void adjustBrightness(float percent) {
-        currentBrightness = Math.max(0.05f, Math.min(1.0f, currentBrightness + (percent * 1.2f)));
+        currentBrightness = Math.max(0.05f, Math.min(1.0f, currentBrightness + (percent * 0.85f)));
         WindowManager.LayoutParams lp = getWindow().getAttributes();
         lp.screenBrightness = currentBrightness;
         getWindow().setAttributes(lp);
