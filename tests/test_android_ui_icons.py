@@ -125,6 +125,7 @@ def test_quick_play_resume_button_ui_and_contract():
         assert 'app:cornerRadius="10dp"' in content
         assert 'android:insetTop="0dp"' in content
         assert 'android:insetBottom="0dp"' in content
+        assert 'android:textAllCaps="false"' in content
         assert 'com.google.android.material.button.MaterialButton' in content
 
     # Check DetailActivity.java
@@ -138,5 +139,6 @@ def test_quick_play_resume_button_ui_and_contract():
     # Must use MaterialButton background tinting and icon
     assert "mb.setIconResource(R.drawable.ic_play)" in java_code
     assert "mb.setBackgroundTintList" in java_code
+    assert "mb.setAllCaps(false)" in java_code
     assert "0xFF38BDF8" in java_code  # Electric Cyber Cyan accent
 

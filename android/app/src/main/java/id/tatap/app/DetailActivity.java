@@ -231,6 +231,7 @@ public class DetailActivity extends Activity {
         int lastEp = prefs.getInt("last_ep_" + slug, -1);
         if (btnQuickPlay instanceof com.google.android.material.button.MaterialButton) {
             com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnQuickPlay;
+            mb.setAllCaps(false);
             mb.setIconResource(R.drawable.ic_play);
             if (lastEp > 0) {
                 mb.setText("Lanjutkan Ep " + lastEp);
@@ -867,6 +868,7 @@ public class DetailActivity extends Activity {
             btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF2A2210));
             if (btnBookmark instanceof com.google.android.material.button.MaterialButton) {
                 com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnBookmark;
+                mb.setAllCaps(false);
                 mb.setIconResource(R.drawable.ic_star_filled);
                 mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFFFBBF24));
             }
@@ -876,6 +878,7 @@ public class DetailActivity extends Activity {
             btnBookmark.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF1E2433));
             if (btnBookmark instanceof com.google.android.material.button.MaterialButton) {
                 com.google.android.material.button.MaterialButton mb = (com.google.android.material.button.MaterialButton) btnBookmark;
+                mb.setAllCaps(false);
                 mb.setIconResource(R.drawable.ic_star_outline);
                 mb.setIconTint(android.content.res.ColorStateList.valueOf(0xFF94A3B8));
             }
