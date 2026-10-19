@@ -97,6 +97,19 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Hardening Deklarasi `video::cue`:** Menyelaraskan properti `video::cue` dengan custom variables Tatap (`var(--sub-color)`, `var(--sub-bg)`, `var(--sub-border)`) dengan tag `!important` sebagai proteksi ganda.
 16. **Test Suite Pengalihan Subtitle Windows (`tests/test_desktop_sub_windows_override.py`):**
    - Menambahkan pengujian otomatis baru yang memverifikasi penyembunyian kontrol CC native WebKit, logika promosi fullscreen `onFullscreenChange`, dan penguncian mode track ke hidden di desktop.
+17. **Integrasi Menu Titik 3 (⋮) & Pemindahan Dock CC ke Pojok Kanan Bawah Pemutar Video:**
+   - **Pemindahan Dock Kontrol ke Pojok Kanan Bawah (`#pm-controls-dock`):** Menyelaraskan tata letak kontrol pemutar dengan kebiasaan visual pengguna (YouTube, Netflix, Bilibili) dengan menempatkan tombol CC (`#pm-fs-subs-btn`) dan tombol Titik 3 (`#pm-quick-settings-btn`) di pojok kanan bawah (`bottom: 58px; right: 20px;` di windowed mode dan `bottom: 76px; right: 28px;` di mode fullscreen), tepat di atas timeline/scrubber bar. Tombol tidak lagi tersembunyi di pojok kanan atas.
+   - **Menu Popup Quick Settings Titik 3 (`#pm-quick-settings-menu`):** Menyediakan menu popup elegan dengan desain cyber glassmorphism yang dapat diakses langsung dari tombol titik 3 (`⋮`) di kanan bawah:
+     - 💬 *Subtitle & CC Styler*: Membuka panel kustomisasi subtitle lengkap (warna font, border/outline, background opacity, ukuran teks, dan sync offset).
+     - ⚡ *Kecepatan Putar (Playback Speed)*: Mengatur kecepatan video secara instan (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x) langsung di mode fullscreen tanpa perlu keluar dari layar penuh.
+     - 📺 *Kualitas Resolusi Stream*: Memilih tingkat kualitas stream HLS (1080p, 720p, 480p, Auto) langsung dari popup fullscreen.
+     - 🖼️ *Picture-in-Picture (PiP)*: Mengaktifkan mode Picture-in-Picture langsung dari pemutar.
+     - ⛶ *Layar Penuh (Fullscreen)*: Mengontrol layar penuh container `.ambient-stage` secara aman.
+   - **Eliminasi Total Sisipan Elemen `<track>` di Desktop (`syncNativeTextTrack`):** Menghilangkan penyisipan elemen `<track>` ke DOM `<video>` pada seluruh platform desktop. Dengan tidak adanya `<track>`, peramban Chromium/Edge dan WebView2 Windows tidak lagi menampilkan opsi Subtitle bawaan browser yang memicu pembajakan oleh Windows Closed Captions. Subtitle 100% diproses dan dirender oleh overlay kustom Tatap (`#pm-subs-overlay`).
+   - **Pencegahan Bypass Fullscreen Native Browser via `controlsList`:** Menetapkan atribut `controlsList="nofullscreen nodownload noremoteplayback"` pada `<video id="vid">` di desktop untuk menonaktifkan tombol fullscreen native browser yang membypass `.ambient-stage`, memastikan seluruh kontrol kustom dan overlay selalu tampil di Top Layer.
+   - **Auto-Hide & Keyboard Interaction:** Dock kontrol kanan bawah otomatis memudar saat idle dan muncul seketika saat pointer digerakkan, serta memprioritaskan penutupan menu Quick Settings dan panel Styler saat tombol `Esc` ditekan.
+18. **Test Suite Menu Titik 3 & Dock Kanan Bawah (`tests/test_bottom_right_settings_and_sub_override.py`):**
+   - Menambahkan pengujian otomatis baru yang memverifikasi keberadaan simbol SVG `#icon-more-vert`, struktur DOM dock `#pm-controls-dock`, menu `#pm-quick-settings-menu`, tata letak CSS kanan-bawah, pencegahan `<track>` di desktop, dan implementasi metode kontrol Quick Settings.
 
 ## [2.9.1] - 2026-10-18
 

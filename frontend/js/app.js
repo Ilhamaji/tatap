@@ -1252,6 +1252,13 @@ function syncNativeTextTrack(vttText, cues, langCode){
       }
     }
   }
+  if(isDesktopEnv()){
+    // Di desktop, JANGAN PERNAH menambahkan <track> ke DOM <video>!
+    // Subtitle desktop 100% dirender via custom overlay #pm-subs-overlay (dikontrol oleh CC Styler Tatap).
+    // Menghilangkan elemen <track> mencegah Chromium & Windows Closed Captions memunculkan menu subtitle native
+    // yang membajak kontrol styling subtitle di pojok kanan bawah.
+    return;
+  }
 
   if(!vttText&&(!cues||!cues.length))return;
 
@@ -1764,13 +1771,16 @@ function armAutohide(){
   if(!stage||stage._armed)return;
   stage._armed=true;
   var v=$("vid");
+  if(v && isDesktopEnv()){
+    v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
+  }
   var t=null;
   var show=function(){
     stage.classList.remove("idle");
     if(shell)shell.classList.remove("idle");
     clearTimeout(t);
     t=setTimeout(function(){
-      if(v.paused || isFsSubsPanelOpen())return;
+      if(v.paused || isFsSubsPanelOpen() || isQuickSettingsMenuOpen())return;
       v.removeAttribute("controls");
       stage.classList.add("idle");
       if(shell)shell.classList.add("idle");
@@ -1778,6 +1788,9 @@ function armAutohide(){
   };
   var wake=function(){
     if(!v.hasAttribute("controls"))v.setAttribute("controls","");
+    if(isDesktopEnv() && !v.getAttribute("controlsList")){
+      v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
+    }
     show();
   };
   ["mousemove","touchstart","click"].forEach(function(ev){stage.addEventListener(ev,wake,{passive:true});});
@@ -1797,6 +1810,9 @@ function playUrl(url,referrer,sub,subRef,resumeTime,token){
   if(v){
     v.muted=false;
     if(v.volume===0) v.volume=1.0;
+    if(isDesktopEnv()){
+      v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
+    }
   }
   var b = (typeof apiBase === "function") ? apiBase() : "";
   var prox=b+"/api/player/video?url="+encodeURIComponent(url)+"&referer="+encodeURIComponent(referrer||"");
@@ -2080,6 +2096,7 @@ function closePlayer(){
   }
   if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
   closeFsSubsPanel();
+  closeQuickSettingsMenu();
   cur.subOffset=0.0;
   cur.cues=[];
   clearOverlay();
@@ -2188,6 +2205,11 @@ function onKeyPlayer(e){
   if(typing&&e.key==="Escape"){e.target.blur();return;}
   var v=$("vid");
   if(e.key==="Escape"){
+    if(isQuickSettingsMenuOpen()){
+      e.preventDefault();
+      closeQuickSettingsMenu();
+      return;
+    }
     if(isFsSubsPanelOpen()){
       e.preventDefault();
       closeFsSubsPanel();
@@ -2359,15 +2381,23 @@ function isFsSubsPanelOpen(){
   return p && !p.classList.contains("hidden");
 }
 
+function isQuickSettingsMenuOpen(){
+  var m = $("pm-quick-settings-menu");
+  return m && !m.classList.contains("hidden");
+}
+
 function toggleFsSubsPanel(){
   var p = $("pm-fs-subs-panel");
   var btn = $("pm-fs-subs-btn");
+  var dock = $("pm-controls-dock");
   if(!p) return;
   if(p.classList.contains("hidden")){
+    closeQuickSettingsMenu();
     syncFsSubsSelect();
     applySubStyles();
     p.classList.remove("hidden");
     if(btn) btn.classList.add("active");
+    if(dock) dock.classList.add("has-open-menu");
   }else{
     closeFsSubsPanel();
   }
@@ -2376,8 +2406,104 @@ function toggleFsSubsPanel(){
 function closeFsSubsPanel(){
   var p = $("pm-fs-subs-panel");
   var btn = $("pm-fs-subs-btn");
+  var dock = $("pm-controls-dock");
   if(p) p.classList.add("hidden");
   if(btn) btn.classList.remove("active");
+  if(dock && !isQuickSettingsMenuOpen()) dock.classList.remove("has-open-menu");
+}
+
+function toggleQuickSettingsMenu(){
+  var m = $("pm-quick-settings-menu");
+  var btn = $("pm-quick-settings-btn");
+  var dock = $("pm-controls-dock");
+  if(!m) return;
+  if(m.classList.contains("hidden")){
+    closeFsSubsPanel();
+    syncQuickSettingsState();
+    m.classList.remove("hidden");
+    if(btn) btn.classList.add("active");
+    if(dock) dock.classList.add("has-open-menu");
+  }else{
+    closeQuickSettingsMenu();
+  }
+}
+
+function closeQuickSettingsMenu(){
+  var m = $("pm-quick-settings-menu");
+  var btn = $("pm-quick-settings-btn");
+  var dock = $("pm-controls-dock");
+  if(m) m.classList.add("hidden");
+  if(btn) btn.classList.remove("active");
+  if(dock && !isFsSubsPanelOpen()) dock.classList.remove("has-open-menu");
+}
+
+function syncQuickSettingsState(){
+  var v = $("vid");
+  if(!v) return;
+
+  // 1. Subtitle badge
+  updateFsSubsBadge();
+
+  // 2. Speed badge & active chips
+  var curSp = v.playbackRate || 1;
+  var spStr = curSp.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1") + "x";
+  var spBadge = $("pm-qs-speed-badge");
+  if(spBadge) spBadge.textContent = spStr;
+
+  var chipsWrap = $("pm-qs-speed-chips");
+  if(chipsWrap){
+    var btns = chipsWrap.querySelectorAll("button[data-speed]");
+    for(var i=0; i<btns.length; i++){
+      var val = parseFloat(btns[i].getAttribute("data-speed"));
+      if(Math.abs(val - curSp) < 0.05){
+        btns[i].classList.add("active");
+      }else{
+        btns[i].classList.remove("active");
+      }
+    }
+  }
+
+  // 3. Quality chips
+  var qGroup = $("pm-qs-group-quality");
+  var qBadge = $("pm-qs-quality-badge");
+  var qChips = $("pm-qs-quality-chips");
+  var origQSel = $("pm-quality-select");
+  if(origQSel && origQSel.options && origQSel.options.length > 1){
+    if(qGroup) qGroup.classList.remove("hidden");
+    if(qBadge) qBadge.textContent = origQSel.options[origQSel.selectedIndex] ? origQSel.options[origQSel.selectedIndex].text : "Auto";
+    if(qChips){
+      qChips.innerHTML = "";
+      for(var j=0; j<origQSel.options.length; j++){
+        (function(opt, idx){
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.textContent = opt.text;
+          if(idx === origQSel.selectedIndex) btn.classList.add("active");
+          btn.onclick = function(e){
+            e.stopPropagation();
+            origQSel.selectedIndex = idx;
+            var evt = document.createEvent ? document.createEvent("HTMLEvents") : null;
+            if(evt){
+              evt.initEvent("change", true, true);
+              origQSel.dispatchEvent(evt);
+            }else{
+              origQSel.dispatchEvent(new Event("change"));
+            }
+            syncQuickSettingsState();
+          };
+          qChips.appendChild(btn);
+        })(origQSel.options[j], j);
+      }
+    }
+  }else{
+    if(qGroup) qGroup.classList.add("hidden");
+  }
+
+  // 4. Fullscreen label
+  var fsLabel = $("pm-qs-fs-label");
+  if(fsLabel){
+    fsLabel.textContent = isVideoFullscreen() ? "Keluar Layar Penuh" : "Layar Penuh (Fullscreen)";
+  }
 }
 
 function syncFsSubsSelect(){
@@ -2390,31 +2516,38 @@ function syncFsSubsSelect(){
 
 function updateFsSubsBadge(){
   var badge = $("pm-fs-subs-badge");
-  if(!badge) return;
+  var qsBadge = $("pm-qs-subs-badge");
+  var text = "OFF";
+  var isOff = true;
   var active = cur.activeSub;
-  if(!active){
-    badge.textContent = "OFF";
-    badge.classList.add("off");
-    return;
-  }
-  badge.classList.remove("off");
-  if(active.indexOf("gtx+:") === 0 || active.indexOf("aigtx:") === 0){
-    badge.textContent = "GTX+";
-  }else if(active.indexOf("ai:") === 0){
-    badge.textContent = "AI";
-  }else if(active.indexOf("gtx:") === 0){
-    badge.textContent = "ID";
-  }else{
-    var lab = (cur.subLang || "").toLowerCase();
-    if(lab.indexOf("indonesian") >= 0 || lab.indexOf("indo") >= 0){
-      badge.textContent = "ID";
-    }else if(lab.indexOf("english") >= 0 || lab.indexOf("eng") >= 0){
-      badge.textContent = "EN";
-    }else if(lab.length >= 2){
-      badge.textContent = lab.slice(0, 2).toUpperCase();
+  if(active){
+    isOff = false;
+    if(active.indexOf("gtx+:") === 0 || active.indexOf("aigtx:") === 0){
+      text = "GTX+";
+    }else if(active.indexOf("ai:") === 0){
+      text = "AI";
+    }else if(active.indexOf("gtx:") === 0){
+      text = "ID";
     }else{
-      badge.textContent = "SUB";
+      var lab = (cur.subLang || "").toLowerCase();
+      if(lab.indexOf("indonesian") >= 0 || lab.indexOf("indo") >= 0){
+        text = "ID";
+      }else if(lab.indexOf("english") >= 0 || lab.indexOf("eng") >= 0){
+        text = "EN";
+      }else if(lab.length >= 2){
+        text = lab.slice(0, 2).toUpperCase();
+      }else{
+        text = "SUB";
+      }
     }
+  }
+  if(badge){
+    badge.textContent = text;
+    if(isOff) badge.classList.add("off"); else badge.classList.remove("off");
+  }
+  if(qsBadge){
+    qsBadge.textContent = text;
+    if(isOff) qsBadge.classList.add("off"); else qsBadge.classList.remove("off");
   }
 }
 
@@ -2671,6 +2804,73 @@ function init(){
 
   var fsPanel=$("pm-fs-subs-panel");
   if(fsPanel) fsPanel.addEventListener("click",function(e){e.stopPropagation();});
+
+  // Quick Settings (Titik 3) listeners
+  var qsBtn=$("pm-quick-settings-btn");
+  if(qsBtn) qsBtn.addEventListener("click",function(e){e.stopPropagation();toggleQuickSettingsMenu();});
+  var qsClose=$("pm-qs-close");
+  if(qsClose) qsClose.addEventListener("click",function(e){e.stopPropagation();closeQuickSettingsMenu();});
+  var qsItemSubs=$("pm-qs-item-subs");
+  if(qsItemSubs) qsItemSubs.addEventListener("click",function(e){e.stopPropagation();toggleFsSubsPanel();});
+
+  var qsItemPip=$("pm-qs-item-pip");
+  if(qsItemPip){
+    qsItemPip.addEventListener("click",function(e){
+      e.stopPropagation();
+      var v=$("vid");
+      if(!v) return;
+      if(document.pictureInPictureElement){
+        try{document.exitPictureInPicture();}catch(_){}
+      }else if(v.requestPictureInPicture){
+        try{v.requestPictureInPicture();}catch(_){}
+      }
+      closeQuickSettingsMenu();
+    });
+  }
+
+  var qsItemFs=$("pm-qs-item-fs");
+  if(qsItemFs){
+    qsItemFs.addEventListener("click",function(e){
+      e.stopPropagation();
+      toggleFullscreen();
+      closeQuickSettingsMenu();
+    });
+  }
+
+  document.querySelectorAll("#pm-qs-speed-chips button").forEach(function(b){
+    b.addEventListener("click",function(e){
+      e.stopPropagation();
+      var sp=parseFloat(b.getAttribute("data-speed"));
+      if(!isNaN(sp)){
+        var v=$("vid");
+        if(v) try{ v.playbackRate = sp; currentPlaybackSpeed = sp; }catch(_){}
+        var spSel=$("pm-speed-select");
+        if(spSel) spSel.value = String(sp);
+        syncQuickSettingsState();
+      }
+    });
+  });
+
+  var qsMenu=$("pm-quick-settings-menu");
+  if(qsMenu) qsMenu.addEventListener("click",function(e){e.stopPropagation();});
+
+  document.addEventListener("click",function(e){
+    var m=$("pm-quick-settings-menu");
+    var b=$("pm-quick-settings-btn");
+    if(m && !m.classList.contains("hidden")){
+      if(!m.contains(e.target) && (!b || !b.contains(e.target))){
+        closeQuickSettingsMenu();
+      }
+    }
+    var p=$("pm-fs-subs-panel");
+    var fb=$("pm-fs-subs-btn");
+    var sb=$("pm-qs-item-subs");
+    if(p && !p.classList.contains("hidden")){
+      if(!p.contains(e.target) && (!fb || !fb.contains(e.target)) && (!sb || !sb.contains(e.target))){
+        closeFsSubsPanel();
+      }
+    }
+  });
   var v=$("vid");
   if(v){
     v.addEventListener("timeupdate",function(){
