@@ -1515,83 +1515,17 @@ public class MainActivity extends Activity {
     }
 
     private void checkForUpdates(boolean manualTrigger) {
-        if (manualTrigger) {
-            showCommandOutput("> tatap$ Memeriksa pembaruan rilis Tatap...", false);
-            Toast.makeText(this, "Memeriksa pembaruan rilis...", Toast.LENGTH_SHORT).show();
+        AppUpdateManager.getInstance().checkUpdate(this, (msg, isError) -> {
+            showCommandOutput(msg, isError);
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == AppUpdateManager.REQUEST_CODE_INSTALL_PERMISSION) {
+            AppUpdateManager.getInstance().onInstallPermissionResult(this);
         }
-
-        new Thread(() -> {
-            try {
-                HttpURLConnection conn = (HttpURLConnection) new URL("http://127.0.0.1:8767/api/update/check").openConnection();
-                conn.setConnectTimeout(8000);
-                conn.setReadTimeout(10000);
-                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-                reader.close();
-
-                JSONObject res = new JSONObject(sb.toString());
-                if (res.optBoolean("success")) {
-                    JSONObject data = res.getJSONObject("data");
-                    boolean hasUpdate = data.optBoolean("has_update", false);
-                    String currentVer = data.optString("current_version", "2.2.2");
-                    String latestVer = data.optString("latest_version", currentVer);
-                    String notes = data.optString("notes", "");
-                    String releaseUrl = data.optString("release_url", "https://github.com/asfaraguest/tatap/releases");
-                    JSONObject assets = data.optJSONObject("assets");
-                    String apkDownloadUrl = "";
-                    if (assets != null) {
-                        if (TvFocusHelper.isTv(MainActivity.this)) {
-                            apkDownloadUrl = assets.optString("android_tv", "");
-                        }
-                        if (apkDownloadUrl.isEmpty()) {
-                            apkDownloadUrl = assets.optString("android", "");
-                        }
-                    }
-                    final String targetDownloadUrl = (!apkDownloadUrl.isEmpty()) ? apkDownloadUrl : releaseUrl;
-
-                    runOnUiThread(() -> {
-                        if (hasUpdate) {
-                            showCommandOutput("> tatap$ Pembaruan rilis v" + latestVer + " tersedia!", false);
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle("Pembaruan Tersedia (v" + latestVer + ")")
-                                    .setMessage("Versi saat ini: v" + currentVer + "\nVersi terbaru: v" + latestVer + "\n\nCatatan Rilis:\n" + (notes.isEmpty() ? "-" : notes))
-                                    .setPositiveButton("Unduh APK", (d, which) -> {
-                                        try {
-                                            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(targetDownloadUrl));
-                                            startActivity(browserIntent);
-                                        } catch (Exception e) {
-                                            Toast.makeText(MainActivity.this, "Gagal membuka tautan: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                        }
-                                    })
-                                    .setNegativeButton("Nanti", null)
-                                    .show();
-                        } else {
-                            if (manualTrigger) {
-                                showCommandOutput("> tatap$ Tatap v" + currentVer + " adalah versi terbaru.", false);
-                                Toast.makeText(MainActivity.this, "Tatap v" + currentVer + " sudah versi terbaru!", Toast.LENGTH_SHORT).show();
-                            }
-                        }
-                    });
-                } else {
-                    String msg = res.optString("message", "Gagal memeriksa pembaruan");
-                    runOnUiThread(() -> {
-                        if (manualTrigger) {
-                            showCommandOutput("> tatap$ Gagal memeriksa pembaruan: " + msg, true);
-                            Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    if (manualTrigger) {
-                        showCommandOutput("> tatap$ Gagal memeriksa pembaruan: " + e.getMessage(), true);
-                        Toast.makeText(MainActivity.this, "Koneksi pembaruan gagal: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        }).start();
     }
 
     private String maskKey(String key) {

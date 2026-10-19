@@ -40,7 +40,7 @@ async def get_version():
     return ok({"version": CURRENT_VERSION})
 
 @app.get("/api/update/check")
-async def check_update():
+async def check_update(force: bool = False):
     """Pemeriksaan pembaruan versi Tatap secara on-demand via GitHub Releases API.
     Memfilter 4 berkas resmi sesuai aturan paten agent.md:
     1. tatap-release-v<VER>.apk (Official Signed Mobile APK)
@@ -49,6 +49,12 @@ async def check_update():
     4. Tatap-x86_64.AppImage (Linux AppImage)
     """
     try:
+        cache_key = "github_latest_release"
+        if not force:
+            cached = await get_browse_cache(cache_key, ttl=300)
+            if cached and isinstance(cached, dict):
+                return ok(cached)
+
         url = "https://api.github.com/repos/asfaraguest/tatap/releases/latest"
         headers = {
             "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/asfaraguest/tatap)",
@@ -96,17 +102,21 @@ async def check_update():
             elif fname.endswith(".appimage"):
                 assets_out["linux"] = dl_url
 
-        return ok({
+        notes_body = rel_data.get("body") or ""
+        out_payload = {
             "current_version": CURRENT_VERSION,
             "latest_version": latest_clean or tag_name,
             "tag_name": tag_name,
             "has_update": has_update,
             "release_name": rel_data.get("name") or tag_name,
-            "body": rel_data.get("body") or "",
+            "notes": notes_body,
+            "body": notes_body,
             "published_at": rel_data.get("published_at") or "",
             "release_url": rel_data.get("html_url") or "https://github.com/asfaraguest/tatap/releases/latest",
             "assets": assets_out
-        })
+        }
+        await set_browse_cache(cache_key, out_payload)
+        return ok(out_payload)
     except Exception as e:
         return fail(f"Koneksi gagal: {str(e)}")
 

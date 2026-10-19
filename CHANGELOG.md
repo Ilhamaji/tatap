@@ -54,6 +54,15 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Web Desktop (`app.js`):** Memperbaiki penentuan badge status modal track detail agar mendeteksi rasio penuh episode dan status selesai dengan akurat.
 8. **Test Suite Komprehensif (`tests/test_detail_metadata.py`):**
    - Menambahkan pengujian otomatis untuk verifikasi status tamat HiAnime browse cards, logika string episode di DetailActivity, intent navigasi genre di MainActivity, dan linked genre button web desktop.
+9. **Sistem In-App Update Android Resmi (Mobile & Android TV / Google TV):**
+   - **Pemeriksaan On-Demand & Anti Gangguan (Zero Auto-Popup):** Pemeriksaan pembaruan rilis Tatap berjalan secara manual saat pengguna mengklik menu *"Periksa Pembaruan"* di drawer menu samping atau mengeksekusi perintah terminal `:update`. Tidak ada pop-up otomatis saat startup aplikasi sehingga kenyamanan pengguna tetap terjaga 100%.
+   - **Visual Download Progress Dialog:** Mengunduh berkas APK resmi bertanda tangan (`tatap-release-v<VER>.apk` untuk Mobile atau `tatap-tv-release-v<VER>.apk` untuk TV) langsung di dalam aplikasi secara streaming dengan progress bar cyan horizontal, persentase (0% s.d. 100%), serta rasio ukuran berkas real-time (misal `16.2 MB / 36.4 MB`).
+   - **Dukungan Penuh Navigasi D-Pad Android TV:** Dialog pembaruan (`dialog_app_update.xml`) dan dialog pengunduhan (`dialog_app_download.xml`) sepenuhnya mendukung remote kontrol Android TV dengan highlight visual scale dan border cyan (`TvFocusHelper`).
+   - **Integrasi PackageInstaller Resmi OS via FileProvider:** Menggunakan `androidx.core.content.FileProvider` (`${applicationId}.fileprovider`) untuk mengekspos APK secara aman ke installer sistem operasi tanpa memerlukan izin berbahaya. Menangani alur verifikasi izin `REQUEST_INSTALL_PACKAGES` (`Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`) secara mulus dengan auto-resume instalasi setelah izin disetujui.
+   - **HTTP Redirect Resilient Downloader:** Menerapkan penanganan HTTP redirect multi-hop (301, 302, 303, 307, 308) pada `AppUpdateManager.java` guna menjamin keandalan pengunduhan dari endpoint GitHub Releases ke storage AWS S3 / CDN.
+   - **Cache Backend & Paritas Chaquopy:** Menambahkan cache server lokal 5 menit pada endpoint `/api/update/check` dengan bypass `force=true` guna melindungi dari rate-limiting API GitHub, serta menyelaraskan field `notes` dan `body` secara identik antara `backend/main.py` dan Chaquopy Android.
+10. **Test Suite In-App Update (`tests/test_in_app_update.py`):**
+   - Menambahkan 7 pengujian otomatis baru yang memvalidasi kontrak endpoint `/api/update/check`, integritas FileProvider dan permission Android, validasi layout dialog, struktur kelas `AppUpdateManager.java`, dan ketiadaan auto-check saat startup aplikasi.
 
 ## [2.9.1] - 2026-10-18
 
