@@ -664,6 +664,114 @@
         <svg class="ui-icon"><use href="#icon-skip"/></svg>
         <span id="pm-skip-label">Lewati Opening</span>
       </button>
+
+      <!-- Embedded In-Player CC Button (Muncul di kanan-atas pemutar) -->
+      <button id="pm-fs-subs-btn" class="pm-fs-subs-btn" title="Pengaturan Subtitle & Styler (C)" aria-label="Subtitle Settings">
+        <svg class="ui-icon"><use href="#icon-subtitles"/></svg>
+        <span id="pm-fs-subs-badge" class="fs-subs-badge">OFF</span>
+      </button>
+
+      <!-- Embedded Subtitle Quick Settings & Styler Panel -->
+      <div id="pm-fs-subs-panel" class="pm-fs-subs-panel hidden" role="dialog" aria-label="Pengaturan Subtitle">
+        <div class="fs-panel-header">
+          <div class="fs-panel-title">
+            <svg class="ui-icon"><use href="#icon-subtitles"/></svg>
+            <span>PENGATURAN SUBTITLE</span>
+          </div>
+          <button id="pm-fs-subs-close" class="fs-panel-close" title="Tutup (Esc / C)">
+            <svg class="ui-icon"><use href="#icon-close"/></svg>
+          </button>
+        </div>
+
+        <div class="fs-panel-body">
+          <!-- 1. Trek Subtitle -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label" for="pm-fs-subs-select">TREK SUBTITLE</label>
+            <select id="pm-fs-subs-select" class="fs-subs-select" aria-label="Pilih Trek Subtitle"></select>
+          </div>
+
+          <!-- 2. Sinkronisasi Delay -->
+          <div class="fs-panel-group">
+            <div class="fs-group-header">
+              <label class="fs-group-label">SINKRONISASI / DELAY</label>
+              <span id="pm-fs-offset-val" class="fs-offset-val">0.0s</span>
+            </div>
+            <div class="fs-sync-stepper">
+              <button id="pm-fs-offset-m05" title="Mundurkan 0.5s">-0.5s</button>
+              <button id="pm-fs-offset-m01" title="Mundurkan 0.1s">-0.1s</button>
+              <button id="pm-fs-offset-reset" title="Reset ke 0">0.0s</button>
+              <button id="pm-fs-offset-p01" title="Majukan 0.1s">+0.1s</button>
+              <button id="pm-fs-offset-p05" title="Majukan 0.5s">+0.5s</button>
+            </div>
+          </div>
+
+          <!-- 3. Ukuran Teks (Size) -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label">UKURAN TEKS</label>
+            <div class="fs-pill-group" id="pm-fs-size-group">
+              <button data-fs-size="s">S (Kecil)</button>
+              <button data-fs-size="m" class="active">M (Sedang)</button>
+              <button data-fs-size="l">L (Besar)</button>
+              <button data-fs-size="xl">XL (Ekstra)</button>
+            </div>
+          </div>
+
+          <!-- 4. Warna Font (Font Color) -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label">WARNA FONT</label>
+            <div class="fs-color-swatches" id="pm-fs-color-group">
+              <button data-fs-color="white" class="swatch-btn color-white active" title="Putih (#FFFFFF)">
+                <span class="swatch-dot" style="background:#FFFFFF;"></span> Putih
+              </button>
+              <button data-fs-color="yellow" class="swatch-btn color-yellow" title="Kuning Anime (#FACC15)">
+                <span class="swatch-dot" style="background:#FACC15;"></span> Kuning
+              </button>
+              <button data-fs-color="cyan" class="swatch-btn color-cyan" title="Cyan Neon (#38BDF8)">
+                <span class="swatch-dot" style="background:#38BDF8;"></span> Cyan
+              </button>
+              <button data-fs-color="green" class="swatch-btn color-green" title="Hijau (#4ADE80)">
+                <span class="swatch-dot" style="background:#4ADE80;"></span> Hijau
+              </button>
+            </div>
+          </div>
+
+          <!-- 5. Border Font (Text Outline / Shadow) -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label">BORDER FONT (OUTLINE)</label>
+            <div class="fs-pill-group" id="pm-fs-border-group">
+              <button data-fs-border="thick" class="active" title="Border Tebal 2px (Standard Fansub)">Tebal</button>
+              <button data-fs-border="thin" title="Border Tipis 1px">Tipis</button>
+              <button data-fs-border="glow" title="Pendar Lembut Glow">Glow</button>
+              <button data-fs-border="none" title="Tanpa Border">Polos</button>
+            </div>
+          </div>
+
+          <!-- 6. Background Subtitle (Latar Belakang Kotak) -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label">BACKGROUND SUBTITLE</label>
+            <div class="fs-pill-group" id="pm-fs-bg-group">
+              <button data-fs-bg="none" title="Tanpa Kotak (0%)">Transparan</button>
+              <button data-fs-bg="thin" title="Kotak Tipis (50%)">Tipis</button>
+              <button data-fs-bg="dark" class="active" title="Kotak Gelap (75%)">Gelap</button>
+              <button data-fs-bg="opaque" title="Kotak Hitam Pekat (100%)">Pekat</button>
+            </div>
+          </div>
+
+          <!-- 7. Posisi Vertikal -->
+          <div class="fs-panel-group">
+            <label class="fs-group-label">POSISI VERTIKAL</label>
+            <div class="fs-pill-group" id="pm-fs-pos-group">
+              <button data-fs-pos="low">Sangat Bawah</button>
+              <button data-fs-pos="mid" class="active">Normal</button>
+              <button data-fs-pos="high">Tinggi</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="fs-panel-foot">
+          <span class="fs-hint">Pintasan: <code>C</code> Menu · <code>Z</code>/<code>X</code> Delay -/+ · <code>Esc</code> Tutup</span>
+        </div>
+      </div>
       <div id="pm-spinner" class="spinner hidden"><div class="ring"></div><p id="pm-status">resolving…</p></div>
     </div>
     <div class="player-foot">

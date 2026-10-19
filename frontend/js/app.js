@@ -2,7 +2,12 @@ var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[]
             subLang:"English",    // preferensi bahasa user dari /api/settings
             activeSub:null,       // URL track subtitle yang sedang aktif (live switch)
             cues:[],              // cue subtitle hasil parse VTT (render overlay milik app)
-            subSize:"m",          // ukuran subtitle overlay: s|m|l
+            subSize:"m",          // ukuran subtitle overlay: s|m|l|xl
+            subColor:"white",     // warna font: white|yellow|cyan|green
+            subBorder:"thick",    // border font: thick|thin|glow|none
+            subBg:"dark",         // latar belakang: none|thin|dark|opaque
+            subPos:"mid",         // posisi vertikal: low|mid|high
+            subOffset:0.0,        // delay subtitle (detik)
             translate:false,      // toggle translate subtitle Indonesia (persist localStorage)
             eps_counter:""
            };
@@ -1126,7 +1131,11 @@ function renderSubtitles(subtitles, activeUrl){
       window.Tatap.setSetting({sub_lang:""}).then(function(){}).catch(function(){});
       toast("Subtitle: Off");
     }
+    syncFsSubsSelect();
+    updateFsSubsBadge();
   };
+  syncFsSubsSelect();
+  updateFsSubsBadge();
 }
 
 function vttTime(s){
@@ -1346,7 +1355,8 @@ function paintCue(){
   var s=box.querySelector("span");
   if(!s)return;
   if($("player-modal").classList.contains("hidden")){s.innerHTML="";return;}
-  var t=v.currentTime||0;
+  var rawT=v.currentTime||0;
+  var t=rawT+(cur.subOffset||0);
   if(isVideoFullscreen()){
     if(s._last!==""){s.innerHTML="";s._last="";}
     box.style.display="none";
@@ -1358,7 +1368,7 @@ function paintCue(){
     }
     if(s._last!==html){s.innerHTML=html;s._last=html;}
   }
-  checkSkipTimes(t);
+  checkSkipTimes(rawT);
 }
 
 function checkSkipTimes(currentTime){
@@ -1741,7 +1751,7 @@ function armAutohide(){
     if(shell)shell.classList.remove("idle");
     clearTimeout(t);
     t=setTimeout(function(){
-      if(v.paused)return;
+      if(v.paused || isFsSubsPanelOpen())return;
       v.removeAttribute("controls");
       stage.classList.add("idle");
       if(shell)shell.classList.add("idle");
@@ -2050,6 +2060,8 @@ function closePlayer(){
     try{v.load();}catch(e){}
   }
   if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
+  closeFsSubsPanel();
+  cur.subOffset=0.0;
   cur.cues=[];
   clearOverlay();
   syncNativeTextTrack("", [], "");
@@ -2155,6 +2167,11 @@ function onKeyPlayer(e){
   if(typing&&e.key==="Escape"){e.target.blur();return;}
   var v=$("vid");
   if(e.key==="Escape"){
+    if(isFsSubsPanelOpen()){
+      e.preventDefault();
+      closeFsSubsPanel();
+      return;
+    }
     var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
     if(fsEl){
       // Fullscreen will be closed natively by browser, keep player modal open
@@ -2168,8 +2185,12 @@ function onKeyPlayer(e){
     return;
   }
   if($("player-modal").classList.contains("hidden"))return;
+  if(typing)return;
   if(e.key===" "){e.preventDefault();if(v.paused)v.play();else v.pause();}
   else if(e.key==="f"||e.key==="F"){e.preventDefault();toggleFullscreen();}
+  else if(e.key==="c"||e.key==="C"){e.preventDefault();toggleFsSubsPanel();}
+  else if(e.key==="z"||e.key==="Z"){e.preventDefault();setSubOffset(-0.25);}
+  else if(e.key==="x"||e.key==="X"){e.preventDefault();setSubOffset(0.25);}
   else if(e.key==="n")stepEp(1);
   else if(e.key==="p")stepEp(-1);
   else if(e.key==="["||e.key==="{"){e.preventDefault();adjustPlaySpeed(-1);}
@@ -2187,21 +2208,193 @@ function onKeyPlayer(e){
   else if(e.key==="ArrowLeft"){e.preventDefault();v.currentTime-=5;}
 }
 
-function syncSubSize(){
-  var box=$("pm-subs-overlay");
-  if(box){
-    box.classList.remove("sz-s","sz-m","sz-l");
-    box.classList.add("sz-"+(cur.subSize||"m"));
-  }
+var SUB_COLOR_MAP = {
+  "white": "#FFFFFF",
+  "yellow": "#FACC15",
+  "cyan": "#38BDF8",
+  "green": "#4ADE80"
+};
+
+var SUB_BORDER_MAP = {
+  "thick": "-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000, 0 3px 6px rgba(0,0,0,0.9)",
+  "thin": "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 4px rgba(0,0,0,0.8)",
+  "glow": "0 0 8px rgba(0,0,0,0.95), 0 0 16px rgba(0,0,0,0.85), 0 2px 4px #000",
+  "none": "none"
+};
+
+var SUB_BG_MAP = {
+  "none": "transparent",
+  "thin": "rgba(0, 0, 0, 0.50)",
+  "dark": "rgba(0, 0, 0, 0.75)",
+  "opaque": "rgba(0, 0, 0, 0.95)"
+};
+
+var SUB_POS_MAP = {
+  "low": "3%",
+  "mid": "7%",
+  "high": "12%"
+};
+
+function applySubStyles(){
+  var box = $("pm-subs-overlay");
+  if(!box) return;
+
+  var color = SUB_COLOR_MAP[cur.subColor] || "#FFFFFF";
+  var border = SUB_BORDER_MAP[cur.subBorder] || SUB_BORDER_MAP["thick"];
+  var bg = SUB_BG_MAP[cur.subBg] || SUB_BG_MAP["dark"];
+  var bottom = SUB_POS_MAP[cur.subPos] || "7%";
+
+  box.style.setProperty("--sub-color", color);
+  box.style.setProperty("--sub-border", border);
+  box.style.setProperty("--sub-bg", bg);
+  box.style.setProperty("--sub-bottom", bottom);
+
+  box.classList.remove("sz-s", "sz-m", "sz-l", "sz-xl");
+  box.classList.add("sz-" + (cur.subSize || "m"));
+
+  // Update footer size buttons
   document.querySelectorAll(".sub-size button").forEach(function(b){
-    b.classList.toggle("active",b.getAttribute("data-subsize")===(cur.subSize||"m"));
+    b.classList.toggle("active", b.getAttribute("data-subsize") === (cur.subSize || "m"));
   });
+
+  // Update in-player panel buttons
+  document.querySelectorAll("#pm-fs-size-group button").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-fs-size") === (cur.subSize || "m"));
+  });
+  document.querySelectorAll("#pm-fs-color-group button").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-fs-color") === (cur.subColor || "white"));
+  });
+  document.querySelectorAll("#pm-fs-border-group button").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-fs-border") === (cur.subBorder || "thick"));
+  });
+  document.querySelectorAll("#pm-fs-bg-group button").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-fs-bg") === (cur.subBg || "dark"));
+  });
+  document.querySelectorAll("#pm-fs-pos-group button").forEach(function(b){
+    b.classList.toggle("active", b.getAttribute("data-fs-pos") === (cur.subPos || "mid"));
+  });
+
+  var offsetEl = $("pm-fs-offset-val");
+  if(offsetEl){
+    var off = cur.subOffset || 0.0;
+    offsetEl.textContent = (off > 0 ? "+" : "") + off.toFixed(1) + "s";
+  }
 }
+
+function syncSubSize(){
+  applySubStyles();
+}
+
+function setSubColor(color){
+  if(!SUB_COLOR_MAP[color]) return;
+  cur.subColor = color;
+  try{ localStorage.setItem("tatap_sub_color", color); }catch(e){}
+  applySubStyles();
+}
+
+function setSubBorder(border){
+  if(!SUB_BORDER_MAP[border]) return;
+  cur.subBorder = border;
+  try{ localStorage.setItem("tatap_sub_border", border); }catch(e){}
+  applySubStyles();
+}
+
+function setSubBg(bg){
+  if(!SUB_BG_MAP[bg]) return;
+  cur.subBg = bg;
+  try{ localStorage.setItem("tatap_sub_bg", bg); }catch(e){}
+  applySubStyles();
+}
+
+function setSubPos(pos){
+  if(!SUB_POS_MAP[pos]) return;
+  cur.subPos = pos;
+  try{ localStorage.setItem("tatap_sub_pos", pos); }catch(e){}
+  applySubStyles();
+}
+
 function setSubSize(sz){
-  if(sz!=="s"&&sz!=="m"&&sz!=="l")return;
-  cur.subSize=sz;
-  try{localStorage.setItem("tatap_subsize",sz);}catch(e){}
-  syncSubSize();
+  if(sz !== "s" && sz !== "m" && sz !== "l" && sz !== "xl") return;
+  cur.subSize = sz;
+  try{ localStorage.setItem("tatap_subsize", sz); }catch(e){}
+  applySubStyles();
+}
+
+function setSubOffset(delta, isReset){
+  if(isReset){
+    cur.subOffset = 0.0;
+  }else{
+    cur.subOffset = Math.round(((cur.subOffset || 0.0) + delta) * 100) / 100;
+  }
+  applySubStyles();
+  paintCue();
+  var off = cur.subOffset;
+  var txt = "Subtitle Sync: " + (off > 0 ? "+" : "") + off.toFixed(2) + "s";
+  toast(txt);
+}
+
+function isFsSubsPanelOpen(){
+  var p = $("pm-fs-subs-panel");
+  return p && !p.classList.contains("hidden");
+}
+
+function toggleFsSubsPanel(){
+  var p = $("pm-fs-subs-panel");
+  var btn = $("pm-fs-subs-btn");
+  if(!p) return;
+  if(p.classList.contains("hidden")){
+    syncFsSubsSelect();
+    applySubStyles();
+    p.classList.remove("hidden");
+    if(btn) btn.classList.add("active");
+  }else{
+    closeFsSubsPanel();
+  }
+}
+
+function closeFsSubsPanel(){
+  var p = $("pm-fs-subs-panel");
+  var btn = $("pm-fs-subs-btn");
+  if(p) p.classList.add("hidden");
+  if(btn) btn.classList.remove("active");
+}
+
+function syncFsSubsSelect(){
+  var origSel = $("pm-subs");
+  var fsSel = $("pm-fs-subs-select");
+  if(!origSel || !fsSel) return;
+  fsSel.innerHTML = origSel.innerHTML;
+  fsSel.value = origSel.value;
+}
+
+function updateFsSubsBadge(){
+  var badge = $("pm-fs-subs-badge");
+  if(!badge) return;
+  var active = cur.activeSub;
+  if(!active){
+    badge.textContent = "OFF";
+    badge.classList.add("off");
+    return;
+  }
+  badge.classList.remove("off");
+  if(active.indexOf("gtx+:") === 0 || active.indexOf("aigtx:") === 0){
+    badge.textContent = "GTX+";
+  }else if(active.indexOf("ai:") === 0){
+    badge.textContent = "AI";
+  }else if(active.indexOf("gtx:") === 0){
+    badge.textContent = "ID";
+  }else{
+    var lab = (cur.subLang || "").toLowerCase();
+    if(lab.indexOf("indonesian") >= 0 || lab.indexOf("indo") >= 0){
+      badge.textContent = "ID";
+    }else if(lab.indexOf("english") >= 0 || lab.indexOf("eng") >= 0){
+      badge.textContent = "EN";
+    }else if(lab.length >= 2){
+      badge.textContent = lab.slice(0, 2).toUpperCase();
+    }else{
+      badge.textContent = "SUB";
+    }
+  }
 }
 
 function syncTranslate(){
@@ -2386,9 +2579,17 @@ function init(){
   loadPrefs();
   try{
     var sz=localStorage.getItem("tatap_subsize");
-    if(sz==="s"||sz==="m"||sz==="l")cur.subSize=sz;
+    if(sz==="s"||sz==="m"||sz==="l"||sz==="xl")cur.subSize=sz;
+    var col=localStorage.getItem("tatap_sub_color");
+    if(col&&SUB_COLOR_MAP[col])cur.subColor=col;
+    var bor=localStorage.getItem("tatap_sub_border");
+    if(bor&&SUB_BORDER_MAP[bor])cur.subBorder=bor;
+    var bg=localStorage.getItem("tatap_sub_bg");
+    if(bg&&SUB_BG_MAP[bg])cur.subBg=bg;
+    var pos=localStorage.getItem("tatap_sub_pos");
+    if(pos&&SUB_POS_MAP[pos])cur.subPos=pos;
   }catch(e){}
-  syncSubSize();
+  applySubStyles();
   // Toggle translate ID (persist localStorage tat_translate).
   try{
     var tr=localStorage.getItem("tatap_translate");
@@ -2400,6 +2601,55 @@ function init(){
   document.querySelectorAll(".sub-size button").forEach(function(b){
     b.addEventListener("click",function(){setSubSize(b.getAttribute("data-subsize"));});
   });
+
+  var fsBtn=$("pm-fs-subs-btn");
+  if(fsBtn) fsBtn.addEventListener("click",function(e){e.stopPropagation();toggleFsSubsPanel();});
+  var fsClose=$("pm-fs-subs-close");
+  if(fsClose) fsClose.addEventListener("click",function(e){e.stopPropagation();closeFsSubsPanel();});
+
+  document.querySelectorAll("#pm-fs-size-group button").forEach(function(b){
+    b.addEventListener("click",function(e){e.stopPropagation();setSubSize(b.getAttribute("data-fs-size"));});
+  });
+  document.querySelectorAll("#pm-fs-color-group button").forEach(function(b){
+    b.addEventListener("click",function(e){e.stopPropagation();setSubColor(b.getAttribute("data-fs-color"));});
+  });
+  document.querySelectorAll("#pm-fs-border-group button").forEach(function(b){
+    b.addEventListener("click",function(e){e.stopPropagation();setSubBorder(b.getAttribute("data-fs-border"));});
+  });
+  document.querySelectorAll("#pm-fs-bg-group button").forEach(function(b){
+    b.addEventListener("click",function(e){e.stopPropagation();setSubBg(b.getAttribute("data-fs-bg"));});
+  });
+  document.querySelectorAll("#pm-fs-pos-group button").forEach(function(b){
+    b.addEventListener("click",function(e){e.stopPropagation();setSubPos(b.getAttribute("data-fs-pos"));});
+  });
+
+  var m05=$("pm-fs-offset-m05");
+  if(m05) m05.addEventListener("click",function(e){e.stopPropagation();setSubOffset(-0.5);});
+  var m01=$("pm-fs-offset-m01");
+  if(m01) m01.addEventListener("click",function(e){e.stopPropagation();setSubOffset(-0.1);});
+  var rst=$("pm-fs-offset-reset");
+  if(rst) rst.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0,true);});
+  var p01=$("pm-fs-offset-p01");
+  if(p01) p01.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0.1);});
+  var p05=$("pm-fs-offset-p05");
+  if(p05) p05.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0.5);});
+
+  var fsSel=$("pm-fs-subs-select");
+  if(fsSel){
+    fsSel.addEventListener("click",function(e){e.stopPropagation();});
+    fsSel.addEventListener("change",function(e){
+      e.stopPropagation();
+      var origSel=$("pm-subs");
+      if(origSel){
+        origSel.value=fsSel.value;
+        if(origSel.onchange)origSel.onchange();
+      }
+      updateFsSubsBadge();
+    });
+  }
+
+  var fsPanel=$("pm-fs-subs-panel");
+  if(fsPanel) fsPanel.addEventListener("click",function(e){e.stopPropagation();});
   var v=$("vid");
   if(v){
     v.addEventListener("timeupdate",function(){

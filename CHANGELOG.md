@@ -63,6 +63,21 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Cache Backend & Paritas Chaquopy:** Menambahkan cache server lokal 5 menit pada endpoint `/api/update/check` dengan bypass `force=true` guna melindungi dari rate-limiting API GitHub, serta menyelaraskan field `notes` dan `body` secara identik antara `backend/main.py` dan Chaquopy Android.
 10. **Test Suite In-App Update (`tests/test_in_app_update.py`):**
    - Menambahkan 7 pengujian otomatis baru yang memvalidasi kontrak endpoint `/api/update/check`, integritas FileProvider dan permission Android, validasi layout dialog, struktur kelas `AppUpdateManager.java`, dan ketiadaan auto-check saat startup aplikasi.
+11. **Tombol CC Tersemat & Panel HUD Pengaturan Subtitle Fullscreen Desktop (Web Desktop, AppImage & Windows Portable):**
+   - **Embedded In-Player CC Button (`#pm-fs-subs-btn`):** Tombol Subtitle / Closed Caption disematkan langsung di dalam container stage pemutar (`.ambient-stage`) pada pojok kanan atas dengan badge bahasa aktif (`#pm-fs-subs-badge`, misal `ID`, `EN`, `OFF`). Tombol ini otomatis muncul bersama kontrol pemutar dan tersembunyi saat mode idle (kursor tidak bergerak).
+   - **HUD Panel Subtitle Styler Lengkap (`#pm-fs-subs-panel`):** Panel kontrol semi-transparan dengan gaya cyber obsidian yang dapat diakses langsung tanpa keluar dari mode layar penuh (*fullscreen*).
+   - **Fitur Kustomisasi Subtitle Menyeluruh:**
+     - **Trek Subtitle (`#pm-fs-subs-select`):** Mengganti trek subtitle aktif (Indonesian GTX+, AI Fansub, English, Custom, atau Matikan) secara instan.
+     - **Sinkronisasi / Delay Real-Time (`#pm-fs-offset-*`):** Tombol stepper mikro `-0.5s`, `-0.1s`, `0.0s`, `+0.1s`, `+0.5s` serta shortcut keyboard `Z` (mundurkan 0.25s) dan `X` (majukan 0.25s) dengan render instan tanpa jeda.
+     - **Ukuran Teks (Font Size):** Opsi `S (Kecil)`, `M (Sedang)`, `L (Besar)`, dan `XL (Ekstra)`.
+     - **Warna Font (Font Color):** Palet swatch interaktif `Putih (#FFFFFF)`, `Kuning Anime (#FACC15)`, `Cyan Neon (#38BDF8)`, dan `Hijau (#4ADE80)`.
+     - **Border Font (Outline / Text Shadow):** Opsi `Tebal 2px (Standard Fansub)`, `Tipis 1px`, `Glow Pendar Lembut`, dan `Tanpa Border (Polos)`.
+     - **Background Subtitle (Latar Belakang Kotak):** Opsi `Transparan (0%)`, `Tipis (50%)`, `Gelap (75%)`, dan `Pekat (100%)`.
+     - **Posisi Vertikal:** Opsi `Sangat Bawah (3%)`, `Normal (7%)`, dan `Tinggi (12%)`.
+   - **Isolasi Event & Pencegahan Gangguan Pemutaran:** Semua event klik pada kontrol panel menggunakan `e.stopPropagation()` sehingga interaksi pengguna tidak pernah memicu jeda/putar video (*play/pause*) atau toggle fullscreen yang tidak diinginkan. Sistem idle auto-hide (`armAutohide`) secara cerdas dinonaktifkan selama panel HUD terbuka agar kontrol tidak mendadak hilang saat pengguna sedang mengatur styling.
+   - **Pintasan Keyboard Responsif:** Menekan tombol `C` akan membuka/menutup panel subtitle, `Z` / `X` untuk mengatur offset sync secara on-the-fly, dan `Esc` akan menutup panel HUD terlebih dahulu sebelum keluar dari mode fullscreen. Preferensi styling disimpan secara persisten di `localStorage` (`tatap_sub_*`).
+12. **Test Suite Komprehensif Fullscreen Subtitles (`tests/test_desktop_fullscreen_subs.py`):**
+   - Menambahkan pengujian otomatis baru yang memvalidasi struktur HTML DOM, variabel CSS custom variables, aturan styling HUD, sintaksis JS, dan logika kontrol styler.
 
 ## [2.9.1] - 2026-10-18
 

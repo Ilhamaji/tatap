@@ -441,14 +441,15 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 
 /* Overlay subtitle milik app: posisi di atas video, pointer tembus.
    Harmonis dan konsisten antara mode windowed dan fullscreen. */
-.subs-overlay{position:absolute;left:0;right:0;bottom:7%;z-index:4;display:flex;justify-content:center;pointer-events:none;padding:0 6%;transition:bottom .2s ease}
-.subs-overlay span{display:inline-block;max-width:100%;text-align:center;color:#fff;background:rgba(0,0,0,.72);
+.subs-overlay{position:absolute;left:0;right:0;bottom:var(--sub-bottom, 7%);z-index:4;display:flex;justify-content:center;pointer-events:none;padding:0 6%;transition:bottom .2s ease}
+.subs-overlay span{display:inline-block;max-width:100%;text-align:center;color:var(--sub-color, #fff);background:var(--sub-bg, rgba(0,0,0,.72));
   padding:.2em .6em;border-radius:4px;line-height:1.45;font-weight:600;
-  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 4px rgba(0,0,0,.8);font-family:inherit}
+  text-shadow:var(--sub-border, -1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 4px rgba(0,0,0,.8));font-family:inherit}
 .subs-overlay span:empty{display:none;padding:0;background:transparent}
 .subs-overlay.sz-s span{font-size:clamp(13px,1.1vw + .55rem,18px)}
 .subs-overlay.sz-m span{font-size:clamp(16px,1.5vw + .65rem,24px)}
 .subs-overlay.sz-l span{font-size:clamp(20px,2.0vw + .75rem,30px)}
+.subs-overlay.sz-xl span{font-size:clamp(25px,2.5vw + .95rem,38px)}
 
 /* Floating Skip Opening / Ending Button */
 .pm-skip-btn {
@@ -497,6 +498,313 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
   padding: 10px 22px;
 }
 
+/* Embedded CC Subtitles Button */
+.pm-fs-subs-btn {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(13, 17, 24, 0.78);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #F1F5F9;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 10px rgba(56, 189, 248, 0.15);
+  transition: opacity .22s ease, transform .2s ease, background .18s ease, border-color .18s ease;
+  user-select: none;
+}
+.pm-fs-subs-btn:hover {
+  background: rgba(20, 28, 42, 0.94);
+  border-color: #38BDF8;
+  color: #38BDF8;
+  transform: scale(1.04);
+}
+.pm-fs-subs-btn.active {
+  background: rgba(14, 116, 144, 0.4);
+  border-color: #38BDF8;
+  color: #38BDF8;
+}
+.pm-fs-subs-btn .fs-subs-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: rgba(56, 189, 248, 0.22);
+  color: #38BDF8;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+.pm-fs-subs-btn .fs-subs-badge.off {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94A3B8;
+}
+
+/* Auto-hide saat idle di pemutar video */
+.ambient-stage.idle .pm-fs-subs-btn:not(:hover):not(.active) {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+}
+.ambient-stage:fullscreen .pm-fs-subs-btn,
+.ambient-stage:-webkit-full-screen .pm-fs-subs-btn {
+  top: 24px;
+  right: 28px;
+  font-size: 13px;
+  padding: 7px 14px;
+}
+
+/* Embedded Subtitle Quick Settings & Styler Panel */
+.pm-fs-subs-panel {
+  position: absolute;
+  top: 58px;
+  right: 20px;
+  width: 330px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 120px);
+  background: rgba(13, 17, 24, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 24px rgba(56, 189, 248, 0.18);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: opacity .2s ease, transform .2s ease;
+  user-select: none;
+}
+.ambient-stage:fullscreen .pm-fs-subs-panel,
+.ambient-stage:-webkit-full-screen .pm-fs-subs-panel {
+  top: 68px;
+  right: 28px;
+  width: 350px;
+}
+.pm-fs-subs-panel.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px) scale(0.97);
+  display: none !important;
+}
+
+/* Header */
+.fs-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #1E2738;
+  background: rgba(18, 24, 38, 0.6);
+}
+.fs-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #38BDF8;
+  letter-spacing: 0.08em;
+}
+.fs-panel-close {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color .15s ease, background .15s ease;
+}
+.fs-panel-close:hover {
+  color: #F1F5F9;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Body */
+.fs-panel-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  overflow-y: auto;
+  max-height: calc(100vh - 200px);
+}
+.fs-panel-body::-webkit-scrollbar {
+  width: 4px;
+}
+.fs-panel-body::-webkit-scrollbar-thumb {
+  background: #2A364F;
+  border-radius: 2px;
+}
+
+.fs-panel-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fs-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.fs-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94A3B8;
+  letter-spacing: 0.07em;
+}
+.fs-offset-val {
+  font-size: 11px;
+  font-weight: 700;
+  color: #38BDF8;
+  font-family: monospace;
+}
+
+/* Select */
+.fs-subs-select {
+  width: 100%;
+  background: #111724;
+  color: #E2E8F0;
+  border: 1px solid #232D42;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s ease;
+}
+.fs-subs-select:focus {
+  border-color: #38BDF8;
+}
+
+/* Pill groups */
+.fs-pill-group {
+  display: flex;
+  background: #0B0F18;
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid #1C2436;
+  gap: 2px;
+}
+.fs-pill-group button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+.fs-pill-group button:hover {
+  color: #F1F5F9;
+  background: rgba(255, 255, 255, 0.05);
+}
+.fs-pill-group button.active {
+  background: #1E293B;
+  color: #38BDF8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Color swatches */
+.fs-color-swatches {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.swatch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #101622;
+  border: 1px solid #1F283D;
+  color: #CBD5E1;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.swatch-btn:hover {
+  border-color: #38BDF8;
+  color: #F8FAFC;
+}
+.swatch-btn.active {
+  background: #192336;
+  border-color: #38BDF8;
+  color: #38BDF8;
+}
+.swatch-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+/* Sync stepper */
+.fs-sync-stepper {
+  display: flex;
+  background: #0B0F18;
+  border: 1px solid #1C2436;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.fs-sync-stepper button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 5px 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.fs-sync-stepper button:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38BDF8;
+}
+.fs-sync-stepper button#pm-fs-offset-reset {
+  color: #CBD5E1;
+  font-weight: 700;
+}
+
+/* Foot */
+.fs-panel-foot {
+  padding: 8px 14px;
+  background: rgba(14, 19, 29, 0.85);
+  border-top: 1px solid #1C2436;
+}
+.fs-hint {
+  font-size: 10px;
+  color: #64748B;
+}
+.fs-hint code {
+  color: #94A3B8;
+  background: #171E2E;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 /* Fullscreen styles for ambient-stage container */
 .ambient-stage:fullscreen {
   width:100vw;height:100vh;max-height:100vh;display:flex;align-items:center;justify-content:center;background:#000;border-radius:0;
@@ -520,7 +828,7 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 }
 .ambient-stage:fullscreen .subs-overlay,
 .ambient-stage:-webkit-full-screen .subs-overlay {
-  bottom:7%;padding:0 6%;
+  bottom:var(--sub-bottom, 7%);padding:0 6%;
 }
 .ambient-stage:fullscreen .subs-overlay.sz-s span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-s span {
@@ -533,6 +841,10 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 .ambient-stage:fullscreen .subs-overlay.sz-l span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-l span {
   font-size:clamp(22px,2.1vw + .85rem,34px);
+}
+.ambient-stage:fullscreen .subs-overlay.sz-xl span,
+.ambient-stage:-webkit-full-screen .subs-overlay.sz-xl span {
+  font-size:clamp(28px,2.8vw + 1.1rem,48px);
 }
 
 /* Native video cues (rendered when browser fullscreens the <video> directly) */
