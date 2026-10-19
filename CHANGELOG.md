@@ -148,6 +148,12 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
       - Menambahkan mekanisme fallback langsung via HTTPS dari kode Java native jika server backend lokal Python (`127.0.0.1:8767`) sedang sibuk atau tidak merespons, menjamin pemeriksaan update di Android tidak pernah gagal.
     - **Perluasan Automated Test Suite (`tests/test_in_app_update.py`):**
       - Menambahkan 2 pengujian otomatis baru (`test_backend_update_tier2_web_fallback` dan `test_backend_update_tier3_raw_fallback`) yang memverifikasi otomatisasi fallback saat API terkena HTTP 403 dan simulasi kegagalan DNS web (seluruh 184 test suite Tatap lulus 100%).
+25. **Penyempurnaan Proporsi & Estetika Top Bar Menu Web Desktop Sesuai Kaidah Desain Grafis:**
+    - **Mathematical 3-Column Grid (`1fr auto 1fr`):** Mengganti sistem flex pada `.tui-head` menjadi 3-kolom grid CSS presisi dengan `justify-self: center` pada bar tab navigasi (`.nav-tabs-bar`), mengeliminasi deviasi horizontal sehingga tab navigasi berada 100% tepat di garis tengah (*true optical center*) layar monitor.
+    - **Modular Scale 8-Point Grid (`56px`):** Menyelaraskan tinggi bilah atas menjadi 56px ($7 \times 8\text{px}$) dengan elevasi permukaan obsidian halus dan jarak bernapas vertikal 10px atas-bawah yang proporsional.
+    - **Simbol Grafis Brand Mark Geometrik (`#icon-brand-mark`):** Menambahkan simbol apertur geometrik cyber viewfinder tajam di samping logo `TATAP` serta menjadikan elemen logo interaktif (`#head-brand`) untuk kembali ke Beranda (*Musim Ini*) dan auto-scroll ke atas.
+    - **Penyeimbang Bobot Visual Kanan (*Quick Search Launcher Pill*):** Menambahkan kapsul peluncur pencarian cepat `[ 🔍 Cari anime... / ]` (`#btn-head-search`) di sisi kanan sebelum tombol menu drawer, menyeimbangkan bobot visual logo di sisi kiri sekaligus mengintegrasikan shortcut keyboard `/` secara intuitif.
+    - **Perluasan Automated Test Suite (`tests/test_top_bar_menu_polish.py`):** Menambahkan 5 pengujian otomatis baru yang memverifikasi keberadaan brand logo mark SVG, arsitektur 3-kolom grid CSS, penyeimbang quick search pill, event listener interaktif, dan kepatuhan Zero Backdrop Blur (seluruh 189 test suite Tatap lulus 100%).
 
 ## [2.9.1] - 2026-10-18
 

@@ -2579,6 +2579,39 @@ function init(){
     });
   });
 
+  // Interaktivitas Brand Logo Header (kembali ke Musim Ini)
+  var headBrand = $("head-brand");
+  if(headBrand){
+    headBrand.addEventListener("click", function(){
+      if(window.Tui && window.Tui.setView){
+        window.Tui.setView("musim");
+      }
+      window.scrollTo({top:0, behavior:"smooth"});
+    });
+    headBrand.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){
+        e.preventDefault();
+        headBrand.click();
+      }
+    });
+  }
+
+  // Interaktivitas Kapsul Pencarian Cepat Header
+  var btnHeadSearch = $("btn-head-search");
+  if(btnHeadSearch){
+    btnHeadSearch.addEventListener("click", function(){
+      var cmd = $("cmd");
+      if(cmd){
+        cmd.focus();
+        var wrap = cmd.closest(".search-input-wrap");
+        if(wrap){
+          wrap.classList.add("pulse-highlight");
+          setTimeout(function(){ wrap.classList.remove("pulse-highlight"); }, 600);
+        }
+      }
+    });
+  }
+
   var drawerGenre = $("drawer-genre");
   if(drawerGenre) drawerGenre.addEventListener("click", function(){
     closeDrawer();

@@ -11,6 +11,11 @@
 <body class="no-crt" style="background:#000000;color:#f0f3f6;">
 <svg xmlns="http://www.w3.org/2000/svg" style="display:none" id="tatap-icons">
   <defs>
+    <!-- Brand Mark: Sleek Geometric Viewfinder Eye (Tatap) -->
+    <symbol id="icon-brand-mark" viewBox="0 0 24 24">
+      <path d="M2 12C4.5 6.5 8 4 12 4s7.5 2.5 10 8c-2.5 5.5-6 8-10 8s-7.5-2.5-10-8z" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="12" cy="12" r="3.5" fill="currentColor"/>
+    </symbol>
     <!-- Menu: 3 sleek horizontal bars -->
     <symbol id="icon-menu" viewBox="0 0 24 24">
       <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
@@ -194,7 +199,10 @@
 <div id="bg-glow" aria-hidden="true"></div>
 
 <header class="tui-head">
-  <div class="head-brand">
+  <div class="head-brand" id="head-brand" title="Kembali ke Beranda (Musim Ini)" role="button" tabindex="0" aria-label="Tatap Beranda">
+    <svg class="brand-logo-mark" viewBox="0 0 24 24" aria-hidden="true">
+      <use href="#icon-brand-mark"/>
+    </svg>
     <span class="brand-name">TATAP</span>
     <span class="brand-ver" id="brand-ver">v2.9.2</span>
   </div>
@@ -207,6 +215,11 @@
     <button class="nav-tab-btn" data-view="katalog" id="tab-nav-katalog">Katalog</button>
   </nav>
   <div class="head-actions">
+    <button id="btn-head-search" class="head-search-pill" title="Cari Anime atau Perintah (:cmd) (Shortcut: /)" aria-label="Cari Anime">
+      <svg class="ui-icon head-search-icon"><use href="#icon-search"/></svg>
+      <span class="head-search-label">Cari anime...</span>
+      <kbd class="head-search-kbd">/</kbd>
+    </button>
     <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
       <span class="drawer-btn-icon"><svg class="ui-icon"><use href="#icon-menu"/></svg></span>
     </button>
