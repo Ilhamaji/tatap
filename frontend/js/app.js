@@ -2,12 +2,7 @@ var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[]
             subLang:"English",    // preferensi bahasa user dari /api/settings
             activeSub:null,       // URL track subtitle yang sedang aktif (live switch)
             cues:[],              // cue subtitle hasil parse VTT (render overlay milik app)
-            subSize:"m",          // ukuran subtitle overlay: s|m|l|xl
-            subColor:"white",     // warna font: white|yellow|cyan|green
-            subBorder:"thick",    // border font: thick|thin|glow|none
-            subBg:"dark",         // latar belakang: none|thin|dark|opaque
-            subPos:"mid",         // posisi vertikal: low|mid|high
-            subOffset:0.0,        // delay subtitle (detik)
+            subSize:"m",          // ukuran subtitle overlay: s|m|l
             translate:false,      // toggle translate subtitle Indonesia (persist localStorage)
             eps_counter:""
            };
@@ -1131,11 +1126,7 @@ function renderSubtitles(subtitles, activeUrl){
       window.Tatap.setSetting({sub_lang:""}).then(function(){}).catch(function(){});
       toast("Subtitle: Off");
     }
-    syncFsSubsSelect();
-    updateFsSubsBadge();
   };
-  syncFsSubsSelect();
-  updateFsSubsBadge();
 }
 
 function vttTime(s){
@@ -1195,33 +1186,14 @@ function isFullscreenActive(){
   if(v&&v.webkitDisplayingFullscreen)return true;
   return false;
 }
-function isDesktopEnv(){
-  return !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
-}
-function onFullscreenChange(){
-  var v=$("vid");
-  var stage=document.querySelector(".ambient-stage");
-  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
-  if(fsEl&&fsEl===v&&stage&&(stage.requestFullscreen||stage.webkitRequestFullscreen)){
-    try{
-      var p;
-      if(stage.requestFullscreen) p=stage.requestFullscreen();
-      else if(stage.webkitRequestFullscreen) p=stage.webkitRequestFullscreen();
-      if(p&&p.catch) p.catch(function(){});
-    }catch(e){}
-  }
-  syncFullscreenSubtitles();
-}
 function syncFullscreenSubtitles(){
   var v=$("vid");
   if(!v||!v.textTracks)return;
   var isVidFs=isVideoFullscreen();
-  // Di desktop, kunci native track ke "hidden" agar Windows Closed Captions tidak membajak styling subtitle
-  var shouldShowNative=isVidFs&&!isDesktopEnv();
   for(var i=0;i<v.textTracks.length;i++){
     var t=v.textTracks[i];
     if(t.label&&t.label.indexOf("Tatap")>=0){
-      t.mode=shouldShowNative?"showing":"hidden";
+      t.mode=isVidFs?"showing":"hidden";
     }
   }
   paintCue();
@@ -1252,13 +1224,6 @@ function syncNativeTextTrack(vttText, cues, langCode){
       }
     }
   }
-  if(isDesktopEnv()){
-    // Di desktop, JANGAN PERNAH menambahkan <track> ke DOM <video>!
-    // Subtitle desktop 100% dirender via custom overlay #pm-subs-overlay (dikontrol oleh CC Styler Tatap).
-    // Menghilangkan elemen <track> mencegah Chromium & Windows Closed Captions memunculkan menu subtitle native
-    // yang membajak kontrol styling subtitle di pojok kanan bawah.
-    return;
-  }
 
   if(!vttText&&(!cues||!cues.length))return;
 
@@ -1277,7 +1242,7 @@ function syncNativeTextTrack(vttText, cues, langCode){
 
     var applyMode=function(){
       if(trackEl.track){
-        trackEl.track.mode=(isVideoFullscreen()&&!isDesktopEnv())?"showing":"hidden";
+        trackEl.track.mode=isVideoFullscreen()?"showing":"hidden";
       }
     };
 
@@ -1381,9 +1346,8 @@ function paintCue(){
   var s=box.querySelector("span");
   if(!s)return;
   if($("player-modal").classList.contains("hidden")){s.innerHTML="";return;}
-  var rawT=v.currentTime||0;
-  var t=rawT+(cur.subOffset||0);
-  if(isVideoFullscreen()&&!isDesktopEnv()){
+  var t=v.currentTime||0;
+  if(isVideoFullscreen()){
     if(s._last!==""){s.innerHTML="";s._last="";}
     box.style.display="none";
   }else{
@@ -1394,7 +1358,7 @@ function paintCue(){
     }
     if(s._last!==html){s.innerHTML=html;s._last=html;}
   }
-  checkSkipTimes(rawT);
+  checkSkipTimes(t);
 }
 
 function checkSkipTimes(currentTime){
@@ -1771,16 +1735,13 @@ function armAutohide(){
   if(!stage||stage._armed)return;
   stage._armed=true;
   var v=$("vid");
-  if(v && isDesktopEnv()){
-    v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
-  }
   var t=null;
   var show=function(){
     stage.classList.remove("idle");
     if(shell)shell.classList.remove("idle");
     clearTimeout(t);
     t=setTimeout(function(){
-      if(v.paused || isFsSubsPanelOpen() || isQuickSettingsMenuOpen())return;
+      if(v.paused)return;
       v.removeAttribute("controls");
       stage.classList.add("idle");
       if(shell)shell.classList.add("idle");
@@ -1788,9 +1749,6 @@ function armAutohide(){
   };
   var wake=function(){
     if(!v.hasAttribute("controls"))v.setAttribute("controls","");
-    if(isDesktopEnv() && !v.getAttribute("controlsList")){
-      v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
-    }
     show();
   };
   ["mousemove","touchstart","click"].forEach(function(ev){stage.addEventListener(ev,wake,{passive:true});});
@@ -1810,9 +1768,6 @@ function playUrl(url,referrer,sub,subRef,resumeTime,token){
   if(v){
     v.muted=false;
     if(v.volume===0) v.volume=1.0;
-    if(isDesktopEnv()){
-      v.setAttribute("controlsList", "nofullscreen nodownload noremoteplayback");
-    }
   }
   var b = (typeof apiBase === "function") ? apiBase() : "";
   var prox=b+"/api/player/video?url="+encodeURIComponent(url)+"&referer="+encodeURIComponent(referrer||"");
@@ -2095,9 +2050,6 @@ function closePlayer(){
     try{v.load();}catch(e){}
   }
   if(window._hls){try{window._hls.destroy();window._hls=null;}catch(e){}}
-  closeFsSubsPanel();
-  closeQuickSettingsMenu();
-  cur.subOffset=0.0;
   cur.cues=[];
   clearOverlay();
   syncNativeTextTrack("", [], "");
@@ -2205,16 +2157,6 @@ function onKeyPlayer(e){
   if(typing&&e.key==="Escape"){e.target.blur();return;}
   var v=$("vid");
   if(e.key==="Escape"){
-    if(isQuickSettingsMenuOpen()){
-      e.preventDefault();
-      closeQuickSettingsMenu();
-      return;
-    }
-    if(isFsSubsPanelOpen()){
-      e.preventDefault();
-      closeFsSubsPanel();
-      return;
-    }
     var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
     if(fsEl){
       // Fullscreen will be closed natively by browser, keep player modal open
@@ -2228,12 +2170,8 @@ function onKeyPlayer(e){
     return;
   }
   if($("player-modal").classList.contains("hidden"))return;
-  if(typing)return;
   if(e.key===" "){e.preventDefault();if(v.paused)v.play();else v.pause();}
   else if(e.key==="f"||e.key==="F"){e.preventDefault();toggleFullscreen();}
-  else if(e.key==="c"||e.key==="C"){e.preventDefault();toggleFsSubsPanel();}
-  else if(e.key==="z"||e.key==="Z"){e.preventDefault();setSubOffset(-0.25);}
-  else if(e.key==="x"||e.key==="X"){e.preventDefault();setSubOffset(0.25);}
   else if(e.key==="n")stepEp(1);
   else if(e.key==="p")stepEp(-1);
   else if(e.key==="["||e.key==="{"){e.preventDefault();adjustPlaySpeed(-1);}
@@ -2251,304 +2189,21 @@ function onKeyPlayer(e){
   else if(e.key==="ArrowLeft"){e.preventDefault();v.currentTime-=5;}
 }
 
-var SUB_COLOR_MAP = {
-  "white": "#FFFFFF",
-  "yellow": "#FACC15",
-  "cyan": "#38BDF8",
-  "green": "#4ADE80"
-};
-
-var SUB_BORDER_MAP = {
-  "thick": "-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, -1px 0 0 #000, 1px 0 0 #000, 0 -1px 0 #000, 0 1px 0 #000, 0 3px 6px rgba(0,0,0,0.9)",
-  "thin": "-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 2px 4px rgba(0,0,0,0.8)",
-  "glow": "0 0 8px rgba(0,0,0,0.95), 0 0 16px rgba(0,0,0,0.85), 0 2px 4px #000",
-  "none": "none"
-};
-
-var SUB_BG_MAP = {
-  "none": "transparent",
-  "thin": "rgba(0, 0, 0, 0.50)",
-  "dark": "rgba(0, 0, 0, 0.75)",
-  "opaque": "rgba(0, 0, 0, 0.95)"
-};
-
-var SUB_POS_MAP = {
-  "low": "3%",
-  "mid": "7%",
-  "high": "12%"
-};
-
-function applySubStyles(){
-  var box = $("pm-subs-overlay");
-  if(!box) return;
-
-  var color = SUB_COLOR_MAP[cur.subColor] || "#FFFFFF";
-  var border = SUB_BORDER_MAP[cur.subBorder] || SUB_BORDER_MAP["thick"];
-  var bg = SUB_BG_MAP[cur.subBg] || SUB_BG_MAP["dark"];
-  var bottom = SUB_POS_MAP[cur.subPos] || "7%";
-
-  box.style.setProperty("--sub-color", color);
-  box.style.setProperty("--sub-border", border);
-  box.style.setProperty("--sub-bg", bg);
-  box.style.setProperty("--sub-bottom", bottom);
-
-  box.classList.remove("sz-s", "sz-m", "sz-l", "sz-xl");
-  box.classList.add("sz-" + (cur.subSize || "m"));
-
-  // Update footer size buttons
-  document.querySelectorAll(".sub-size button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-subsize") === (cur.subSize || "m"));
-  });
-
-  // Update in-player panel buttons
-  document.querySelectorAll("#pm-fs-size-group button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-fs-size") === (cur.subSize || "m"));
-  });
-  document.querySelectorAll("#pm-fs-color-group button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-fs-color") === (cur.subColor || "white"));
-  });
-  document.querySelectorAll("#pm-fs-border-group button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-fs-border") === (cur.subBorder || "thick"));
-  });
-  document.querySelectorAll("#pm-fs-bg-group button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-fs-bg") === (cur.subBg || "dark"));
-  });
-  document.querySelectorAll("#pm-fs-pos-group button").forEach(function(b){
-    b.classList.toggle("active", b.getAttribute("data-fs-pos") === (cur.subPos || "mid"));
-  });
-
-  var offsetEl = $("pm-fs-offset-val");
-  if(offsetEl){
-    var off = cur.subOffset || 0.0;
-    offsetEl.textContent = (off > 0 ? "+" : "") + off.toFixed(1) + "s";
-  }
-}
-
 function syncSubSize(){
-  applySubStyles();
+  var box=$("pm-subs-overlay");
+  if(box){
+    box.classList.remove("sz-s","sz-m","sz-l");
+    box.classList.add("sz-"+(cur.subSize||"m"));
+  }
+  document.querySelectorAll(".sub-size button").forEach(function(b){
+    b.classList.toggle("active",b.getAttribute("data-subsize")===(cur.subSize||"m"));
+  });
 }
-
-function setSubColor(color){
-  if(!SUB_COLOR_MAP[color]) return;
-  cur.subColor = color;
-  try{ localStorage.setItem("tatap_sub_color", color); }catch(e){}
-  applySubStyles();
-}
-
-function setSubBorder(border){
-  if(!SUB_BORDER_MAP[border]) return;
-  cur.subBorder = border;
-  try{ localStorage.setItem("tatap_sub_border", border); }catch(e){}
-  applySubStyles();
-}
-
-function setSubBg(bg){
-  if(!SUB_BG_MAP[bg]) return;
-  cur.subBg = bg;
-  try{ localStorage.setItem("tatap_sub_bg", bg); }catch(e){}
-  applySubStyles();
-}
-
-function setSubPos(pos){
-  if(!SUB_POS_MAP[pos]) return;
-  cur.subPos = pos;
-  try{ localStorage.setItem("tatap_sub_pos", pos); }catch(e){}
-  applySubStyles();
-}
-
 function setSubSize(sz){
-  if(sz !== "s" && sz !== "m" && sz !== "l" && sz !== "xl") return;
-  cur.subSize = sz;
-  try{ localStorage.setItem("tatap_subsize", sz); }catch(e){}
-  applySubStyles();
-}
-
-function setSubOffset(delta, isReset){
-  if(isReset){
-    cur.subOffset = 0.0;
-  }else{
-    cur.subOffset = Math.round(((cur.subOffset || 0.0) + delta) * 100) / 100;
-  }
-  applySubStyles();
-  paintCue();
-  var off = cur.subOffset;
-  var txt = "Subtitle Sync: " + (off > 0 ? "+" : "") + off.toFixed(2) + "s";
-  toast(txt);
-}
-
-function isFsSubsPanelOpen(){
-  var p = $("pm-fs-subs-panel");
-  return p && !p.classList.contains("hidden");
-}
-
-function isQuickSettingsMenuOpen(){
-  var m = $("pm-quick-settings-menu");
-  return m && !m.classList.contains("hidden");
-}
-
-function toggleFsSubsPanel(){
-  var p = $("pm-fs-subs-panel");
-  var btn = $("pm-fs-subs-btn");
-  var dock = $("pm-controls-dock");
-  if(!p) return;
-  if(p.classList.contains("hidden")){
-    closeQuickSettingsMenu();
-    syncFsSubsSelect();
-    applySubStyles();
-    p.classList.remove("hidden");
-    if(btn) btn.classList.add("active");
-    if(dock) dock.classList.add("has-open-menu");
-  }else{
-    closeFsSubsPanel();
-  }
-}
-
-function closeFsSubsPanel(){
-  var p = $("pm-fs-subs-panel");
-  var btn = $("pm-fs-subs-btn");
-  var dock = $("pm-controls-dock");
-  if(p) p.classList.add("hidden");
-  if(btn) btn.classList.remove("active");
-  if(dock && !isQuickSettingsMenuOpen()) dock.classList.remove("has-open-menu");
-}
-
-function toggleQuickSettingsMenu(){
-  var m = $("pm-quick-settings-menu");
-  var btn = $("pm-quick-settings-btn");
-  var dock = $("pm-controls-dock");
-  if(!m) return;
-  if(m.classList.contains("hidden")){
-    closeFsSubsPanel();
-    syncQuickSettingsState();
-    m.classList.remove("hidden");
-    if(btn) btn.classList.add("active");
-    if(dock) dock.classList.add("has-open-menu");
-  }else{
-    closeQuickSettingsMenu();
-  }
-}
-
-function closeQuickSettingsMenu(){
-  var m = $("pm-quick-settings-menu");
-  var btn = $("pm-quick-settings-btn");
-  var dock = $("pm-controls-dock");
-  if(m) m.classList.add("hidden");
-  if(btn) btn.classList.remove("active");
-  if(dock && !isFsSubsPanelOpen()) dock.classList.remove("has-open-menu");
-}
-
-function syncQuickSettingsState(){
-  var v = $("vid");
-  if(!v) return;
-
-  // 1. Subtitle badge
-  updateFsSubsBadge();
-
-  // 2. Speed badge & active chips
-  var curSp = v.playbackRate || 1;
-  var spStr = curSp.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1") + "x";
-  var spBadge = $("pm-qs-speed-badge");
-  if(spBadge) spBadge.textContent = spStr;
-
-  var chipsWrap = $("pm-qs-speed-chips");
-  if(chipsWrap){
-    var btns = chipsWrap.querySelectorAll("button[data-speed]");
-    for(var i=0; i<btns.length; i++){
-      var val = parseFloat(btns[i].getAttribute("data-speed"));
-      if(Math.abs(val - curSp) < 0.05){
-        btns[i].classList.add("active");
-      }else{
-        btns[i].classList.remove("active");
-      }
-    }
-  }
-
-  // 3. Quality chips
-  var qGroup = $("pm-qs-group-quality");
-  var qBadge = $("pm-qs-quality-badge");
-  var qChips = $("pm-qs-quality-chips");
-  var origQSel = $("pm-quality-select");
-  if(origQSel && origQSel.options && origQSel.options.length > 1){
-    if(qGroup) qGroup.classList.remove("hidden");
-    if(qBadge) qBadge.textContent = origQSel.options[origQSel.selectedIndex] ? origQSel.options[origQSel.selectedIndex].text : "Auto";
-    if(qChips){
-      qChips.innerHTML = "";
-      for(var j=0; j<origQSel.options.length; j++){
-        (function(opt, idx){
-          var btn = document.createElement("button");
-          btn.type = "button";
-          btn.textContent = opt.text;
-          if(idx === origQSel.selectedIndex) btn.classList.add("active");
-          btn.onclick = function(e){
-            e.stopPropagation();
-            origQSel.selectedIndex = idx;
-            var evt = document.createEvent ? document.createEvent("HTMLEvents") : null;
-            if(evt){
-              evt.initEvent("change", true, true);
-              origQSel.dispatchEvent(evt);
-            }else{
-              origQSel.dispatchEvent(new Event("change"));
-            }
-            syncQuickSettingsState();
-          };
-          qChips.appendChild(btn);
-        })(origQSel.options[j], j);
-      }
-    }
-  }else{
-    if(qGroup) qGroup.classList.add("hidden");
-  }
-
-  // 4. Fullscreen label
-  var fsLabel = $("pm-qs-fs-label");
-  if(fsLabel){
-    fsLabel.textContent = isVideoFullscreen() ? "Keluar Layar Penuh" : "Layar Penuh (Fullscreen)";
-  }
-}
-
-function syncFsSubsSelect(){
-  var origSel = $("pm-subs");
-  var fsSel = $("pm-fs-subs-select");
-  if(!origSel || !fsSel) return;
-  fsSel.innerHTML = origSel.innerHTML;
-  fsSel.value = origSel.value;
-}
-
-function updateFsSubsBadge(){
-  var badge = $("pm-fs-subs-badge");
-  var qsBadge = $("pm-qs-subs-badge");
-  var text = "OFF";
-  var isOff = true;
-  var active = cur.activeSub;
-  if(active){
-    isOff = false;
-    if(active.indexOf("gtx+:") === 0 || active.indexOf("aigtx:") === 0){
-      text = "GTX+";
-    }else if(active.indexOf("ai:") === 0){
-      text = "AI";
-    }else if(active.indexOf("gtx:") === 0){
-      text = "ID";
-    }else{
-      var lab = (cur.subLang || "").toLowerCase();
-      if(lab.indexOf("indonesian") >= 0 || lab.indexOf("indo") >= 0){
-        text = "ID";
-      }else if(lab.indexOf("english") >= 0 || lab.indexOf("eng") >= 0){
-        text = "EN";
-      }else if(lab.length >= 2){
-        text = lab.slice(0, 2).toUpperCase();
-      }else{
-        text = "SUB";
-      }
-    }
-  }
-  if(badge){
-    badge.textContent = text;
-    if(isOff) badge.classList.add("off"); else badge.classList.remove("off");
-  }
-  if(qsBadge){
-    qsBadge.textContent = text;
-    if(isOff) qsBadge.classList.add("off"); else qsBadge.classList.remove("off");
-  }
+  if(sz!=="s"&&sz!=="m"&&sz!=="l")return;
+  cur.subSize=sz;
+  try{localStorage.setItem("tatap_subsize",sz);}catch(e){}
+  syncSubSize();
 }
 
 function syncTranslate(){
@@ -2733,17 +2388,9 @@ function init(){
   loadPrefs();
   try{
     var sz=localStorage.getItem("tatap_subsize");
-    if(sz==="s"||sz==="m"||sz==="l"||sz==="xl")cur.subSize=sz;
-    var col=localStorage.getItem("tatap_sub_color");
-    if(col&&SUB_COLOR_MAP[col])cur.subColor=col;
-    var bor=localStorage.getItem("tatap_sub_border");
-    if(bor&&SUB_BORDER_MAP[bor])cur.subBorder=bor;
-    var bg=localStorage.getItem("tatap_sub_bg");
-    if(bg&&SUB_BG_MAP[bg])cur.subBg=bg;
-    var pos=localStorage.getItem("tatap_sub_pos");
-    if(pos&&SUB_POS_MAP[pos])cur.subPos=pos;
+    if(sz==="s"||sz==="m"||sz==="l")cur.subSize=sz;
   }catch(e){}
-  applySubStyles();
+  syncSubSize();
   // Toggle translate ID (persist localStorage tat_translate).
   try{
     var tr=localStorage.getItem("tatap_translate");
@@ -2754,122 +2401,6 @@ function init(){
   if(trBtn) trBtn.addEventListener("click",function(){setTranslate(!cur.translate);});
   document.querySelectorAll(".sub-size button").forEach(function(b){
     b.addEventListener("click",function(){setSubSize(b.getAttribute("data-subsize"));});
-  });
-
-  var fsBtn=$("pm-fs-subs-btn");
-  if(fsBtn) fsBtn.addEventListener("click",function(e){e.stopPropagation();toggleFsSubsPanel();});
-  var fsClose=$("pm-fs-subs-close");
-  if(fsClose) fsClose.addEventListener("click",function(e){e.stopPropagation();closeFsSubsPanel();});
-
-  document.querySelectorAll("#pm-fs-size-group button").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();setSubSize(b.getAttribute("data-fs-size"));});
-  });
-  document.querySelectorAll("#pm-fs-color-group button").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();setSubColor(b.getAttribute("data-fs-color"));});
-  });
-  document.querySelectorAll("#pm-fs-border-group button").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();setSubBorder(b.getAttribute("data-fs-border"));});
-  });
-  document.querySelectorAll("#pm-fs-bg-group button").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();setSubBg(b.getAttribute("data-fs-bg"));});
-  });
-  document.querySelectorAll("#pm-fs-pos-group button").forEach(function(b){
-    b.addEventListener("click",function(e){e.stopPropagation();setSubPos(b.getAttribute("data-fs-pos"));});
-  });
-
-  var m05=$("pm-fs-offset-m05");
-  if(m05) m05.addEventListener("click",function(e){e.stopPropagation();setSubOffset(-0.5);});
-  var m01=$("pm-fs-offset-m01");
-  if(m01) m01.addEventListener("click",function(e){e.stopPropagation();setSubOffset(-0.1);});
-  var rst=$("pm-fs-offset-reset");
-  if(rst) rst.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0,true);});
-  var p01=$("pm-fs-offset-p01");
-  if(p01) p01.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0.1);});
-  var p05=$("pm-fs-offset-p05");
-  if(p05) p05.addEventListener("click",function(e){e.stopPropagation();setSubOffset(0.5);});
-
-  var fsSel=$("pm-fs-subs-select");
-  if(fsSel){
-    fsSel.addEventListener("click",function(e){e.stopPropagation();});
-    fsSel.addEventListener("change",function(e){
-      e.stopPropagation();
-      var origSel=$("pm-subs");
-      if(origSel){
-        origSel.value=fsSel.value;
-        if(origSel.onchange)origSel.onchange();
-      }
-      updateFsSubsBadge();
-    });
-  }
-
-  var fsPanel=$("pm-fs-subs-panel");
-  if(fsPanel) fsPanel.addEventListener("click",function(e){e.stopPropagation();});
-
-  // Quick Settings (Titik 3) listeners
-  var qsBtn=$("pm-quick-settings-btn");
-  if(qsBtn) qsBtn.addEventListener("click",function(e){e.stopPropagation();toggleQuickSettingsMenu();});
-  var qsClose=$("pm-qs-close");
-  if(qsClose) qsClose.addEventListener("click",function(e){e.stopPropagation();closeQuickSettingsMenu();});
-  var qsItemSubs=$("pm-qs-item-subs");
-  if(qsItemSubs) qsItemSubs.addEventListener("click",function(e){e.stopPropagation();toggleFsSubsPanel();});
-
-  var qsItemPip=$("pm-qs-item-pip");
-  if(qsItemPip){
-    qsItemPip.addEventListener("click",function(e){
-      e.stopPropagation();
-      var v=$("vid");
-      if(!v) return;
-      if(document.pictureInPictureElement){
-        try{document.exitPictureInPicture();}catch(_){}
-      }else if(v.requestPictureInPicture){
-        try{v.requestPictureInPicture();}catch(_){}
-      }
-      closeQuickSettingsMenu();
-    });
-  }
-
-  var qsItemFs=$("pm-qs-item-fs");
-  if(qsItemFs){
-    qsItemFs.addEventListener("click",function(e){
-      e.stopPropagation();
-      toggleFullscreen();
-      closeQuickSettingsMenu();
-    });
-  }
-
-  document.querySelectorAll("#pm-qs-speed-chips button").forEach(function(b){
-    b.addEventListener("click",function(e){
-      e.stopPropagation();
-      var sp=parseFloat(b.getAttribute("data-speed"));
-      if(!isNaN(sp)){
-        var v=$("vid");
-        if(v) try{ v.playbackRate = sp; currentPlaybackSpeed = sp; }catch(_){}
-        var spSel=$("pm-speed-select");
-        if(spSel) spSel.value = String(sp);
-        syncQuickSettingsState();
-      }
-    });
-  });
-
-  var qsMenu=$("pm-quick-settings-menu");
-  if(qsMenu) qsMenu.addEventListener("click",function(e){e.stopPropagation();});
-
-  document.addEventListener("click",function(e){
-    var m=$("pm-quick-settings-menu");
-    var b=$("pm-quick-settings-btn");
-    if(m && !m.classList.contains("hidden")){
-      if(!m.contains(e.target) && (!b || !b.contains(e.target))){
-        closeQuickSettingsMenu();
-      }
-    }
-    var p=$("pm-fs-subs-panel");
-    var fb=$("pm-fs-subs-btn");
-    var sb=$("pm-qs-item-subs");
-    if(p && !p.classList.contains("hidden")){
-      if(!p.contains(e.target) && (!fb || !fb.contains(e.target)) && (!sb || !sb.contains(e.target))){
-        closeFsSubsPanel();
-      }
-    }
   });
   var v=$("vid");
   if(v){
@@ -2903,10 +2434,10 @@ function init(){
         try{ v.playbackRate = currentPlaybackSpeed; }catch(e){}
       }
     });
-    v.addEventListener("fullscreenchange",onFullscreenChange);
-    v.addEventListener("webkitfullscreenchange",onFullscreenChange);
-    v.addEventListener("webkitbeginfullscreen",onFullscreenChange);
-    v.addEventListener("webkitendfullscreen",onFullscreenChange);
+    v.addEventListener("fullscreenchange",syncFullscreenSubtitles);
+    v.addEventListener("webkitfullscreenchange",syncFullscreenSubtitles);
+    v.addEventListener("webkitbeginfullscreen",syncFullscreenSubtitles);
+    v.addEventListener("webkitendfullscreen",syncFullscreenSubtitles);
     v.addEventListener("dblclick",function(e){
       e.preventDefault();
       toggleFullscreen();
@@ -2942,10 +2473,10 @@ function init(){
       if(v.msRequestFullscreen)v.msRequestFullscreen=fsHandler;
     }
   }
-  document.addEventListener("fullscreenchange",onFullscreenChange);
-  document.addEventListener("webkitfullscreenchange",onFullscreenChange);
-  document.addEventListener("mozfullscreenchange",onFullscreenChange);
-  document.addEventListener("MSFullscreenChange",onFullscreenChange);
+  document.addEventListener("fullscreenchange",syncFullscreenSubtitles);
+  document.addEventListener("webkitfullscreenchange",syncFullscreenSubtitles);
+  document.addEventListener("mozfullscreenchange",syncFullscreenSubtitles);
+  document.addEventListener("MSFullscreenChange",syncFullscreenSubtitles);
   var pmFs=$("pm-fs");
   if(pmFs)pmFs.addEventListener("click",toggleFullscreen);
   var skipBtn=$("pm-skip-btn");

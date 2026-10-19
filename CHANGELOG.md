@@ -63,22 +63,7 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Cache Backend & Paritas Chaquopy:** Menambahkan cache server lokal 5 menit pada endpoint `/api/update/check` dengan bypass `force=true` guna melindungi dari rate-limiting API GitHub, serta menyelaraskan field `notes` dan `body` secara identik antara `backend/main.py` dan Chaquopy Android.
 10. **Test Suite In-App Update (`tests/test_in_app_update.py`):**
    - Menambahkan 7 pengujian otomatis baru yang memvalidasi kontrak endpoint `/api/update/check`, integritas FileProvider dan permission Android, validasi layout dialog, struktur kelas `AppUpdateManager.java`, dan ketiadaan auto-check saat startup aplikasi.
-11. **Tombol CC Tersemat & Panel HUD Pengaturan Subtitle Fullscreen Desktop (Web Desktop, AppImage & Windows Portable):**
-   - **Embedded In-Player CC Button (`#pm-fs-subs-btn`):** Tombol Subtitle / Closed Caption disematkan langsung di dalam container stage pemutar (`.ambient-stage`) pada pojok kanan atas dengan badge bahasa aktif (`#pm-fs-subs-badge`, misal `ID`, `EN`, `OFF`). Tombol ini otomatis muncul bersama kontrol pemutar dan tersembunyi saat mode idle (kursor tidak bergerak).
-   - **HUD Panel Subtitle Styler Lengkap (`#pm-fs-subs-panel`):** Panel kontrol semi-transparan dengan gaya cyber obsidian yang dapat diakses langsung tanpa keluar dari mode layar penuh (*fullscreen*).
-   - **Fitur Kustomisasi Subtitle Menyeluruh:**
-     - **Trek Subtitle (`#pm-fs-subs-select`):** Mengganti trek subtitle aktif (Indonesian GTX+, AI Fansub, English, Custom, atau Matikan) secara instan.
-     - **Sinkronisasi / Delay Real-Time (`#pm-fs-offset-*`):** Tombol stepper mikro `-0.5s`, `-0.1s`, `0.0s`, `+0.1s`, `+0.5s` serta shortcut keyboard `Z` (mundurkan 0.25s) dan `X` (majukan 0.25s) dengan render instan tanpa jeda.
-     - **Ukuran Teks (Font Size):** Opsi `S (Kecil)`, `M (Sedang)`, `L (Besar)`, dan `XL (Ekstra)`.
-     - **Warna Font (Font Color):** Palet swatch interaktif `Putih (#FFFFFF)`, `Kuning Anime (#FACC15)`, `Cyan Neon (#38BDF8)`, dan `Hijau (#4ADE80)`.
-     - **Border Font (Outline / Text Shadow):** Opsi `Tebal 2px (Standard Fansub)`, `Tipis 1px`, `Glow Pendar Lembut`, dan `Tanpa Border (Polos)`.
-     - **Background Subtitle (Latar Belakang Kotak):** Opsi `Transparan (0%)`, `Tipis (50%)`, `Gelap (75%)`, dan `Pekat (100%)`.
-     - **Posisi Vertikal:** Opsi `Sangat Bawah (3%)`, `Normal (7%)`, dan `Tinggi (12%)`.
-   - **Isolasi Event & Pencegahan Gangguan Pemutaran:** Semua event klik pada kontrol panel menggunakan `e.stopPropagation()` sehingga interaksi pengguna tidak pernah memicu jeda/putar video (*play/pause*) atau toggle fullscreen yang tidak diinginkan. Sistem idle auto-hide (`armAutohide`) secara cerdas dinonaktifkan selama panel HUD terbuka agar kontrol tidak mendadak hilang saat pengguna sedang mengatur styling.
-   - **Pintasan Keyboard Responsif:** Menekan tombol `C` akan membuka/menutup panel subtitle, `Z` / `X` untuk mengatur offset sync secara on-the-fly, dan `Esc` akan menutup panel HUD terlebih dahulu sebelum keluar dari mode fullscreen. Preferensi styling disimpan secara persisten di `localStorage` (`tatap_sub_*`).
-12. **Test Suite Komprehensif Fullscreen Subtitles (`tests/test_desktop_fullscreen_subs.py`):**
-   - Menambahkan pengujian otomatis baru yang memvalidasi struktur HTML DOM, variabel CSS custom variables, aturan styling HUD, sintaksis JS, dan logika kontrol styler.
-13. **Optimasi Penggunaan CPU Tinggi pada Platform Linux AppImage & Desktop:**
+11. **Optimasi Penggunaan CPU Tinggi pada Platform Linux AppImage & Desktop:**
    - **Aktivasi Akselerasi Hardware GPU & VA-API Video Decoding (`linux/AppRun`):** Menyematkan flag Chromium/Chrome resmi (`--enable-features=VaapiVideoDecoder,VaapiVideoDecodeLinuxGL,CanvasOopRasterization`, `--enable-gpu-rasterization`, `--enable-zero-copy`, `--ignore-gpu-blocklist`) sehingga proses decoding stream video HLS 1080p/720p dialihkan sepenuhnya ke GPU (Mesa VAAPI / NVDEC), menurunkan konsumsi CPU dari 80%–150%+ menjadi hanya ~3%–8%.
    - **Native Wayland Integration (`--ozone-platform-hint=auto`):** Menghindari overhead compositing Xwayland pada distro Linux modern (Ubuntu 22.04/24.04, Fedora, Arch).
    - **Reduksi Background Bloat & Telemetri:** Menonaktifkan service background Chromium yang menyerap CPU (`--disable-background-networking`, `--disable-component-update`, `--disable-sync`, `--disable-default-apps`, `--no-default-browser-check`, `--no-first-run`, `--disable-breakpad`, `--disable-features=Translate,OptimizationHints,MediaRouter`, `--audio-buffer-size=2048`).
@@ -87,30 +72,9 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
      - Menambahkan guard `document.hidden` dan `isVideoFullscreen()` pada loop `startAmbient()` agar canvas berhenti memproses draw/readback saat jendela diminimalkan atau saat video memenuhi layar.
      - Menyelaraskan frekuensi sampling dari 500ms menjadi 1200ms (sesuai durasi `transition: background 1.2s ease`), memangkas 58% frekuensi operasi `getImageData()` GPU-to-CPU readback.
      - Menambahkan `contain: strict;` pada `#ambient` dan `#ambient-fallback` untuk isolasi komposit GPU layer.
-14. **Test Suite Optimasi Linux AppImage (`tests/test_linux_appimage_optimization.py`):**
+12. **Test Suite Optimasi Linux AppImage (`tests/test_linux_appimage_optimization.py`):**
    - Menambahkan pengujian otomatis baru yang memvalidasi keberadaan seluruh flag akselerasi hardware dan reduksi bloat di `AppRun`, auto-detection uvloop/httptools dan `access_log=False` di backend, serta throttling guards di frontend.
-15. **Pengalihan Subtitle Fullscreen Desktop dari Windows Closed Captions ke CC Styler Tatap:**
-   - **Pencegahan Pembajakan Subtitle oleh Windows Accessibility Captions:** Mengunci `track.mode = "hidden"` pada seluruh browser desktop dan WebView2 Windows (`isDesktopEnv()`), mengeliminasi pemicuan otomatis *Windows Accessibility Closed Captions* yang sebelumnya menimpa dan memaksakan gaya teks kaku sistem operasi.
-   - **Promosi Otomatis ke Fullscreen Container (`onFullscreenChange`):** Mengalihkan secara instan pemicuan fullscreen dari elemen `<video>` langsung ke container `.ambient-stage` ketika pengguna mengetuk tombol fullscreen pada bar kontrol browser. Dengan container stage berada di Top Layer, seluruh elemen overlay kustom Tatap (`#pm-subs-overlay`), tombol CC tersemat (`#pm-fs-subs-btn`), dan panel Subtitle Styler HUD (`#pm-fs-subs-panel`) tetap aktif, terlihat, dan interaktif.
-   - **Penyembunyian Tombol CC Native Browser (`style.css`):** Menyembunyikan tombol CC bawaan `<video>` via CSS pseudo-element WebKit media controls (`::-webkit-media-controls-toggle-closed-captions-button`) agar pengguna tidak sengaja mengaktifkan CC bawaan browser/Windows.
-   - **Penerapan 100% Styling Styler Tatap:** Seluruh opsi kustomisasi subtitle Tatap (warna font Putih, Kuning, Cyan, Hijau; border Tebal, Tipis, Glow, Polos; background Transparan, Tipis, Gelap, Pekat; ukuran font S/M/L/XL; posisi vertikal; serta sinkronisasi delay real-time Z/X) kini bekerja 100% efektif pada mode fullscreen di Windows Portable (`Tatap.exe`), Linux AppImage, dan Web Desktop.
-   - **Hardening Deklarasi `video::cue`:** Menyelaraskan properti `video::cue` dengan custom variables Tatap (`var(--sub-color)`, `var(--sub-bg)`, `var(--sub-border)`) dengan tag `!important` sebagai proteksi ganda.
-16. **Test Suite Pengalihan Subtitle Windows (`tests/test_desktop_sub_windows_override.py`):**
-   - Menambahkan pengujian otomatis baru yang memverifikasi penyembunyian kontrol CC native WebKit, logika promosi fullscreen `onFullscreenChange`, dan penguncian mode track ke hidden di desktop.
-17. **Integrasi Menu Titik 3 (⋮) & Pemindahan Dock CC ke Pojok Kanan Bawah Pemutar Video:**
-   - **Pemindahan Dock Kontrol ke Pojok Kanan Bawah (`#pm-controls-dock`):** Menyelaraskan tata letak kontrol pemutar dengan kebiasaan visual pengguna (YouTube, Netflix, Bilibili) dengan menempatkan tombol CC (`#pm-fs-subs-btn`) dan tombol Titik 3 (`#pm-quick-settings-btn`) di pojok kanan bawah (`bottom: 58px; right: 20px;` di windowed mode dan `bottom: 76px; right: 28px;` di mode fullscreen), tepat di atas timeline/scrubber bar. Tombol tidak lagi tersembunyi di pojok kanan atas.
-   - **Menu Popup Quick Settings Titik 3 (`#pm-quick-settings-menu`):** Menyediakan menu popup elegan dengan desain cyber glassmorphism yang dapat diakses langsung dari tombol titik 3 (`⋮`) di kanan bawah:
-     - 💬 *Subtitle & CC Styler*: Membuka panel kustomisasi subtitle lengkap (warna font, border/outline, background opacity, ukuran teks, dan sync offset).
-     - ⚡ *Kecepatan Putar (Playback Speed)*: Mengatur kecepatan video secara instan (0.5x, 0.75x, 1.0x, 1.25x, 1.5x, 2.0x) langsung di mode fullscreen tanpa perlu keluar dari layar penuh.
-     - 📺 *Kualitas Resolusi Stream*: Memilih tingkat kualitas stream HLS (1080p, 720p, 480p, Auto) langsung dari popup fullscreen.
-     - 🖼️ *Picture-in-Picture (PiP)*: Mengaktifkan mode Picture-in-Picture langsung dari pemutar.
-     - ⛶ *Layar Penuh (Fullscreen)*: Mengontrol layar penuh container `.ambient-stage` secara aman.
-   - **Eliminasi Total Sisipan Elemen `<track>` di Desktop (`syncNativeTextTrack`):** Menghilangkan penyisipan elemen `<track>` ke DOM `<video>` pada seluruh platform desktop. Dengan tidak adanya `<track>`, peramban Chromium/Edge dan WebView2 Windows tidak lagi menampilkan opsi Subtitle bawaan browser yang memicu pembajakan oleh Windows Closed Captions. Subtitle 100% diproses dan dirender oleh overlay kustom Tatap (`#pm-subs-overlay`).
-   - **Pencegahan Bypass Fullscreen Native Browser via `controlsList`:** Menetapkan atribut `controlsList="nofullscreen nodownload noremoteplayback"` pada `<video id="vid">` di desktop untuk menonaktifkan tombol fullscreen native browser yang membypass `.ambient-stage`, memastikan seluruh kontrol kustom dan overlay selalu tampil di Top Layer.
-   - **Auto-Hide & Keyboard Interaction:** Dock kontrol kanan bawah otomatis memudar saat idle dan muncul seketika saat pointer digerakkan, serta memprioritaskan penutupan menu Quick Settings dan panel Styler saat tombol `Esc` ditekan.
-18. **Test Suite Menu Titik 3 & Dock Kanan Bawah (`tests/test_bottom_right_settings_and_sub_override.py`):**
-   - Menambahkan pengujian otomatis baru yang memverifikasi keberadaan simbol SVG `#icon-more-vert`, struktur DOM dock `#pm-controls-dock`, menu `#pm-quick-settings-menu`, tata letak CSS kanan-bawah, pencegahan `<track>` di desktop, dan implementasi metode kontrol Quick Settings.
-19. **Gesture Tahan Layar (Hold) untuk Percepat Putar 2.0x (Forward) & Mundur Cepat (Rewind) Terisolasi di Android Mobile:**
+13. **Gesture Tahan Layar (Hold) untuk Percepat Putar 2.0x (Forward) & Mundur Cepat (Rewind) Terisolasi di Android Mobile:**
    - Mengimplementasikan gesture sentuh tahan lama (*press-and-hold*) yang intuitif pada pemutar video Android Mobile (`PlayerActivity.java`):
      - **Tahan Layar Sisi Kanan ($\ge 50\%$ lebar layar):** Mengaktifkan mode *Fast-Forward 2.0x* (`setPlaybackParameters(new PlaybackParameters(2.0f))`) seketika dengan feedback getaran haptik (`VibrationEffect.EFFECT_CLICK`) dan menampilkan HUD status cyber neon di tengah atas layar: `⚡ 2X Cepat >>`.
      - **Tahan Layar Sisi Kiri ($< 50\%$ lebar layar):** Mengaktifkan mode *Fast-Rewind* dengan melompat mundur bertahap secara halus (`seekTo(newPosition)`) sebesar 2 detik setiap 180ms, disertai feedback getaran haptik dan HUD akumulatif real-time: `⏪ Rewind (-Xs) <<`.
@@ -119,8 +83,11 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
      - Terintegrasi aman dengan `GestureDetector.SimpleOnGestureListener.onLongPress`: Hanya aktif jika tidak ada gesture scroll aktif (`activeGestureZone == 0`).
      - Diisolasi secara ketat hanya untuk perangkat Mobile melalui `!TvFocusHelper.isTv(this)`. Pengguna Android TV dengan remote D-Pad tidak terpengaruh sama sekali.
      - Perlindungan siklus hidup aktivitas (`onPause` & `onDestroy`): Memastikan loop runnable rewind dibatalkan dan kecepatan dikembalikan normal secara bersih jika aktivitas berpindah atau layar terkunci.
-20. **Test Suite Komprehensif Hold Speed & Rewind Android (`tests/test_hold_speed_and_rewind_android.py`):**
+14. **Test Suite Komprehensif Hold Speed & Rewind Android (`tests/test_hold_speed_and_rewind_android.py`):**
    - Menambahkan pengujian otomatis baru yang memverifikasi deklarasi HUD `#hud_hold_speed` di `activity_player.xml`, binding view, implementasi `onLongPress` dengan pemisahan zona kanan (2.0x forward) dan kiri (rewind), loop runnable rewind 180ms/-2000ms, haptics, penanganan `ACTION_UP`/`ACTION_CANCEL`, cleanup `onPause`, dan isolasi TV.
+15. **Restorasi Format Kontrol CC & Subtitle Bawaan Stabil:**
+   - Membatalkan perubahan eksperimental panel CC Styler HUD fullscreen, tombol dock mengambang, serta menu titik 3 pada pemutar desktop.
+   - Mengembalikan arsitektur kontrol subtitle pemutar desktop secara utuh ke implementasi stabil bawaan Tatap (`#pm-subs-wrap`, dropdown `#pm-subs`, sizing S/M/L, dan tombol terjemahan cepat ID) demi menjaga stabilitas fungsional dan kenyamanan pemutaran.
 
 ## [2.9.1] - 2026-10-18
 
