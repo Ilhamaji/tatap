@@ -2136,9 +2136,11 @@ function startAmbient(){
   var tctx=null;
   try{tctx=tmp.getContext("2d",{willReadFrequently:true});}catch(e){tctx=tmp.getContext("2d");}
   setInterval(function(){
+    if(document.hidden)return;
     if(document.body.classList.contains("no-ambient"))return;
     if($("player-modal").classList.contains("hidden"))return;
     if(v.paused||v.ended||v.readyState<2||v.videoWidth===0)return;
+    if(isVideoFullscreen())return;
     try{
       tctx.drawImage(v,0,0,48,27);
       var px;
@@ -2159,7 +2161,7 @@ function startAmbient(){
       ctx.fillRect(0,0,96,54);
       setFallback(r,g,b);
     }catch(e){}
-  },500);
+  },1200);
 }
 function onKeyPlayer(e){
   var t=(e.target.tagName||"");

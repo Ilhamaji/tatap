@@ -2278,4 +2278,26 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=APP_HOST, port=APP_PORT, loop="asyncio", http="h11")
+    # Otomatis gunakan uvloop (libuv C-extension) dan httptools jika tersedia di Linux / desktop,
+    # fallback aman ke asyncio dan h11 jika pustaka C tidak tersedia.
+    loop_type = "asyncio"
+    http_type = "h11"
+    try:
+        import uvloop
+        loop_type = "uvloop"
+    except Exception:
+        pass
+    try:
+        import httptools
+        http_type = "httptools"
+    except Exception:
+        pass
+    uvicorn.run(
+        app,
+        host=APP_HOST,
+        port=APP_PORT,
+        loop=loop_type,
+        http=http_type,
+        access_log=False,
+        log_level="warning"
+    )
