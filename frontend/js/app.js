@@ -137,7 +137,18 @@ function renderDetailMeta(meta){
   var statEl = $("tm-status");
   if(statEl){
     var st = (meta.status || meta.badge || "").toLowerCase();
-    if(st.indexOf("finish") !== -1 || st.indexOf("tamat") !== -1 || st.indexOf("completed") !== -1){
+    var isFin = st.indexOf("finish") !== -1 || st.indexOf("tamat") !== -1 || st.indexOf("completed") !== -1 || Boolean(meta.is_finished);
+    if(!isFin && meta.eps_counter){
+      var parts = String(meta.eps_counter).split("/");
+      if(parts.length === 2 && parts[1] !== "?"){
+        var cCur = parseInt(parts[0], 10);
+        var cTot = parseInt(parts[1], 10);
+        if(!isNaN(cCur) && !isNaN(cTot) && cTot > 0 && cCur >= cTot){
+          isFin = true;
+        }
+      }
+    }
+    if(isFin){
       statEl.textContent = "TAMAT";
       statEl.className = "badge-status finished";
       hasAny = true;
@@ -181,10 +192,19 @@ function renderDetailMeta(meta){
     }
     if(validGenres.length > 0){
       validGenres.forEach(function(g){
-        var span = document.createElement("span");
-        span.className = "genre-pill";
-        span.textContent = g;
-        genEl.appendChild(span);
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "genre-pill interactive";
+        btn.textContent = g;
+        btn.title = "Filter anime berdasarkan genre: " + g;
+        btn.onclick = function(e){
+          e.stopPropagation();
+          closeTitle();
+          if(window.Tui && window.Tui.applyGenreFilter){
+            window.Tui.applyGenreFilter(g);
+          }
+        };
+        genEl.appendChild(btn);
       });
       genEl.classList.remove("hidden");
       hasAny = true;

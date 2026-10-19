@@ -219,6 +219,7 @@ def _parse_browse_cards(html: str):
             cnt_str = f"{rel_cnt}/?"
         else:
             cnt_str = ""
+        is_fin = (tot_cnt > 0 and rel_cnt >= tot_cnt)
         out.append({
             "id": slug, "title": title,
             "poster": poster,
@@ -231,6 +232,9 @@ def _parse_browse_cards(html: str):
             "type": typ.group(1) if typ else "",
             "duration": _clean(dur.group(1)) if dur else "",
             "synopsis": _clean(re.sub(r"<[^>]+>", "", desc.group(1)))[:220] if desc else "",
+            "is_finished": is_fin,
+            "status": "finished" if is_fin else "releasing",
+            "badge": "TAMAT" if is_fin else ("ONGOING" if rel_cnt > 0 else ""),
         })
     return out
 

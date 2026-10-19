@@ -100,6 +100,19 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         boolean isFinished = item.optBoolean("is_finished", false);
         boolean isLongRunning = item.optBoolean("is_long_running", false);
 
+        if (!isFinished && !epsCounter.isEmpty()) {
+            String[] parts = epsCounter.split("/");
+            if (parts.length == 2 && !parts[1].equals("?")) {
+                try {
+                    int cur = Integer.parseInt(parts[0].trim());
+                    int tot = Integer.parseInt(parts[1].trim());
+                    if (tot > 0 && cur >= tot) {
+                        isFinished = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+
         holder.tvTitle.setText(title);
 
         // Format Format/Type Badge (TV, Movie, ONA)
@@ -191,7 +204,8 @@ public class AnimeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> 
         String synopsis = item.optString("synopsis", "");
         String studio = item.optString("studio", "");
         String season = item.optString("season", "");
-        String status = item.optString("status", isFinished ? "finished" : (badge.equalsIgnoreCase("ONGOING") ? "releasing" : ""));
+        String rawStatus = item.optString("status", isFinished ? "finished" : (badge.equalsIgnoreCase("ONGOING") ? "releasing" : ""));
+        final String status = (isFinished && (rawStatus.isEmpty() || rawStatus.equalsIgnoreCase("releasing"))) ? "finished" : rawStatus;
         String source = item.optString("source", "");
         org.json.JSONArray genresArr = item.optJSONArray("genres");
         String genresStr = genresArr != null ? genresArr.toString() : "";

@@ -346,7 +346,9 @@ main{width:100%;margin:0;padding:var(--pad-y) var(--pad-x) calc(var(--status-h) 
 .detail-info-line{font-size:11px;color:#94a3b8}
 .detail-genres-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
 .detail-genres-row.hidden{display:none}
-.genre-pill{background:#151926;border:1px solid #232b3e;color:#cbd5e1;border-radius:4px;padding:3px 8px;font-size:11px;white-space:nowrap}
+.genre-pill{background:#151926;border:1px solid #232b3e;color:#cbd5e1;border-radius:4px;padding:3px 8px;font-size:11px;white-space:nowrap;font-family:inherit}
+.genre-pill.interactive{cursor:pointer;transition:all .15s ease}
+.genre-pill.interactive:hover,.genre-pill.interactive:focus-visible{background:#1e293b;border-color:#38bdf8;color:#38bdf8;outline:none}
 .tm-synopsis-box{background:#0c0e14;border:1px solid #1c202c;border-radius:6px;padding:10px 12px;margin-top:4px;display:flex;flex-direction:column;gap:6px}
 .tm-synopsis-box.hidden{display:none}
 .tm-synopsis-header{display:flex;align-items:center;justify-content:space-between}

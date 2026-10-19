@@ -331,9 +331,11 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                     long_running_items.append(item_copy)
                 else:
                     item_copy = dict(item)
-                    item_copy["badge"] = "ONGOING"
+                    is_fin = bool(item.get("is_finished")) or (tot_cnt > 0 and rel_cnt >= tot_cnt)
+                    item_copy["badge"] = "TAMAT" if is_fin else "ONGOING"
                     item_copy["is_long_running"] = False
-                    item_copy["is_finished"] = False
+                    item_copy["is_finished"] = is_fin
+                    item_copy["status"] = "finished" if is_fin else "releasing"
                     item_copy["lane"] = "seasonal"
                     item_copy["eps_released"] = rel_cnt
                     item_copy["eps_total"] = tot_cnt
@@ -439,8 +441,9 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
             cover = (m.get("coverImage") or {})
             eps_rel, eps_tot = al.compute_episode_counts(m)
             status_str = (m.get("status") or "").lower()
-            is_finished = status_str in ("finished", "completed")
+            is_finished = status_str in ("finished", "completed") or (eps_tot > 0 and eps_rel >= eps_tot)
             if is_finished:
+                status_str = "finished"
                 eps_cnt = f"{eps_tot}/{eps_tot}" if eps_tot > 0 else "?/?"
                 badge = "TAMAT"
             else:

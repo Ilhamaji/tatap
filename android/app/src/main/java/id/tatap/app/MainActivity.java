@@ -279,6 +279,24 @@ public class MainActivity extends Activity {
 
         // 2. Tunggu backend siap lalu muat konten pertama
         waitForServerAndLoadCatalog(0);
+
+        handleIncomingIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIncomingIntent(intent);
+    }
+
+    private void handleIncomingIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("genre")) {
+            String targetGenre = intent.getStringExtra("genre");
+            if (targetGenre != null && !targetGenre.trim().isEmpty()) {
+                setGenreFilter(targetGenre.trim());
+            }
+        }
     }
 
     private void applyTvTopBarCompression() {

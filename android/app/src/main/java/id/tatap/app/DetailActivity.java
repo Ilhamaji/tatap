@@ -332,7 +332,11 @@ public class DetailActivity extends Activity {
                         String apiGenresStr = apiGenres != null ? apiGenres.toString() : "";
                         runOnUiThread(() -> {
                             if (score <= 0 && apiScore > 0) score = apiScore;
-                            if ((status == null || status.isEmpty()) && !apiStatus.isEmpty()) status = apiStatus;
+                            String sLowerApi = apiStatus.toLowerCase();
+                            boolean apiFinished = sLowerApi.contains("finish") || sLowerApi.contains("tamat") || sLowerApi.contains("completed");
+                            if (apiFinished || (status == null || status.isEmpty())) {
+                                if (!apiStatus.isEmpty()) status = apiStatus;
+                            }
                             if ((studio == null || studio.isEmpty()) && !apiStudio.isEmpty()) studio = apiStudio;
                             if ((season == null || season.isEmpty()) && !apiSeason.isEmpty()) season = apiSeason;
                             if ((source == null || source.isEmpty()) && !apiSource.isEmpty()) source = apiSource;
@@ -349,16 +353,67 @@ public class DetailActivity extends Activity {
                             synopsis = apiSynopsis;
                             setupSynopsis(apiSynopsis);
                         }
+
+                        boolean isFinishedAnime = false;
+                        if (status != null && !status.isEmpty()) {
+                            String sLower = status.toLowerCase();
+                            if (sLower.contains("finish") || sLower.contains("tamat") || sLower.contains("completed")) {
+                                isFinishedAnime = true;
+                            }
+                        }
+                        if (epsCounter != null && !epsCounter.isEmpty()) {
+                            String[] parts = epsCounter.split("/");
+                            if (parts.length == 2 && !parts[1].equals("?")) {
+                                try {
+                                    int cur = Integer.parseInt(parts[0].trim());
+                                    int tot = Integer.parseInt(parts[1].trim());
+                                    if (tot > 0 && cur >= tot) {
+                                        isFinishedAnime = true;
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                        if (!isFinishedAnime && !list.isEmpty() && epsCounter != null && !epsCounter.isEmpty()) {
+                            String[] parts = epsCounter.split("/");
+                            if (parts.length == 2 && !parts[1].equals("?")) {
+                                try {
+                                    int tot = Integer.parseInt(parts[1].trim());
+                                    if (tot > 0 && list.size() >= tot) {
+                                        isFinishedAnime = true;
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                        }
+
+                        if (isFinishedAnime) {
+                            if (status == null || !status.toLowerCase().contains("finish")) {
+                                status = "finished";
+                                setupMetadata(score, status, studio, season, source, genresStr);
+                            }
+                        }
+
                         String countStr;
                         if (epsCounter != null && !epsCounter.isEmpty()) {
                             String[] parts = epsCounter.split("/");
                             if (parts.length == 2 && !parts[1].equals("?")) {
-                                countStr = list.size() + "/" + parts[1] + " Episode Rilis (Sedang Tayang)";
+                                if (isFinishedAnime) {
+                                    countStr = list.size() + "/" + parts[1] + " Episode (Tamat)";
+                                } else {
+                                    countStr = list.size() + "/" + parts[1] + " Episode Rilis (Sedang Tayang)";
+                                }
                             } else {
-                                countStr = list.size() + " Episode Rilis (Sedang Tayang)";
+                                if (isFinishedAnime) {
+                                    countStr = list.size() + " Episode (Tamat)";
+                                } else {
+                                    countStr = list.size() + " Episode Rilis (Sedang Tayang)";
+                                }
                             }
                         } else {
-                            countStr = list.size() + " Episode Tersedia";
+                            if (isFinishedAnime) {
+                                countStr = list.size() + " Episode (Tamat)";
+                            } else {
+                                countStr = list.size() + " Episode Tersedia";
+                            }
                         }
                         tvSlug.setText(countStr);
                         setupEpisodeRanges(list);
@@ -467,13 +522,22 @@ public class DetailActivity extends Activity {
                             int padH = (int) (8 * getResources().getDisplayMetrics().density);
                             int padV = (int) (4 * getResources().getDisplayMetrics().density);
                             chip.setPadding(padH, padV, padH, padV);
-                            chip.setFocusable(false);
+                            chip.setFocusable(true);
+                            chip.setClickable(true);
+                            TvFocusHelper.attachFocusScale(chip, 1.08f, 4f);
                             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                                     LinearLayout.LayoutParams.WRAP_CONTENT,
                                     LinearLayout.LayoutParams.WRAP_CONTENT);
                             lp.setMarginEnd((int) (6 * getResources().getDisplayMetrics().density));
                             chip.setLayoutParams(lp);
-                            chip.setOnClickListener(v -> HapticHelper.performTick(v));
+                            chip.setOnClickListener(v -> {
+                                HapticHelper.performClick(v);
+                                Intent intent = new Intent(DetailActivity.this, MainActivity.class);
+                                intent.putExtra("genre", genreName);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                                startActivity(intent);
+                                finish();
+                            });
                             llGenres.addView(chip);
                         }
                         hsvGenres.setVisibility(View.VISIBLE);

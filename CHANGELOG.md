@@ -43,7 +43,17 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
      - Android Native (`PlayerActivity.java`): Menambahkan opsi `[+] Pilih File Subtitle Lokal (.srt / .vtt)...` via Storage Access Framework dan `[+] Masukkan URL Subtitle Kustom...`.
      - Web Desktop (`app.js` & `index.html`): Menambahkan input file lokal (`FileReader`) dan input prompt URL langsung dari antarmuka player.
 5. **Penambahan Test Suite Subtitle & Fallback:**
-   - Menambahkan test suite baru `tests/test_subtitle_selection.py` dan `tests/test_subtitle_fallback.py` (total 10 pengujian subtitle baru, seluruh 156 test suite Tatap lulus 100%).
+   - Menambahkan test suite baru `tests/test_subtitle_selection.py` dan `tests/test_subtitle_fallback.py` (total 10 pengujian subtitle baru, seluruh test suite Tatap lulus 100%).
+6. **Tombol Genre Tertaut (Linked Genre Buttons) pada Seluruh Platform:**
+   - **Android Native & Android TV (`DetailActivity.java`, `MainActivity.java`, `bg_detail_genre_chip.xml`):** Seluruh chip genre pada halaman detail kini interaktif (`clickable` dan `focusable`). Pengguna mobile dapat langsung mengetuk genre untuk memfilter katalog, sedangkan pengguna Android TV dapat mengarahkan D-Pad remote ke deretan chip genre dengan feedback visual scale 1.08x dan border cyan yang elegan. Saat dipilih, aplikasi membawa `MainActivity` ke depan (`FLAG_ACTIVITY_CLEAR_TOP`) dan memfilter katalog sesuai genre terpilih via `onNewIntent` handler.
+   - **Web Desktop (`app.js`, `term.js`, `style.css`):** Elemen genre pada modal detail anime (`.genre-pill.interactive`) kini dapat diklik untuk menutup modal dan langsung memfilter tampilan katalog sesuai genre melalui fungsi `window.Tui.applyGenreFilter(slug)`.
+7. **Perbaikan Status Tayang Anime Tamat (Eliminasi False Ongoing Status):**
+   - Mengatasi bug di mana anime yang telah selesai tayang (*Finished Airing / Completed*, misal `12/12` atau `28/28`) masih menampilkan teks `(Sedang Tayang)` atau badge `ONGOING`.
+   - **Android UI (`DetailActivity.java` & `AnimeAdapter.java`):** Header jumlah episode kini secara cerdas menampilkan `X/X Episode (Tamat)` jika anime berstatus `finished` / `tamat` / `completed` atau rasio episode telah mencapai target tayang penuh, dan hanya menampilkan `(Sedang Tayang)` jika anime benar-benar masih dalam masa penayangan aktif.
+   - **Backend Scrapers (`backend/api/hianime.py`, `backend/main.py`, dan Chaquopy parity):** Menyematkan status `is_finished`, `status = "finished"`, dan `badge = "TAMAT"` secara otomatis pada seluruh item kartu katalog dan jalur penayangan musiman saat `eps_released >= eps_total`.
+   - **Web Desktop (`app.js`):** Memperbaiki penentuan badge status modal track detail agar mendeteksi rasio penuh episode dan status selesai dengan akurat.
+8. **Test Suite Komprehensif (`tests/test_detail_metadata.py`):**
+   - Menambahkan pengujian otomatis untuk verifikasi status tamat HiAnime browse cards, logika string episode di DetailActivity, intent navigasi genre di MainActivity, dan linked genre button web desktop.
 
 ## [2.9.1] - 2026-10-18
 
