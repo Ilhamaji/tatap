@@ -26,6 +26,40 @@
         app:resize_mode="fit"
         app:surface_type="surface_view" />
 
+    <!-- Press and Hold Speed / Rewind HUD Pill -->
+    <LinearLayout
+        android:id="@+id/hud_hold_speed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bg_dialog_card"
+        android:paddingHorizontal="18dp"
+        android:paddingVertical="9dp"
+        android:elevation="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_hold_speed_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⚡"
+            android:textColor="#38BDF8"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_hold_speed_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="2X Cepat >>"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
     <!-- Gesture HUD OSD (Volume, Brightness, Seek) -->
     <LinearLayout
         android:id="@+id/hud_osd"

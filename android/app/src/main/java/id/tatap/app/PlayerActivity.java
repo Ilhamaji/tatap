@@ -96,6 +96,12 @@ public class PlayerActivity extends Activity {
     private View hudOsd;
     private TextView tvOsdIcon, tvOsdVal, tvRippleLeft, tvRippleRight;
     private ProgressBar pbOsdBar;
+    private View hudHoldSpeed;
+    private TextView tvHoldSpeedIcon, tvHoldSpeedText;
+    private boolean isHoldingSpeed = false;
+    private boolean isHoldingRewind = false;
+    private float holdOriginalSpeed = 1.0f;
+    private int holdRewindAccumMs = 0;
     private TextView tvPlayerTitle, tvSubStatus;
     private ImageButton btnPlayerBack;
     private View layoutTopBar;
@@ -498,6 +504,9 @@ public class PlayerActivity extends Activity {
         pbOsdBar = findViewById(R.id.pb_osd_bar);
         tvRippleLeft = findViewById(R.id.tv_ripple_left);
         tvRippleRight = findViewById(R.id.tv_ripple_right);
+        hudHoldSpeed = findViewById(R.id.hud_hold_speed);
+        tvHoldSpeedIcon = findViewById(R.id.tv_hold_speed_icon);
+        tvHoldSpeedText = findViewById(R.id.tv_hold_speed_text);
 
         layoutTopBar = findViewById(R.id.layout_top_bar);
         boolean isLandscape = TvFocusHelper.isTv(this) || getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
@@ -1179,8 +1188,25 @@ public class PlayerActivity extends Activity {
             }
 
             @Override
+            public void onLongPress(MotionEvent e) {
+                if (TvFocusHelper.isTv(PlayerActivity.this) || isScreenLocked || player == null) return;
+                if (activeGestureZone != 0) return;
+
+                float screenWidth = playerView.getWidth();
+                if (screenWidth <= 0) return;
+                float x = e.getX();
+
+                if (x >= screenWidth * 0.5f) {
+                    startHoldingSpeed();
+                } else {
+                    startHoldingRewind();
+                }
+            }
+
+            @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
                 if (TvFocusHelper.isTv(PlayerActivity.this)) return false;
+                if (isHoldingSpeed || isHoldingRewind) return true;
                 if (e1 == null || e2 == null || playerView == null) return false;
 
                 float viewHeight = playerView.getHeight();
@@ -1241,10 +1267,84 @@ public class PlayerActivity extends Activity {
             } else if (event.getAction() == MotionEvent.ACTION_UP || event.getAction() == MotionEvent.ACTION_CANCEL) {
                 currentVolumeFraction = -1f;
                 activeGestureZone = 0;
+                if (isHoldingSpeed) {
+                    stopHoldingSpeed();
+                }
+                if (isHoldingRewind) {
+                    stopHoldingRewind();
+                }
             }
             boolean handled = gestureDetector.onTouchEvent(event);
-            return handled || activeGestureZone != 0;
+            return handled || activeGestureZone != 0 || isHoldingSpeed || isHoldingRewind;
         });
+    }
+
+    private final Runnable holdRewindRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isHoldingRewind || player == null) return;
+            long curPos = player.getCurrentPosition();
+            long newPos = Math.max(0, curPos - 2000);
+            player.seekTo(newPos);
+            holdRewindAccumMs += 2000;
+
+            if (tvHoldSpeedText != null) {
+                int sec = holdRewindAccumMs / 1000;
+                tvHoldSpeedText.setText("Rewind (-" + sec + "s) <<");
+            }
+            handler.postDelayed(this, 180);
+        }
+    };
+
+    private void startHoldingSpeed() {
+        if (player == null || isHoldingSpeed || isHoldingRewind) return;
+        isHoldingSpeed = true;
+        holdOriginalSpeed = currentPlaybackSpeed;
+        float boostSpeed = holdOriginalSpeed >= 2.0f ? 3.0f : 2.0f;
+        player.setPlaybackParameters(new PlaybackParameters(boostSpeed));
+
+        if (hudHoldSpeed != null) {
+            if (tvHoldSpeedIcon != null) tvHoldSpeedIcon.setText("⚡");
+            if (tvHoldSpeedText != null) tvHoldSpeedText.setText(String.format(java.util.Locale.US, "%.0fX Cepat >>", boostSpeed));
+            hudHoldSpeed.setVisibility(View.VISIBLE);
+        }
+        performHapticClick();
+    }
+
+    private void stopHoldingSpeed() {
+        if (!isHoldingSpeed) return;
+        isHoldingSpeed = false;
+        if (player != null) {
+            player.setPlaybackParameters(new PlaybackParameters(holdOriginalSpeed > 0 ? holdOriginalSpeed : 1.0f));
+        }
+        if (hudHoldSpeed != null) {
+            hudHoldSpeed.setVisibility(View.GONE);
+        }
+        performHapticClick();
+    }
+
+    private void startHoldingRewind() {
+        if (player == null || isHoldingSpeed || isHoldingRewind) return;
+        isHoldingRewind = true;
+        holdRewindAccumMs = 0;
+
+        if (hudHoldSpeed != null) {
+            if (tvHoldSpeedIcon != null) tvHoldSpeedIcon.setText("⏪");
+            if (tvHoldSpeedText != null) tvHoldSpeedText.setText("Rewind (0s) <<");
+            hudHoldSpeed.setVisibility(View.VISIBLE);
+        }
+        performHapticClick();
+        handler.post(holdRewindRunnable);
+    }
+
+    private void stopHoldingRewind() {
+        if (!isHoldingRewind) return;
+        isHoldingRewind = false;
+        handler.removeCallbacks(holdRewindRunnable);
+        if (hudHoldSpeed != null) {
+            hudHoldSpeed.setVisibility(View.GONE);
+        }
+        performHapticClick();
     }
 
     private void lockScreen() {
@@ -3482,6 +3582,8 @@ public class PlayerActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (isHoldingSpeed) stopHoldingSpeed();
+        if (isHoldingRewind) stopHoldingRewind();
         isVideoPlaying = false;
         recordWatchProgress(true);
         if (player != null) player.pause();

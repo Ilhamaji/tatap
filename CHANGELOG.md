@@ -110,6 +110,17 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Auto-Hide & Keyboard Interaction:** Dock kontrol kanan bawah otomatis memudar saat idle dan muncul seketika saat pointer digerakkan, serta memprioritaskan penutupan menu Quick Settings dan panel Styler saat tombol `Esc` ditekan.
 18. **Test Suite Menu Titik 3 & Dock Kanan Bawah (`tests/test_bottom_right_settings_and_sub_override.py`):**
    - Menambahkan pengujian otomatis baru yang memverifikasi keberadaan simbol SVG `#icon-more-vert`, struktur DOM dock `#pm-controls-dock`, menu `#pm-quick-settings-menu`, tata letak CSS kanan-bawah, pencegahan `<track>` di desktop, dan implementasi metode kontrol Quick Settings.
+19. **Gesture Tahan Layar (Hold) untuk Percepat Putar 2.0x (Forward) & Mundur Cepat (Rewind) Terisolasi di Android Mobile:**
+   - Mengimplementasikan gesture sentuh tahan lama (*press-and-hold*) yang intuitif pada pemutar video Android Mobile (`PlayerActivity.java`):
+     - **Tahan Layar Sisi Kanan ($\ge 50\%$ lebar layar):** Mengaktifkan mode *Fast-Forward 2.0x* (`setPlaybackParameters(new PlaybackParameters(2.0f))`) seketika dengan feedback getaran haptik (`VibrationEffect.EFFECT_CLICK`) dan menampilkan HUD status cyber neon di tengah atas layar: `⚡ 2X Cepat >>`.
+     - **Tahan Layar Sisi Kiri ($< 50\%$ lebar layar):** Mengaktifkan mode *Fast-Rewind* dengan melompat mundur bertahap secara halus (`seekTo(newPosition)`) sebesar 2 detik setiap 180ms, disertai feedback getaran haptik dan HUD akumulatif real-time: `⏪ Rewind (-Xs) <<`.
+     - **Lepas Jari (Release / Action Up / Cancel):** Menghentikan mode akselerasi/rewind seketika, mengembalikan kecepatan putar ke kecepatan semula (`holdOriginalSpeed`), dan menyembunyikan HUD tanpa jeda.
+   - **Pencegahan Konflik Gesture & Isolasi TV:**
+     - Terintegrasi aman dengan `GestureDetector.SimpleOnGestureListener.onLongPress`: Hanya aktif jika tidak ada gesture scroll aktif (`activeGestureZone == 0`).
+     - Diisolasi secara ketat hanya untuk perangkat Mobile melalui `!TvFocusHelper.isTv(this)`. Pengguna Android TV dengan remote D-Pad tidak terpengaruh sama sekali.
+     - Perlindungan siklus hidup aktivitas (`onPause` & `onDestroy`): Memastikan loop runnable rewind dibatalkan dan kecepatan dikembalikan normal secara bersih jika aktivitas berpindah atau layar terkunci.
+20. **Test Suite Komprehensif Hold Speed & Rewind Android (`tests/test_hold_speed_and_rewind_android.py`):**
+   - Menambahkan pengujian otomatis baru yang memverifikasi deklarasi HUD `#hud_hold_speed` di `activity_player.xml`, binding view, implementasi `onLongPress` dengan pemisahan zona kanan (2.0x forward) dan kiri (rewind), loop runnable rewind 180ms/-2000ms, haptics, penanganan `ACTION_UP`/`ACTION_CANCEL`, cleanup `onPause`, dan isolasi TV.
 
 ## [2.9.1] - 2026-10-18
 
