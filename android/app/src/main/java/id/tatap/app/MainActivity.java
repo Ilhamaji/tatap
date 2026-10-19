@@ -81,11 +81,17 @@ public class MainActivity extends Activity {
     private static class TabCacheEntry {
         final List<JSONObject> items;
         final int count;
+        final int totalPages;
+        final boolean hasNextPage;
+        final boolean hasPagingInfo;
         final long timestamp;
 
-        TabCacheEntry(List<JSONObject> items, int count) {
+        TabCacheEntry(List<JSONObject> items, int count, int totalPages, boolean hasNextPage, boolean hasPagingInfo) {
             this.items = items;
             this.count = count;
+            this.totalPages = totalPages;
+            this.hasNextPage = hasNextPage;
+            this.hasPagingInfo = hasPagingInfo;
             this.timestamp = System.currentTimeMillis();
         }
 
@@ -136,6 +142,8 @@ public class MainActivity extends Activity {
     private int currentSeasonYear = 0;
     private int currentPage = 1;
     private int totalPages = 1;
+    private boolean hasNextPage = false;
+    private boolean hasPagingInfo = false;
 
     // State Cross Filter Katalog (Urutan + Tahun + Musim + Bulan + Tipe + Status)
     private String filterCatalogSort = "popularity";
@@ -479,6 +487,9 @@ public class MainActivity extends Activity {
                         currentView = "cari";
                         currentSearchQuery = raw;
                         currentPage = 1;
+                        totalPages = 1;
+                        hasNextPage = false;
+                        hasPagingInfo = false;
                         updateTabButtons();
                         updateActiveFilterBar();
                         showCommandOutput("> tatap$ cari \"" + raw + "\"", false);
@@ -966,6 +977,9 @@ public class MainActivity extends Activity {
                     currentView = "cari";
                     currentSearchQuery = args;
                     currentPage = 1;
+                    totalPages = 1;
+                    hasNextPage = false;
+                    hasPagingInfo = false;
                     updateTabButtons();
                     updateActiveFilterBar();
                     showCommandOutput("> tatap$ :cari \"" + args + "\" [Mencari...]", false);
@@ -1906,6 +1920,9 @@ public class MainActivity extends Activity {
     private void switchView(String targetView) {
         currentView = targetView;
         currentPage = 1;
+        totalPages = 1;
+        hasNextPage = false;
+        hasPagingInfo = false;
         updateTabButtons();
         updateActiveFilterBar();
         fetchData();
@@ -2166,7 +2183,13 @@ public class MainActivity extends Activity {
 
     private void fetchData() {
         if (pbLoading != null) pbLoading.setVisibility(View.VISIBLE);
-        tvPageIndicator.setText("Hal " + currentPage);
+        if (tvPageIndicator != null) {
+            if (totalPages > 1) {
+                tvPageIndicator.setText("Hal " + currentPage + " / " + totalPages);
+            } else {
+                tvPageIndicator.setText("Hal " + currentPage);
+            }
+        }
         btnPrevPage.setEnabled(currentPage > 1);
         btnPrevPage.setAlpha(currentPage > 1 ? 1.0f : 0.4f);
 
@@ -2211,8 +2234,8 @@ public class MainActivity extends Activity {
             title = "Anime Favorit";
             endpoint = "/api/bookmarks";
         } else {
-            title = "Hasil Pencarian: " + currentSearchQuery;
-            endpoint = "/api/search?q=" + URLEncoder.encode(currentSearchQuery) + "&limit=24";
+            title = "Hasil Pencarian: " + currentSearchQuery + (currentPage > 1 ? " (Hal " + currentPage + ")" : "");
+            endpoint = "/api/search?q=" + URLEncoder.encode(currentSearchQuery) + "&page=" + currentPage + "&limit=24";
         }
 
         tvSectionTitle.setText(title);
@@ -2227,6 +2250,9 @@ public class MainActivity extends Activity {
         if (canCache && (swipeRefreshLayout == null || !swipeRefreshLayout.isRefreshing())) {
             TabCacheEntry cached = tabDataCache.get(cacheKey);
             if (cached != null && !cached.isExpired()) {
+                totalPages = cached.totalPages;
+                hasNextPage = cached.hasNextPage;
+                hasPagingInfo = cached.hasPagingInfo;
                 renderAnimeData(cached.items, cached.count);
                 return;
             }
@@ -2257,12 +2283,10 @@ public class MainActivity extends Activity {
                 JSONObject res = new JSONObject(sb.toString());
                 if (res.optBoolean("success")) {
                     JSONArray arr = res.optJSONArray("data");
-                    if (arr == null) {
-                        JSONObject data = res.optJSONObject("data");
-                        if (data != null) {
-                            arr = data.optJSONArray("results");
-                            if (arr == null) arr = data.optJSONArray("items");
-                        }
+                    JSONObject dataObj = res.optJSONObject("data");
+                    if (arr == null && dataObj != null) {
+                        arr = dataObj.optJSONArray("results");
+                        if (arr == null) arr = dataObj.optJSONArray("items");
                     }
                     if (arr == null) arr = new JSONArray();
 
@@ -2272,8 +2296,25 @@ public class MainActivity extends Activity {
                     }
 
                     final int count = list.size();
+
+                    int extractedTotalPages = 1;
+                    boolean extractedHasNext = false;
+                    boolean extractedHasPagingInfo = false;
+                    if (dataObj != null) {
+                        if (dataObj.has("total_pages")) {
+                            extractedTotalPages = dataObj.optInt("total_pages", 1);
+                            extractedHasPagingInfo = true;
+                        }
+                        if (dataObj.has("has_next")) {
+                            extractedHasNext = dataObj.optBoolean("has_next", false);
+                            extractedHasPagingInfo = true;
+                        }
+                    }
+                    totalPages = extractedTotalPages;
+                    hasNextPage = extractedHasNext;
+                    hasPagingInfo = extractedHasPagingInfo;
+
                     if ("jadwal".equals(currentView)) {
-                        JSONObject dataObj = res.optJSONObject("data");
                         if (dataObj != null) {
                             String curDay = dataObj.optString("current_day", "");
                             String dayName = dataObj.optString("day_name", "");
@@ -2289,7 +2330,7 @@ public class MainActivity extends Activity {
                     }
 
                     if (canCache) {
-                        tabDataCache.put(cacheKey, new TabCacheEntry(list, count));
+                        tabDataCache.put(cacheKey, new TabCacheEntry(list, count, totalPages, hasNextPage, hasPagingInfo));
                     }
 
                     runOnUiThread(() -> {
@@ -2345,8 +2386,38 @@ public class MainActivity extends Activity {
         if (rvGrid != null) rvGrid.setAlpha(1.0f);
         tvItemCount.setText(count + " judul");
         adapter.setData(list);
-        btnNextPage.setEnabled(count >= 10);
-        btnNextPage.setAlpha(count >= 10 ? 1.0f : 0.4f);
+        boolean canNext;
+        if (hasPagingInfo) {
+            canNext = hasNextPage || (totalPages > currentPage);
+        } else {
+            canNext = count >= 20;
+        }
+        if (count == 0) {
+            canNext = false;
+        }
+
+        if (btnNextPage != null) {
+            if (btnNextPage.hasFocus() && !canNext) {
+                if (btnPrevPage != null && currentPage > 1) {
+                    btnPrevPage.requestFocus();
+                } else if (rvGrid != null) {
+                    rvGrid.requestFocus();
+                }
+            }
+            btnNextPage.setEnabled(canNext);
+            btnNextPage.setAlpha(canNext ? 1.0f : 0.4f);
+        }
+        if (btnPrevPage != null) {
+            btnPrevPage.setEnabled(currentPage > 1);
+            btnPrevPage.setAlpha(currentPage > 1 ? 1.0f : 0.4f);
+        }
+        if (tvPageIndicator != null) {
+            if (totalPages > 1) {
+                tvPageIndicator.setText("Hal " + currentPage + " / " + totalPages);
+            } else {
+                tvPageIndicator.setText("Hal " + currentPage);
+            }
+        }
 
         if (count == 0) {
             if (layoutPagination != null && currentPage == 1) {

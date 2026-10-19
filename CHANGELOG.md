@@ -157,6 +157,17 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
       - Menyelaraskan bahasa desain *bottom bar* secara simetris dengan *top bar*: menggunakan gradien obsidian komplementer `linear-gradient(0deg, ...)`, garis batas halus `rgba(255,255,255,0.07)`, elevasi bayangan `0 -4px 20px rgba(0,0,0,0.5)`, serta material permukaan `search-input-wrap` yang identik dengan kapsul tab navigasi (`background: rgba(18,21,28,0.85); border-radius: 9px;`).
       - Menyematkan ikon pencarian penuntun (*search lead icon*) dan keycap shortcut hint `/` pada bar bawah.
     - **Perluasan Automated Test Suite (`tests/test_top_bar_menu_polish.py`):** Menambahkan 6 pengujian otomatis baru yang memverifikasi keberadaan brand logo mark SVG, arsitektur 3-kolom grid CSS, pemusatan pencarian eksklusif di bar bawah, konsistensi token desain atas-bawah, event listener interaktif, dan kepatuhan Zero Backdrop Blur (seluruh 190 test suite Tatap lulus 100%).
+26. **Perbaikan Bug Next Page pada Pencarian Android Platform:**
+    - **Akar Masalah Teratasi:**
+      1. Mengatasi ketiadaan parameter `&page=` pada pembentukan URL endpoint `/api/search` di `MainActivity.java` yang menyebabkan tombol Next Page memanggil ulang hasil halaman 1.
+      2. Menambahkan parameter `page: int = Query(1, ge=1, le=100)` pada endpoint backend `/api/search` (`backend/main.py` dan Chaquopy Android) serta mengisolasi cache key per nomor halaman (`p1`, `p2`).
+      3. Meng-upgrade scraper HiAnime (`backend/api/hianime.py`) dengan fungsi `hianime_search_page` yang mengekstrak kartu halaman selanjutnya via `/search?keyword={}&page={}` dan membedah total halaman serta status `has_next` dari paginator HTML.
+      4. Mengeliminasi heuristik usang `count >= 10` pada `MainActivity.java` dengan metadata paginasi semantik (`hasNextPage || totalPages > currentPage`), mencegah tombol Next Page aktif secara keliru (*false-positive*) pada kata kunci pencarian yang hanya memiliki 1 halaman.
+    - **Penyempurnaan Indikator Paginasi & Proteksi Navigasi TV:**
+      - Menampilkan indikator halaman dinamis `Hal X / Y` pada bilah kontrol paginasi dan memperbarui judul hasil pencarian dengan keterangan `(Hal X)`.
+      - Menambahkan proteksi navigasi remote D-Pad Android TV: ketika tombol Next Page dinonaktifkan di halaman terakhir, fokus remote otomatis dialihkan ke tombol `Sebelumnya` atau kartu anime untuk mencegah jebakan fokus (*focus trap*).
+    - **Perluasan Automated Test Suite (`tests/test_search.py` & `tests/test_pagination_all_views.py`):**
+      - Menambahkan pengujian otomatis baru untuk validasi envelope pagination pencarian, isolasi cache per halaman, dan verifikasi multi-halaman (seluruh 192 test suite Tatap lulus 100%).
 
 ## [2.9.1] - 2026-10-18
 

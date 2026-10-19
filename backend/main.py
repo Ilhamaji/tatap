@@ -239,38 +239,56 @@ async def health():
     return ok({"hianime": HI_BASE, "reachable": reachable})
 
 @app.get("/api/search")
-async def search(q: str = Query(""), limit: int = 15, source: str = Query("")):
+async def search(q: str = Query(""), page: int = Query(1, ge=1, le=100), limit: int = 24, source: str = Query("")):
     q = (q if isinstance(q, str) else "").strip()
     if not q:
         return fail("missing q")
     if q.lower() == "hentai" or "hentai" in q.lower().split():
-        return ok({"results": [], "cached": False})
+        return ok({"results": [], "page": page, "total_pages": 1, "has_next": False, "cached": False})
     
     src = (source if isinstance(source, str) else "").strip().lower()
-    cache_key = f"{src}|{q.lower()}" if src else q.lower()
+    c_page = page if isinstance(page, int) and page >= 1 else 1
+    c_limit = limit if isinstance(limit, int) and limit >= 1 else 24
+    cache_key = f"{src}|{q.lower()}|p{c_page}|l{c_limit}" if src else f"{q.lower()}|p{c_page}|l{c_limit}"
     try:
         hit = await get_search_cache(cache_key)
-        if hit and any(bool(x.get("poster")) for x in hit):
-            return ok({"results": hit, "cached": True})
+        if hit:
+            if isinstance(hit, dict) and any(bool(x.get("poster")) for x in hit.get("results", [])):
+                hit_copy = dict(hit)
+                hit_copy["cached"] = True
+                return ok(hit_copy)
+            elif isinstance(hit, list) and any(bool(x.get("poster")) for x in hit):
+                return ok({"results": hit, "page": c_page, "total_pages": 1, "has_next": False, "cached": True})
+        
         loop = asyncio.get_running_loop()
-        res = []
+        paged_res = None
         if src == "otakudesu":
             from api import otakudesu as ot
-            res = await loop.run_in_executor(None, lambda: ot.search(q, limit))
+            res = await loop.run_in_executor(None, lambda: ot.search(q, c_limit))
+            paged_res = {"results": res, "page": c_page, "total_pages": 1, "has_next": False}
         else:
             try:
-                res = await loop.run_in_executor(None, lambda: hi.hianime_search(q, limit))
+                paged_res = await loop.run_in_executor(None, lambda: hi.hianime_search_page(q, limit=c_limit, page=c_page))
             except Exception:
-                res = []
-            if not res:
-                try:
-                    from api import otakudesu as ot
-                    res = await loop.run_in_executor(None, lambda: ot.search(q, limit))
-                except Exception:
-                    pass
-        if res:
-            await set_search_cache(cache_key, res)
-        return ok({"results": res, "cached": False})
+                paged_res = None
+            if not paged_res or not paged_res.get("results"):
+                # Fallback ke Otakudesu jika di halaman 1 dan HiAnime tidak menemukan hasil
+                if c_page == 1:
+                    try:
+                        from api import otakudesu as ot
+                        res = await loop.run_in_executor(None, lambda: ot.search(q, c_limit))
+                        if res:
+                            paged_res = {"results": res, "page": 1, "total_pages": 1, "has_next": False}
+                    except Exception:
+                        pass
+        
+        if not paged_res:
+            paged_res = {"results": [], "page": c_page, "total_pages": 1, "has_next": False}
+            
+        paged_res["cached"] = False
+        if paged_res.get("results"):
+            await set_search_cache(cache_key, paged_res)
+        return ok(paged_res)
     except Exception as e:
         return fail(str(e))
 

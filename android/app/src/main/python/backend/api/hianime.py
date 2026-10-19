@@ -434,10 +434,11 @@ _SEARCH_ALIASES = {
     "garupan": "girls & panzer",
 }
 
-def hianime_search(query: str, limit: int = 15):
+def hianime_search_page(query: str, limit: int = 24, page: int = 1) -> dict:
     q_str = (query or "").strip()
+    page = max(1, int(page or 1))
     if not q_str or q_str.lower() == "hentai" or "hentai" in q_str.lower().split():
-        return []
+        return {"results": [], "page": page, "total_pages": 1, "has_next": False}
     q_lower = q_str.lower()
     canonical = _SEARCH_ALIASES.get(q_lower)
     if not canonical:
@@ -447,23 +448,42 @@ def hianime_search(query: str, limit: int = 15):
             canonical = re.sub(r"\bgirls\s+and\s+panzer\b", "girls & panzer", q_str, flags=re.I)
     q_val = canonical or q_str
     q_encoded = urllib.parse.quote_plus(q_val)
-    page = _fetch(SEARCH_API.format(q_encoded))
-    if "<title>Just a moment" in page:
+    url = f"{HI_BASE}/search?keyword={q_encoded}&page={page}" if page > 1 else SEARCH_API.format(q_encoded)
+    page_html = _fetch(url)
+    if "<title>Just a moment" in page_html:
         raise RuntimeError("Blocked by cloudflare.")
-    page = page.split('id="main-sidebar"')[0]
-    out = _parse_browse_cards(page)
+    clean_html = page_html.split('id="main-sidebar"')[0]
+    out = _parse_browse_cards(clean_html)
     if out:
         out = [x for x in out if "hentai" not in (x.get("id") or "").lower() and "hentai" not in (x.get("title") or "").lower()]
-        return out[:limit]
-    # Fallback jika layout flw-item tidak cocok
-    out = []
-    for m in re.finditer(r'<h3 class="film-name">\s*<a href="[^"]*/([^"/]*)"\s*title="([^"]*)"', page):
-        slug, title = m.group(1), _clean(m.group(2))
-        if slug and title and len(out) < limit:
-            if "hentai" in slug.lower() or "hentai" in title.lower():
-                continue
-            out.append({"id": slug, "title": title, "poster": ""})
-    return out
+    else:
+        # Fallback jika layout flw-item tidak cocok
+        out = []
+        for m in re.finditer(r'<h3 class="film-name">\s*<a href="[^"]*/([^"/]*)"\s*title="([^"]*)"', clean_html):
+            slug, title = m.group(1), _clean(m.group(2))
+            if slug and title and (not limit or len(out) < limit):
+                if "hentai" in slug.lower() or "hentai" in title.lower():
+                    continue
+                out.append({"id": slug, "title": title, "poster": ""})
+
+    # Ekstraksi total halaman dari pagination links
+    last = page
+    for m in re.finditer(r"page=(\d+)", page_html):
+        try:
+            last = max(last, int(m.group(1)))
+        except ValueError:
+            pass
+    has_next = (page < last) or bool(re.search(r'title="Next"', page_html))
+    res_items = out[:limit] if (limit and limit > 0) else out
+    return {
+        "results": res_items,
+        "page": page,
+        "total_pages": last,
+        "has_next": has_next
+    }
+
+def hianime_search(query: str, limit: int = 15, page: int = 1):
+    return hianime_search_page(query, limit=limit, page=page).get("results", [])
 
 _EPISODES_MEM_CACHE = {}
 _EPISODES_MEM_TTL = 6 * 3600  # 6 jam
