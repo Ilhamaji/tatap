@@ -54,6 +54,7 @@ def test_top_navigation_bar_structure():
     assert 'data-view="musim"' in html_content
     assert 'data-view="terbaru"' in html_content
     assert 'data-view="lanjutan"' in html_content
+    assert 'data-view="riwayat"' in html_content
     assert 'data-view="favorit"' in html_content
     assert 'data-view="katalog"' in html_content
 

@@ -2428,6 +2428,9 @@ function init(){
       if(currentPlaybackSpeed && v.playbackRate !== currentPlaybackSpeed){
         try{ v.playbackRate = currentPlaybackSpeed; }catch(e){}
       }
+      if(v.videoWidth && v.videoHeight){
+        v.style.aspectRatio = v.videoWidth + " / " + v.videoHeight;
+      }
     });
     v.addEventListener("play",function(){
       if(currentPlaybackSpeed && v.playbackRate !== currentPlaybackSpeed){

@@ -99,6 +99,22 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Integritas Fungsional & Subtitle Dual-Layer:** Seluruh ID DOM, shortcut keyboard, endpoint API, dan kontrol subtitle dual-layer (`#pm-subs-overlay` & native `VTTCue`) tetap 100% stabil dan kompatibel.
 17. **Test Suite Komprehensif Shiru UI Minimalist (`tests/test_shiru_ui_minimalist.py`):**
    - Menambahkan 6 pengujian otomatis baru yang memverifikasi ketiadaan font Google eksternal, peniadaan backdrop blur, token obsidian-teal, struktur tab navigasi atas, isolasi layout kartu anime, dan sinkronisasi event listener JavaScript.
+18. **Optimalisasi Video Player Shell 16:9 Adaptif & Pemanfaatan Area Panggung Maksimal:**
+   - Menghapus pembatasan kaku tinggi video 640px (`max-height: clamp(240px, 66vh, 640px)`) yang sebelumnya memicu letterboxing berlebihan pada layar monitor modern (1080p, 1440p, 4K).
+   - Memperbarui dimensi `.player-shell` menjadi dinamis dan proporsional: `width: min(calc((94vh - 100px) * (16 / 9)), 96vw); max-width: 1560px; max-height: 96vh;` dengan overflow vertikal terisolasi rapi.
+   - Mengatur rasio aspek bawaan video anime ke `aspect-ratio: 16 / 9` dengan penyesuaian dinamis intrinsik stream (`videoWidth / videoHeight`) saat event `loadedmetadata`, memungkinkan video anime mengisi area panggung secara maksimal tanpa memotong kontrol header atau footer.
+19. **Fitur Tampilan Penuh Riwayat Menonton (Watch History View Paritas Android):**
+   - Menambahkan tab navigasi **Riwayat** di header atas (`.nav-tabs-bar`) dan menu drawer (`:riwayat`) yang selaras dengan tab riwayat di Android.
+   - Menampilkan koleksi anime yang pernah ditonton lengkap dengan badge nomor episode terakhir, indikator progress bar menit menonton di bagian bawah thumbnail kartu, tanggal tonton, dan dukungan resume pemutaran sekali klik.
+   - Memperbarui perintah terminal `:riwayat`: mengetik `:riwayat` membuka tampilan riwayat menonton, sedangkan `:riwayat hapus` atau tombol "hapus semua" membersihkan database riwayat.
+20. **Penghalusan Tipografi & Percantik Top Header Menu:**
+   - Menerapkan global font antialiasing (`-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;`) untuk mengeliminasi rasterisasi teks bergerigi pada latar hitam obsidian.
+   - Merombak top header menu menjadi bar terpadu yang elegan: logo TATAP dengan tracking geometrik 2.2px, pill badge versi v2.9.2, dan tab bar tersegmentasi ala pill container (`background: var(--surface); border-radius: 8px;`) dengan feedback interaktif yang bersih dan halus.
+   - Mengeliminasi tombol hamburger menu ganda di bottom bar (`#btn-drawer`), mempertahankan `#btn-drawer-head` di pojok kanan atas sebagai tombol menu tunggal resmi.
+   - Mengatasi redundansi menu di drawer dengan menyembunyikan grup navigasi tampilan di layar desktop ($\ge 769\text{px}$) via class responsif `.drawer-group-nav`.
+   - Menata ulang status bar keyboard shortcuts dengan styling badge keycap `kbd` yang rapi.
+21. **Test Suite Komprehensif Video Player Shell & Riwayat (`tests/test_videoplayer_shell_and_riwayat.py`):**
+   - Menambahkan 6 pengujian otomatis baru yang memverifikasi antialiasing tipografi, tombol hamburger tunggal, elemen UI dan tab riwayat, eliminasi duplikasi drawer di desktop, rasio aspek player shell 16:9, dan handler view/command riwayat di JavaScript (seluruh 175 test suite Tatap lulus 100%).
 
 ## [2.9.1] - 2026-10-18
 

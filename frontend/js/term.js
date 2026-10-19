@@ -73,6 +73,7 @@ var Tui = (function () {
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
       case "lanjutan":$("results-title").textContent="Masih tayang (lanjut)";break;
+      case "riwayat":$("results-title").textContent="Riwayat Menonton";break;
       case "favorit":$("results-title").textContent="Anime Favorit";break;
       case "katalog":$("results-title").textContent=getCatalogFilterTitle();break;
       case "terbaru":{
@@ -141,6 +142,7 @@ var Tui = (function () {
     switch(name){
       case "musim":return window.Tatap.seasonNow(S.page);
       case "lanjutan":return window.Tatap.stillAiring(S.page);
+      case "riwayat":return window.Tatap.history();
       case "favorit":return window.Tatap.bookmarks();
       case "katalog":{
         var f = S.catalogFilter || {};
@@ -185,6 +187,14 @@ var Tui = (function () {
         var start = (S.page - 1) * pageSize;
         S.items = d.slice(start, start + pageSize);
         S.sel = -1;
+      }else if(S.view==="riwayat" && Array.isArray(d)){
+        S.rawHistory = d;
+        var pageSize = 24;
+        S.total = Math.max(1, Math.ceil(d.length / pageSize));
+        if(S.page > S.total) S.page = S.total;
+        var start = (S.page - 1) * pageSize;
+        S.items = d.slice(start, start + pageSize);
+        S.sel = -1;
       }else if(S.view==="terbaru"){
         var curDayKey = d.weekday || d.day || "";
         if(curDayKey && SCHEDULE_DAYS.indexOf(curDayKey) >= 0){
@@ -209,7 +219,28 @@ var Tui = (function () {
       var label=$("results-title").textContent;
       if(d.season) label+=" · "+String(d.season).toUpperCase();
       $("results-title").textContent=label;
-      $("results-meta").textContent=S.items.length+" item"+(d.cached?" · cached":"");
+      if(S.view === "riwayat"){
+        var totalHist = S.rawHistory ? S.rawHistory.length : S.items.length;
+        if(totalHist > 0){
+          $("results-meta").innerHTML = totalHist + " judul ditonton · <button class='link-btn' id='btn-clear-history-view'>hapus semua</button>";
+          var clrBtn = $("btn-clear-history-view");
+          if(clrBtn){
+            clrBtn.onclick = async function(e){
+              e.stopPropagation();
+              try{
+                await fetch("/api/history", {method: "DELETE"});
+                loadView();
+                if(window.App && App.renderContinue) App.renderContinue();
+                log("riwayat menonton berhasil dihapus", "ok");
+              }catch(err){ log("err: " + (err && err.message || err), "err"); }
+            };
+          }
+        } else {
+          $("results-meta").textContent = "0 judul ditonton";
+        }
+      } else {
+        $("results-meta").textContent=S.items.length+" item"+(d.cached?" · cached":"");
+      }
       renderResults();renderPager();
     }catch(e){log("err: "+(e&&e.message||e),"err");}
   }
@@ -245,7 +276,12 @@ var Tui = (function () {
     if(sBar) sBar.classList.toggle("hidden", S.view !== "terbaru");
     var isTxt = S.view==="cari" || S.view==="terbaru";
     if(!S.items.length){
-      var emptyMsg = S.view==="favorit" ? "Belum ada anime favorit tersimpan. Ketuk tombol + FAVORIT pada detail anime untuk menyimpannya ke sini." : "Kosong.";
+      var emptyMsg = "Kosong.";
+      if(S.view==="favorit"){
+        emptyMsg = "Belum ada anime favorit tersimpan. Ketuk tombol + FAVORIT pada detail anime untuk menyimpannya ke sini.";
+      }else if(S.view==="riwayat"){
+        emptyMsg = "Belum ada riwayat menonton. Mulai tonton anime apa pun dan riwayat akan tercatat otomatis di sini.";
+      }
       box.innerHTML="<p class='dim'>"+emptyMsg+"</p>";
       return;
     }
@@ -408,6 +444,10 @@ var Tui = (function () {
             grid.appendChild(h);
             return;
           }
+          if(S.view==="riwayat"){
+            if(!a.id) a.id = a.slug;
+            if(!a.badge && a.episode) a.badge = "EP " + a.episode;
+          }
           var isUnavail=!a.id;
           var d=document.createElement("div");
           d.className="poster-card"+(idx===S.sel?" sel":"")+(isUnavail?" unmapped":"");
@@ -429,20 +469,34 @@ var Tui = (function () {
           }
           if(isUnavail){var bad=document.createElement("span");bad.className="pc-bad";bad.textContent="?";bad.title="Tidak ada di hianime";d.appendChild(bad);}
           if(a.poster){var im=document.createElement("img");im.loading="lazy";im.decoding="async";im.alt=a.title;im.src=a.poster;im.onerror=function(){this.style.display="none";};d.appendChild(im);}
+          if(S.view==="riwayat" && a.progress && a.progress >= 15){
+            var progTrack=document.createElement("div");progTrack.className="pc-progress-track";
+            var progFill=document.createElement("div");progFill.className="pc-progress-fill";
+            var pct=Math.min(100, Math.max(5, Math.round((a.progress / 1440) * 100)));
+            progFill.style.width=pct+"%";
+            progTrack.appendChild(progFill);
+            d.appendChild(progTrack);
+          }
           var body=document.createElement("div");body.className="poster-body";
           var b=document.createElement("b");b.textContent=a.title;body.appendChild(b);
           var meta=document.createElement("div");meta.className="poster-meta";
           var m=[];
-          if(a.type)m.push(a.type);
-          if(a.eps_counter){
-            m.push("Ep "+a.eps_counter);
+          if(S.view==="riwayat"){
+            if(a.episode) m.push("Ep " + a.episode);
+            if(a.mode) m.push(String(a.mode).toUpperCase());
+            if(a.progress && a.progress >= 15 && window.App && App.formatTimeSec) m.push(App.formatTimeSec(a.progress));
           }else{
-            if(a.eps)m.push(a.eps+" ep");
-            if(a.sub)m.push("SUB "+a.sub);
-            if(a.dub)m.push("DUB "+a.dub);
+            if(a.type)m.push(a.type);
+            if(a.eps_counter){
+              m.push("Ep "+a.eps_counter);
+            }else{
+              if(a.eps)m.push(a.eps+" ep");
+              if(a.sub)m.push("SUB "+a.sub);
+              if(a.dub)m.push("DUB "+a.dub);
+            }
+            if(a.duration)m.push(a.duration);
+            if(a.score)m.push(a.score.toFixed(1));
           }
-          if(a.duration)m.push(a.duration);
-          if(a.score)m.push(a.score.toFixed(1));
           meta.textContent=m.join(" · ");
           body.appendChild(meta);
           d.appendChild(body);
@@ -959,8 +1013,18 @@ var Tui = (function () {
         try{localStorage.setItem("tatap_ambient",nxt2);}catch(e){}
         document.body.classList.toggle("no-ambient",nxt2==="off");
         log("ambient "+(nxt2==="on"?"ON":"OFF"),"ok");break;
-      case "riwayat":
-        try{await fetch("/api/history",{method:"DELETE"});log("riwayat dihapus","ok");}catch(e){log("err: "+e.message,"err");}break;
+      case "riwayat":case "history":
+        if(args === "hapus" || args === "clear" || args === "delete"){
+          try{
+            await fetch("/api/history",{method:"DELETE"});
+            log("riwayat menonton berhasil dihapus","ok");
+            if(S.view === "riwayat"){ loadView(); }
+            if(window.App && App.renderContinue){ App.renderContinue(); }
+          }catch(e){log("err: "+(e&&e.message||e),"err");}
+        }else{
+          setView("riwayat");
+        }
+        break;
       case "favorit":case "bookmark":case "bookmarks":
         setView("favorit");break;
       case "logs":case "translog":
@@ -1079,7 +1143,7 @@ var Tui = (function () {
     var inp=$("cmd");inp.selectionStart=inp.selectionEnd=inp.value.length;
   }
   function cycleView(){
-    var ord=["cari","musim","terbaru","lanjutan","katalog"];
+    var ord=["cari","musim","terbaru","lanjutan","riwayat","favorit","katalog"];
     var idx=ord.indexOf(S.view);setView(ord[(idx+1)%ord.length]);
   }
   function pagePrev(){
@@ -1099,6 +1163,17 @@ var Tui = (function () {
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawBookmarks.slice(start,start+pageSize);
+        renderResults();renderPager();
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+      }
+      return;
+    }
+    if(S.view==="riwayat" && S.rawHistory){
+      if(S.page>1){
+        S.page--;
+        var pageSize=24;
+        var start=(S.page-1)*pageSize;
+        S.items=S.rawHistory.slice(start,start+pageSize);
         renderResults();renderPager();
         try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
       }
@@ -1128,6 +1203,17 @@ var Tui = (function () {
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawBookmarks.slice(start,start+pageSize);
+        renderResults();renderPager();
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
+      }
+      return;
+    }
+    if(S.view==="riwayat" && S.rawHistory){
+      if(S.page<S.total){
+        S.page++;
+        var pageSize=24;
+        var start=(S.page-1)*pageSize;
+        S.items=S.rawHistory.slice(start,start+pageSize);
         renderResults();renderPager();
         try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
       }

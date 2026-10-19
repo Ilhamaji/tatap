@@ -202,6 +202,7 @@
     <button class="nav-tab-btn active" data-view="musim" id="tab-nav-musim">Musim Ini</button>
     <button class="nav-tab-btn" data-view="terbaru" id="tab-nav-terbaru">Terbaru</button>
     <button class="nav-tab-btn" data-view="lanjutan" id="tab-nav-lanjutan">Masih Tayang</button>
+    <button class="nav-tab-btn" data-view="riwayat" id="tab-nav-riwayat">Riwayat</button>
     <button class="nav-tab-btn" data-view="favorit" id="tab-nav-favorit">Favorit</button>
     <button class="nav-tab-btn" data-view="katalog" id="tab-nav-katalog">Katalog</button>
   </nav>
@@ -272,7 +273,7 @@
     </div>
 
     <div class="drawer-body">
-      <div class="drawer-group">
+      <div class="drawer-group drawer-group-nav">
         <div class="drawer-group-label">NAVIGASI TAMPILAN</div>
         <button class="drawer-item" data-view="cari">
           <span class="drawer-item-icon"><svg class="ui-icon"><use href="#icon-search"/></svg></span>
@@ -293,6 +294,11 @@
           <span class="drawer-item-icon"><svg class="ui-icon"><use href="#icon-tv"/></svg></span>
           <span class="drawer-item-label">Masih Tayang (Lanjut)</span>
           <span class="drawer-item-badge">:lanjutan</span>
+        </button>
+        <button class="drawer-item" data-view="riwayat">
+          <span class="drawer-item-icon"><svg class="ui-icon"><use href="#icon-clock"/></svg></span>
+          <span class="drawer-item-label">Riwayat Menonton</span>
+          <span class="drawer-item-badge">:riwayat</span>
         </button>
         <button class="drawer-item" data-view="favorit">
           <span class="drawer-item-icon"><svg class="ui-icon"><use href="#icon-star"/></svg></span>
@@ -562,9 +568,6 @@
     </div>
     <div class="bottom-actions">
       <span id="health" class="health" title="Status koneksi scraper backend">…</span>
-      <button id="btn-drawer" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
-        <span class="drawer-btn-icon"><svg class="ui-icon"><use href="#icon-menu"/></svg></span>
-      </button>
     </div>
   </div>
   <div class="statusbar">
