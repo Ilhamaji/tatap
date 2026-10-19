@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse, FileResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from config import APP_PORT, APP_HOST, HI_BASE, HI_UA
-from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, add_history, get_history, clear_history, save_progress, get_progress, clear_progress, add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked, clear_bookmarks, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
+from database import init_db, get_search_cache, set_search_cache, get_episode_cache, set_episode_cache, delete_episode_cache, add_history, get_history, clear_history, save_progress, get_progress, clear_progress, add_bookmark, remove_bookmark, get_bookmarks, is_bookmarked, clear_bookmarks, get_setting, set_setting, get_browse_cache, set_browse_cache, get_slug_map, set_slug_map, get_subtitle_cache, set_subtitle_cache, delete_subtitle_cache, get_today_char_count, add_today_char_count
 from api import hianime as hi
 from api import anilist as al
 from api import otakudesu as otaku
@@ -1189,7 +1189,7 @@ async def anime_relations_endpoint(slug: str, title: str = Query("")):
 
 
 @app.get("/api/stream/resolve")
-async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("sub"), q: str = Query("best"), source: str = Query("")):
+async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("sub"), q: str = Query("best"), source: str = Query(""), force: bool = Query(False)):
     try:
         if "hentai" in (slug or "").lower():
             return fail("Konten genre Hentai diblokir")
@@ -1199,11 +1199,15 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
 
         # Cache key mencakup source agar stream tidak tertukar
         cache_slug = f"{active_source}:{slug}" if active_source != "hianime" else slug
-        hit = await get_episode_cache(cache_slug, ep, mode)
-        if not hit and mode == "sub":
-            hit = await get_episode_cache(cache_slug, ep, "dub")
-        elif not hit and mode == "dub":
-            hit = await get_episode_cache(cache_slug, ep, "sub")
+        if force:
+            await delete_episode_cache(cache_slug, ep)
+            hit = None
+        else:
+            hit = await get_episode_cache(cache_slug, ep, mode)
+            if not hit and mode == "sub":
+                hit = await get_episode_cache(cache_slug, ep, "dub")
+            elif not hit and mode == "dub":
+                hit = await get_episode_cache(cache_slug, ep, "sub")
         async def _check_and_prewarm(ep_data):
             try:
                 sub_lang = (await get_setting("sub_lang", "Indonesian")).strip().lower()

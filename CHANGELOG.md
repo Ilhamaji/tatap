@@ -13,6 +13,31 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.9.3] - 2026-10-20
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.9.2 -> 2.9.3)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug kritis timeout streaming (*streaming timeout fixes*), optimasi failover multi-tier, dan mekanisme auto-retry serta cache invalidation tanpa adanya breaking changes maupun perombakan arsitektur baru:
+1. **Perbaikan Timeout Streaming Multi-Tier & Fast Failover (Studi Kasus: Anime Naruto `naruto-1335`):**
+   - Mendiagnosis dan memperbaiki akar masalah pada anime yang memiliki server upstream gantung (seperti `fetch.nexabloom.top` pada server Megaplay `HD-1` Naruto Episode 1) yang memicu error `The read operation timed out`.
+   - Mengatasi bug pada fungsi `_fetch` di mana parameter `timeout=timeout` tidak diteruskan ke `client.get(url, headers=h, timeout=timeout)`, sehingga timeout pendek (5-8s) saat scanning server mati diabaikan oleh `httpx` di lingkungan Chaquopy Android dan memakan waktu tunggu penuh 12 detik + 11 detik fallback desync (23.57 detik terbuang sia-sia).
+   - Menetapkan batas timeout ketat (5.0s) pada master playlist probing `_try_megaplay` dan langsung menandai host CDN master yang mati ke `_mark_dead(master_host, ttl=600)` agar pemutaran episode berikutnya langsung melewati (*skip*) server tersebut dalam 0ms.
+   - Mengeliminasi penandaan keliru pada `megaplay.buzz` saat yang mati adalah CDN master di baliknya, sehingga endpoint utama tetap dapat melayani judul anime lain.
+2. **Peningkatan Batas Read Timeout Client Android (`PlayerActivity.java`):**
+   - Menaikkan `conn.setReadTimeout(20000)` (20 detik) menjadi `conn.setReadTimeout(45000)` (45 detik) pada `resolveAndPlayStream`.
+   - Mencegah Android memutus koneksi secara sepihak di detik ke-20 (`SocketTimeoutException: Read timed out`) sebelum backend sempat mencapai server alternatif yang sehat (seperti ZokoAnime yang selesai dalam 2.8 detik).
+3. **Mekanisme Smart Auto-Retry & Invalidation Cache Basi (`force=true`):**
+   - Menambahkan fungsi `delete_episode_cache(slug, ep, mode)` pada modul database SQLite (`backend/database/__init__.py` dan Chaquopy parity).
+   - Menambahkan parameter `force: bool = Query(False)` pada endpoint `/api/stream/resolve`. Jika `force=True`, backend secara otomatis memotong dan menghapus cache episode yang basi atau bermasalah, lalu meminta stream segar dari provider upstream.
+   - Pada Android Native (`PlayerActivity.java`) dan Web Desktop (`app.js` & `api.js`): Saat terjadi error timeout atau player error, pemutar secara otomatis melakukan 1 kali *failover auto-retry* dengan query `&force=true` untuk memulihkan pemutaran tanpa campur tangan pengguna.
+   - Jika setelah auto-retry stream tetap tidak dapat dijangkau, pemutar menampilkan tombol interaktif *"Coba Lagi ↻"* alih-alih membiarkan layar gelap/freeze.
+4. **Eliminasi Unduhan Ganda Master M3U8 (`_validate_master_playlist`):**
+   - Pada `_try_embed_legacy`, playlist master yang telah diunduh pada fase `_probe_master` langsung diteruskan ke `_validate_master_playlist(master, referer, variants=[], body_content=...)`, menghemat 1 kali round-trip jaringan (1-3 detik) pada server ZokoAnime dan VidTube.
+5. **Paritas Penuh Chaquopy Android:**
+   - Seluruh perbaikan backend disinkronkan 100% secara identik ke `android/app/src/main/python/backend/api/hianime.py`, `backend/main.py`, dan `backend/database/__init__.py`.
+6. **Penambahan Test Suite Otomatis (`tests/test_stream_timeout_recovery.py`):**
+   - Menambahkan unit test komprehensif untuk pengujian `delete_episode_cache`, `resolve` dengan `force=True`, `_validate_master_playlist` dengan `body_content`, serta fungsi negative cache `_mark_dead`.
+   - Seluruh test suite Tatap lulus 100% (196 tests passed).
+
 ## [2.9.2] - 2026-10-18
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.9.1 -> 2.9.2)

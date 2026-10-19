@@ -629,8 +629,8 @@ function dismissResumeModal(){
   }
 }
 
-function openPlayer(ep, resumeTime){
-  if(resumeTime === undefined){
+function openPlayer(ep, resumeTime, forceRefresh){
+  if(resumeTime === undefined && !forceRefresh){
     var fetchToken = ++_playTokenCounter;
     cur.playToken = fetchToken;
     var reqSlug = cur.slug;
@@ -756,15 +756,21 @@ function openPlayer(ep, resumeTime){
   $("pm-title").textContent=cur.title;
   $("pm-meta").textContent="ep "+ep+" · "+cur.mode.toUpperCase();
   $("pm-spinner").classList.remove("hidden");
-  $("pm-status").textContent="resolving ep "+ep+"...";
+  $("pm-status").textContent=forceRefresh ? "memulihkan ep "+ep+" (failover)..." : "resolving ep "+ep+"...";
   updatePrevNext();
   var t0=Date.now();
   var src=cur.source||"";
-  window.Tatap.resolve(cur.slug,ep,cur.mode,cur.quality,src).then(function(r){
+  window.Tatap.resolve(cur.slug,ep,cur.mode,cur.quality,src,forceRefresh).then(function(r){
     if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;
     if(!r || !r.success){
+      if(!forceRefresh){
+        $("pm-status").textContent="gagal memuat, mencoba server cadangan...";
+        setTimeout(function(){ openPlayer(ep, resumeTime, true); }, 400);
+        return;
+      }
       $("pm-spinner").classList.add("hidden");
-      $("pm-status").textContent="ERROR: "+(r && r.error ? r.error : "gagal resolve stream");
+      $("pm-status").innerHTML="ERROR: "+esc(r && r.error ? r.error : "gagal resolve stream")+" · <button id='pm-retry-btn' class='server-badge' style='background:rgba(255,255,255,0.1);border:1px solid var(--cyan,#00dbeb);color:var(--cyan,#00dbeb);cursor:pointer;border-radius:4px;padding:2px 8px;font:inherit;'>Coba Lagi ↻</button>";
+      var rb=$("pm-retry-btn"); if(rb) rb.onclick=function(){ openPlayer(ep, resumeTime, true); };
       toast("Gagal resolve stream: "+(r && r.error ? r.error : "unknown"));
       return;
     }
@@ -794,8 +800,14 @@ function openPlayer(ep, resumeTime){
     window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode,progress:resumeTime||0}).then(function(){renderContinue();});
   }).catch(function(err){
     if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;
+    if(!forceRefresh){
+      $("pm-status").textContent="koneksi terputus, mencoba server cadangan...";
+      setTimeout(function(){ openPlayer(ep, resumeTime, true); }, 400);
+      return;
+    }
     $("pm-spinner").classList.add("hidden");
-    $("pm-status").textContent="KONEKSI GAGAL: "+(err&&err.message||err);
+    $("pm-status").innerHTML="KONEKSI GAGAL: "+esc(err&&err.message||err)+" · <button id='pm-retry-btn-err' class='server-badge' style='background:rgba(255,255,255,0.1);border:1px solid var(--cyan,#00dbeb);color:var(--cyan,#00dbeb);cursor:pointer;border-radius:4px;padding:2px 8px;font:inherit;'>Coba Lagi ↻</button>";
+    var rb2=$("pm-retry-btn-err"); if(rb2) rb2.onclick=function(){ openPlayer(ep, resumeTime, true); };
     toast("Koneksi gagal saat resolve: "+(err&&err.message||err));
   });
 }

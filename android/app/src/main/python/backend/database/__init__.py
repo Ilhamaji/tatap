@@ -168,6 +168,17 @@ async def get_episode_cache(slug: str, ep: int, mode: str, ttl=12*3600):
                 d["outro"] = {"start": 0, "end": 0}
             return d
 
+async def delete_episode_cache(slug: str, ep: int = None, mode: str = None):
+    """Hapus cache episode tertentu jika stream basi atau mengalami timeout."""
+    async with _connect_db() as db:
+        if ep is not None and mode is not None:
+            await db.execute("DELETE FROM episode_cache WHERE slug=? AND ep=? AND mode=?", (slug, ep, mode))
+        elif ep is not None:
+            await db.execute("DELETE FROM episode_cache WHERE slug=? AND ep=?", (slug, ep))
+        else:
+            await db.execute("DELETE FROM episode_cache WHERE slug=?", (slug,))
+        await db.commit()
+
 async def set_episode_cache(slug, ep, mode, master, variants, sub, sub_lang, referer, server,
                           subtitles=None, intro=None, outro=None):
     """Simpan cache episode. subtitles=list, intro={start,end}, outro={start,end}."""

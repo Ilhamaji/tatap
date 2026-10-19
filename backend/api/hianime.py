@@ -394,7 +394,7 @@ def _fetch(url, referer=None, timeout=12):
     try:
         client = _get_shared_client()
         h = {"Referer": referer} if referer else {}
-        r = client.get(url, headers=h)
+        r = client.get(url, headers=h, timeout=timeout)
         if r.status_code == 200:
             if "Just a moment" in r.text or "cf-challenge" in r.text:
                 last_err = "Blocked by cloudflare (cf-challenge)."
@@ -406,14 +406,18 @@ def _fetch(url, referer=None, timeout=12):
         last_err = str(e)
 
     # 3. Fallback: TLS Desync request (bypass DPI ISP block)
-    try:
-        from api.desync import tls_desync_request
-        raw = tls_desync_request(url, headers={"Referer": referer} if referer else {}, timeout=timeout)
-        txt = raw.decode("utf-8", errors="replace")
-        if txt and ("<html" in txt.lower() or "{" in txt):
-            return txt
-    except Exception as e:
-        pass
+    # Jangan desync jika error-nya timeout pada pemanggilan timeout pendek (hemat latensi failover server)
+    is_timeout = any(t in last_err.lower() for t in ("timeout", "timed out"))
+    if not (is_timeout and timeout <= 6):
+        try:
+            from api.desync import tls_desync_request
+            desync_to = min(float(timeout), 5.0) if is_timeout else float(timeout)
+            raw = tls_desync_request(url, headers={"Referer": referer} if referer else {}, timeout=desync_to)
+            txt = raw.decode("utf-8", errors="replace")
+            if txt and ("<html" in txt.lower() or "{" in txt or "#EXTM3U" in txt):
+                return txt
+        except Exception:
+            pass
 
     raise RuntimeError(f"Gagal memuat URL: {last_err or 'unknown error'}")
 
@@ -873,6 +877,11 @@ def _try_megaplay(embed: str):
     # master may be relative
     if master.startswith("/"):
         master = origin + master
+
+    master_host = _host_from(master)
+    if master_host and _is_dead_host(master_host):
+        raise RuntimeError(f"master cdn host dead: {master_host}")
+
     # Multi-subtitle: normalisasi seluruh tracks Megaplay untuk dropdown & pemilihan default
     subs = cfg.get("tracks") or []
     subtitles = _normalize_subtitles(subs, referer=origin + "/")
@@ -885,7 +894,7 @@ def _try_megaplay(embed: str):
     variants = []
     text = ""
     try:
-        text = _fetch_media(master, referer=origin + "/", timeout=8)
+        text = _fetch_media(master, referer=origin + "/", timeout=5.0)
         base = master.rsplit("/", 1)[0] + "/"
         lines = text.splitlines()
         for i, ln in enumerate(lines):
@@ -898,6 +907,8 @@ def _try_megaplay(embed: str):
                         url = base + url
                     variants.append({"q": q, "url": url})
     except Exception as e:
+        if master_host:
+            _mark_dead(master_host, ttl=600)
         raise RuntimeError(f"megaplay master: {e}")
     variants.sort(key=lambda v: int(re.sub(r"\D", "", v["q"]) or 0), reverse=True)
     if not variants:
@@ -956,7 +967,7 @@ def _fetch_media(url: str, referer: str = None, timeout: int = 10) -> str:
     return _fetch(url, referer=referer, timeout=timeout)
 
 
-def _validate_master_playlist(master_url: str, referer: str, variants: list):
+def _validate_master_playlist(master_url: str, referer: str, variants: list, body_content=None):
     """Validasi master playlist: harus (a) mulainya #EXTM3U, (b) minimal ada 1
     URL segment/variant pada body. Return list variants yang sudah tervalidasi:
     - Kalau caller sudah punya variants dan minimal 1 URL absolute → pakai itu.
@@ -964,7 +975,10 @@ def _validate_master_playlist(master_url: str, referer: str, variants: list):
     Raise RuntimeError kalau playlist tidak punya konten yang bisa diputar."""
     if not master_url or not master_url.startswith("http"):
         raise RuntimeError("invalid master url")
-    body = _fetch_media(master_url, referer=referer, timeout=10)
+    if body_content:
+        body = body_content
+    else:
+        body = _fetch_media(master_url, referer=referer, timeout=8.0)
     txt = body if isinstance(body, str) else body.decode("utf-8", errors="ignore")
     if "#EXTM3U" not in txt:
         raise RuntimeError("master playlist: not m3u8")
@@ -1079,8 +1093,9 @@ def _try_embed_legacy(embed: str):
     if ".m3u8" not in master:
         return None
     # Probe master — kalau host mati, return None agar caller fall-through.
+    probe_content = None
     try:
-        _probe_master(master, referer=referer)
+        probe_content = _probe_master(master, referer=referer)
     except Exception as e:
         raise RuntimeError(f"zokoanime probe: {e}")
     # Multi-subtitle: normalisasi seluruh tracks ZokoAnime untuk dropdown & pemilihan default
@@ -1093,7 +1108,7 @@ def _try_embed_legacy(embed: str):
     sub_lang = default_track["label"] if default_track else None
 
     try:
-        variants = _validate_master_playlist(master, referer=referer, variants=[])
+        variants = _validate_master_playlist(master, referer=referer, variants=[], body_content=probe_content)
     except Exception as e:
         raise RuntimeError(f"zokoanime playlist: {e}")
     mal_id = ""
@@ -1251,7 +1266,8 @@ def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
             msg = err_msg.lower()
             # Tandai host mati kalau error-nya network (RST, ConnectError, probe fail).
             if any(t in msg for t in ("rst", "reset", "connect", "timeout", "dead", "upstream", "probe fail", "sslerror")):
-                _mark_dead(host)
+                if "megaplay master" not in msg:
+                    _mark_dead(host)
             # Tandai per-(host, slug, ep) kalau anime tidak ada di server ini.
             if any(t in msg for t in ("404 page", "not on server", "window.__p not found", "data-id not found")):
                 if slug:

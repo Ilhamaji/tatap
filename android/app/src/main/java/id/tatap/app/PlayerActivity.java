@@ -240,6 +240,7 @@ public class PlayerActivity extends Activity {
     private String configuredAiModel = "gemini-2.0-flash";
     private boolean isHlsMode = false;
     private boolean hasFallbackAttempted = false;
+    private boolean hasAutoRetriedStream = false;
     private int currentResolveLoadId = 0;
 
     private boolean isHlsStream(String url) {
@@ -1091,6 +1092,14 @@ public class PlayerActivity extends Activity {
                     hasFallbackAttempted = true;
                     isHlsMode = !isHlsMode;
                     runOnUiThread(() -> applyCurrentStream());
+                    return;
+                }
+                if (!hasAutoRetriedStream) {
+                    hasAutoRetriedStream = true;
+                    runOnUiThread(() -> {
+                        Toast.makeText(PlayerActivity.this, "Stream terputus upstream, memulihkan tautan...", Toast.LENGTH_SHORT).show();
+                        resolveAndPlayStream(currentResolveLoadId, true);
+                    });
                     return;
                 }
                 if (layoutBuffering != null) {
@@ -2117,14 +2126,21 @@ public class PlayerActivity extends Activity {
     }
 
     private void resolveAndPlayStream() {
-        resolveAndPlayStream(currentResolveLoadId);
+        resolveAndPlayStream(currentResolveLoadId, false);
     }
 
     private void resolveAndPlayStream(final int resolveId) {
+        resolveAndPlayStream(resolveId, false);
+    }
+
+    private void resolveAndPlayStream(final int resolveId, final boolean forceRefresh) {
         runOnUiThread(() -> {
             if (layoutBuffering != null) {
                 layoutBuffering.setVisibility(View.VISIBLE);
-                if (tvBufferingText != null) tvBufferingText.setText("MENYIAPKAN STREAM...");
+                if (tvBufferingText != null) {
+                    tvBufferingText.setText(forceRefresh ? "MEMULIHKAN STREAM..." : "MENYIAPKAN STREAM...");
+                    tvBufferingText.setVisibility(View.VISIBLE);
+                }
             }
         });
 
@@ -2136,10 +2152,11 @@ public class PlayerActivity extends Activity {
                 activeQuality = sp.getString("pref_quality", "best");
 
                 String u = "http://127.0.0.1:8767/api/stream/resolve?slug=" + URLEncoder.encode(slug != null ? slug : "", "UTF-8")
-                        + "&ep=" + ep + "&mode=sub&q=" + URLEncoder.encode(activeQuality != null ? activeQuality : "best", "UTF-8");
+                        + "&ep=" + ep + "&mode=sub&q=" + URLEncoder.encode(activeQuality != null ? activeQuality : "best", "UTF-8")
+                        + (forceRefresh ? "&force=true" : "");
                 HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
                 conn.setConnectTimeout(15000);
-                conn.setReadTimeout(20000);
+                conn.setReadTimeout(45000);
                 int code = conn.getResponseCode();
                 InputStream is = (code >= 200 && code < 400) ? conn.getInputStream() : conn.getErrorStream();
                 if (is == null) {
@@ -2191,6 +2208,7 @@ public class PlayerActivity extends Activity {
                     isHlsMode = isHlsStream(masterUrl) || isHlsStream(streamUrl)
                             || (!streamVariants.isEmpty() && isHlsStream(streamVariants.get(0).optString("url", "")));
                     hasFallbackAttempted = false;
+                    hasAutoRetriedStream = false;
 
                     // Simpan subtitle tracks yang tersedia
                     JSONArray subArr = data.optJSONArray("subtitles");
@@ -2336,8 +2354,26 @@ public class PlayerActivity extends Activity {
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     if (resolveId != currentResolveLoadId) return;
+                    String msg = e.getMessage() != null ? e.getMessage() : "";
+                    boolean isTimeout = e instanceof java.net.SocketTimeoutException
+                            || msg.toLowerCase().contains("time")
+                            || msg.toLowerCase().contains("504")
+                            || msg.toLowerCase().contains("502");
+                    if (isTimeout && !hasAutoRetriedStream) {
+                        hasAutoRetriedStream = true;
+                        if (layoutBuffering != null) {
+                            layoutBuffering.setVisibility(View.VISIBLE);
+                            if (tvBufferingText != null) {
+                                tvBufferingText.setText("RETRY STREAM (FAILOVER)...");
+                                tvBufferingText.setVisibility(View.VISIBLE);
+                            }
+                        }
+                        Toast.makeText(PlayerActivity.this, "Koneksi stream terputus, mencoba server cadangan...", Toast.LENGTH_SHORT).show();
+                        resolveAndPlayStream(resolveId, true);
+                        return;
+                    }
                     if (layoutBuffering != null) layoutBuffering.setVisibility(View.GONE);
-                    Toast.makeText(this, "Error streaming: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Error streaming: " + (msg.isEmpty() ? "Koneksi timeout" : msg), Toast.LENGTH_SHORT).show();
                 });
             }
         }).start();
@@ -4137,6 +4173,7 @@ public class PlayerActivity extends Activity {
         masterStreamUrl = "";
         subtitleTracks.clear();
         hasFallbackAttempted = false;
+        hasAutoRetriedStream = false;
         introStartMs = 0;
         introEndMs = 0;
         outroStartMs = 0;
