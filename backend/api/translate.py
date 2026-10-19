@@ -814,6 +814,9 @@ _PRE_GTX_EN_SLANG_RULES = [
     (r"\braid boss\b", "large-scale boss"),
     (r"\bparty leader\b", "group leader"),
     (r"\bparty members?\b", "group member"),
+    (r"\bclear rewards?\b", "quest completion reward"),
+    (r"\bepic (?:class|job)\b", "epic tier class"),
+    (r"\blegendary job\b", "legendary class"),
 ]
 _COMPILED_PRE_GTX_EN_SLANG = [(_re.compile(pat, _re.IGNORECASE), repl) for pat, repl in _PRE_GTX_EN_SLANG_RULES]
 
@@ -1300,6 +1303,9 @@ _UNIVERSAL_FANSUB_RULES = [
     (r"\bberhenti melenturkan\b", "jangan pamer"),
     (r"\bkeluar dalam kemarahan\b", "keluar sambil ngamuk"),
     (r"\bkeluar karena marah\b", "cabut gara-gara emosi"),
+    (r"\bhadiah yang jelas\b", "hadiah penyelesaian misi"),
+    (r"\bkelas yang hebat\b", "kelas epik"),
+    (r"\bpekerjaan yang luar biasa\b", "pekerjaan kelas epik"),
 ]
 
 # Aturan khusus adegan kasual/santai (tidak diterapkan jika konteks formal/kerajaan).
