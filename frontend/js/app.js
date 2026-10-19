@@ -2566,6 +2566,16 @@ function init(){
     });
   });
 
+  // Navigasi tab bar Shiru di Header Atas
+  document.querySelectorAll(".nav-tab-btn[data-view]").forEach(function(b){
+    b.addEventListener("click", function(){
+      var v = b.getAttribute("data-view");
+      if(window.Tui && window.Tui.setView){
+        window.Tui.setView(v);
+      }
+    });
+  });
+
   var drawerGenre = $("drawer-genre");
   if(drawerGenre) drawerGenre.addEventListener("click", function(){
     closeDrawer();

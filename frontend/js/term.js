@@ -87,7 +87,17 @@ var Tui = (function () {
       }
     }
     $("sb-view").textContent="view: "+v;
+    updateNavTabs(v);
     loadView();
+  }
+
+  function updateNavTabs(v){
+    document.querySelectorAll(".nav-tab-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-view") === v);
+    });
+    document.querySelectorAll(".drawer-item[data-view]").forEach(function(item){
+      item.classList.toggle("active", item.getAttribute("data-view") === v);
+    });
   }
 
   var _genreList=null;
@@ -552,6 +562,7 @@ var Tui = (function () {
     $("lane-still-sec").classList.add("hidden");
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
+    updateNavTabs(v);
   }
 
   // ==== :filter (Catalog Cross-Filter) ====
