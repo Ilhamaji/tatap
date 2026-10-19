@@ -2596,22 +2596,6 @@ function init(){
     });
   }
 
-  // Interaktivitas Kapsul Pencarian Cepat Header
-  var btnHeadSearch = $("btn-head-search");
-  if(btnHeadSearch){
-    btnHeadSearch.addEventListener("click", function(){
-      var cmd = $("cmd");
-      if(cmd){
-        cmd.focus();
-        var wrap = cmd.closest(".search-input-wrap");
-        if(wrap){
-          wrap.classList.add("pulse-highlight");
-          setTimeout(function(){ wrap.classList.remove("pulse-highlight"); }, 600);
-        }
-      }
-    });
-  }
-
   var drawerGenre = $("drawer-genre");
   if(drawerGenre) drawerGenre.addEventListener("click", function(){
     closeDrawer();

@@ -215,11 +215,6 @@
     <button class="nav-tab-btn" data-view="katalog" id="tab-nav-katalog">Katalog</button>
   </nav>
   <div class="head-actions">
-    <button id="btn-head-search" class="head-search-pill" title="Cari Anime atau Perintah (:cmd) (Shortcut: /)" aria-label="Cari Anime">
-      <svg class="ui-icon head-search-icon"><use href="#icon-search"/></svg>
-      <span class="head-search-label">Cari anime...</span>
-      <kbd class="head-search-kbd">/</kbd>
-    </button>
     <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
       <span class="drawer-btn-icon"><svg class="ui-icon"><use href="#icon-menu"/></svg></span>
     </button>
@@ -575,9 +570,11 @@
 <footer class="bottom-bar">
   <div class="bottom-search-row">
     <div class="search-input-wrap">
+      <svg class="ui-icon search-lead-icon" aria-hidden="true"><use href="#icon-search"/></svg>
       <span class="prompt-ps1">tatap$</span>
-      <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul, atau :perintah (cth: :update, :musim, :bantuan)">
+      <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul anime, atau :perintah (cth: :update, :musim, :bantuan)">
       <span class="caret" aria-hidden="true"></span>
+      <kbd class="search-kbd-hint" title="Pintasan keyboard: tekan '/' untuk cari">/</kbd>
     </div>
     <div class="bottom-actions">
       <span id="health" class="health" title="Status koneksi scraper backend">…</span>
