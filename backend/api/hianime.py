@@ -1088,6 +1088,57 @@ def _try_embed_legacy(embed: str):
             "intro": intro,
             "outro": outro}
 
+
+def _harvest_subtitles(servers, current_srv_name: str = ""):
+    """Ambil track subtitle dari server alternatif jika server video utama tidak memiliki subtitle."""
+    for srv in servers:
+        if srv.get("name") == current_srv_name:
+            continue
+        host = _host_from(srv.get("embed", ""))
+        if _is_dead_host(host):
+            continue
+        try:
+            embed_low = (srv.get("embed") or "").lower()
+            if "zokoanime.video" in embed_low or "vidtube.site" in embed_low or "vidplay" in srv.get("name", "").lower():
+                alt_got = _try_embed_legacy(srv["embed"])
+            else:
+                alt_got = _try_megaplay(srv["embed"])
+            if alt_got and alt_got.get("subtitles"):
+                return {
+                    "subtitles": alt_got["subtitles"],
+                    "sub": alt_got.get("sub"),
+                    "sub_lang": alt_got.get("sub_lang"),
+                    "referer": alt_got.get("referer"),
+                }
+        except Exception:
+            continue
+    return None
+
+
+def hianime_subtitles_for_episode(slug: str, ep_no: int) -> dict:
+    """Ambil track subtitle softsub untuk episode tertentu tanpa perlu mengunduh master video m3u8.
+    Berguna sebagai fallback untuk Otakudesu atau stream tanpa softsub.
+    """
+    try:
+        maps = hianime_episodes(slug)
+        ep_id = None
+        for e in maps:
+            if int(e.get("ep", -1)) == int(ep_no):
+                ep_id = e.get("ep_id")
+                break
+        if not ep_id:
+            return {"subtitles": [], "sub": None, "sub_lang": None}
+        servers_html = _fetch(SERVERS_API.format(ep_id))
+        sub_servers = _order_servers(_parse_servers(servers_html, "sub"))
+        harvested = _harvest_subtitles(sub_servers)
+        if not harvested:
+            dub_servers = _order_servers(_parse_servers(servers_html, "dub"))
+            harvested = _harvest_subtitles(dub_servers)
+        return harvested or {"subtitles": [], "sub": None, "sub_lang": None}
+    except Exception:
+        return {"subtitles": [], "sub": None, "sub_lang": None}
+
+
 def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
     req_mode = "dub" if str(mode).lower() == "dub" else "sub"
     ep_id = None
@@ -1148,6 +1199,26 @@ def hianime_m3u8(episode_maps, ep_no: int, mode: str = "sub", slug: str = ""):
             if got:
                 got["server"] = srv["name"]
                 got["mode"] = actual_mode
+
+                # Fallback Subtitle Tier 1 & 2:
+                # Jika server video yang berhasil memutar video tidak memiliki subtitle (atau kosong):
+                if not got.get("subtitles"):
+                    # 1. Coba server alternatif di mode yang sama (Cross-Server)
+                    alt_subs = _harvest_subtitles(servers_sorted, current_srv_name=srv["name"])
+                    # 2. Jika masih kosong dan sedang mode DUB, pinjam dari mode SUB (Cross-Mode)
+                    if not alt_subs and actual_mode == "dub":
+                        sub_servers = _order_servers(_parse_servers(servers_html, "sub"))
+                        alt_subs = _harvest_subtitles(sub_servers)
+                    # 3. Jika masih kosong dan sedang mode SUB, pinjam dari mode DUB sebagai cadangan
+                    if not alt_subs and actual_mode == "sub":
+                        dub_servers = _order_servers(_parse_servers(servers_html, "dub"))
+                        alt_subs = _harvest_subtitles(dub_servers)
+
+                    if alt_subs:
+                        got["subtitles"] = alt_subs["subtitles"]
+                        got["sub"] = alt_subs.get("sub")
+                        got["sub_lang"] = alt_subs.get("sub_lang")
+
                 return got
             last_err = f"{srv['name']} gave no m3u8"
         except Exception as e:

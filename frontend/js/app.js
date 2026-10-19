@@ -927,13 +927,7 @@ function renderSubtitles(subtitles, activeUrl){
   var wrap=$("pm-subs-wrap");
   var sel=$("pm-subs");
   if(!wrap||!sel)return;
-  // Dropdown hanya tampil kalau ada minimal 1 track subtitle.
-  // Kalau 0 → sembunyikan wrap (UI tetap clean).
-  if(!subtitles||!subtitles.length){
-    wrap.classList.add("hidden");
-    sel.innerHTML="";
-    return;
-  }
+  subtitles = subtitles || [];
   wrap.classList.remove("hidden");
   sel.innerHTML="";
   // Opsi pertama: "Off" (matikan subtitle).
@@ -989,6 +983,18 @@ function renderSubtitles(subtitles, activeUrl){
     }
     sel.appendChild(aiOpt);
   }
+
+  // Opsi custom subtitle eksternal
+  var optCustomFile=document.createElement("option");
+  optCustomFile.value="__custom_file__";
+  optCustomFile.textContent="📁 [+] Muat File Subtitle (.srt / .vtt)...";
+  sel.appendChild(optCustomFile);
+
+  var optCustomUrl=document.createElement("option");
+  optCustomUrl.value="__custom_url__";
+  optCustomUrl.textContent="🌐 [+] Masukkan URL Subtitle Kustom...";
+  sel.appendChild(optCustomUrl);
+
   // Set value juga kalau match dari default tidak ketemu (URL di pickSubtitleUrl).
   if(activeUrl){
     sel.value=activeUrl;
@@ -998,6 +1004,63 @@ function renderSubtitles(subtitles, activeUrl){
   // Event listener: ganti track aktif seketika + simpan preferensi.
   sel.onchange=function(){
     var url=sel.value;
+    if(url==="__custom_file__"){
+      sel.value=activeUrl||"";
+      var fi=$("pm-custom-sub-file");
+      if(fi){
+        fi.value="";
+        fi.onchange=function(){
+          var file=fi.files&&fi.files[0];
+          if(!file)return;
+          var reader=new FileReader();
+          reader.onload=function(e){
+            var text=e.target.result;
+            toast("Memproses file subtitle...");
+            window.Tatap.uploadCustomSub({text:text,filename:file.name,lang:"en"}).then(function(res){
+              if(res&&res.success&&res.data){
+                toast("Subtitle dimuat: "+res.data.cues_count+" cue");
+                var newTrack={label:res.data.label,url:res.data.url,lang:res.data.lang};
+                subtitles.push(newTrack);
+                cur.activeSub=res.data.url;
+                renderSubtitles(subtitles,res.data.url);
+                switchSubtitleTrack(res.data.url);
+              }else{
+                toast("Gagal memuat subtitle: "+((res&&res.error)||"Format tidak valid"));
+              }
+            }).catch(function(err){
+              toast("Gagal upload subtitle: "+err);
+            });
+          };
+          reader.readAsText(file);
+        };
+        fi.click();
+      }
+      return;
+    }
+    if(url==="__custom_url__"){
+      sel.value=activeUrl||"";
+      var inUrl=prompt("Masukkan URL Subtitle (.srt / .vtt):");
+      if(inUrl&&inUrl.trim()){
+        inUrl=inUrl.trim();
+        toast("Mengunduh subtitle dari URL...");
+        window.Tatap.uploadCustomSub({url:inUrl,filename:"URL Kustom",lang:"en"}).then(function(res){
+          if(res&&res.success&&res.data){
+            toast("Subtitle URL berhasil dimuat");
+            var newTrack={label:res.data.label,url:res.data.url,lang:res.data.lang};
+            subtitles.push(newTrack);
+            cur.activeSub=res.data.url;
+            renderSubtitles(subtitles,res.data.url);
+            switchSubtitleTrack(res.data.url);
+          }else{
+            toast("Gagal memuat subtitle: "+((res&&res.error)||"Gagal mengambil URL"));
+          }
+        }).catch(function(err){
+          toast("Gagal mengunduh subtitle: "+err);
+        });
+      }
+      return;
+    }
+
     cur.activeSub=url||null;
     // Track GTX+: synthetic URL "gtx+:<url>" (atau legacy "aigtx:<url>").
     if(url&&(url.indexOf("gtx+:")===0||url.indexOf("aigtx:")===0)){

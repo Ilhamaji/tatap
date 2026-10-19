@@ -34,8 +34,16 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
 3. **Hardening Layer Client (Android Native & Web Desktop):**
    - Pada `PlayerActivity.java` (Android Native), memperketat deteksi `isEnglish` dengan array pengecualian kata kunci bahasa non-Inggris (`nonEnKeywords`) serta memprioritaskan `foundExactEnSub` sebelum fallback ke varian English lainnya.
    - Pada `frontend/js/app.js` (Web Desktop), memperluas `langMap` dengan bahasa-bahasa Eropa serta menambahkan filter `isPureEnglishSubTrack` dan `isExactEnglishSubTrack` pada pemilih subtitle (`pickSubtitleUrl`) dan dropdown generator (`renderSubtitles`).
-4. **Penambahan Test Suite Subtitle:**
-   - Menambahkan berkas test suite baru `tests/test_subtitle_selection.py` (5 unit test baru, seluruh 147 test suite Tatap lulus 100%).
+4. **Sistem Fallback Subtitle Bertingkat (5-Tier Subtitle Fallback):**
+   - **Tier 1 (Cross-Mode SUB -> DUB Harvesting):** Pada mode dubbing bahasa Inggris (`mode=dub`) di mana server upstream hampir selalu tidak menyertakan subtitle (`tracks: []`), Tatap secara otomatis memanen track subtitle dari mode `sub` pada episode yang sama. Penonton dubbing kini dapat menikmati subtitle Indonesia (GTX+, AI Fansub) maupun English CC.
+   - **Tier 2 (Cross-Server Probing):** Jika server video yang memutar video menghasilkan `subtitles: []`, sistem melakukan inspeksi metadata ringan ke server alternatif (Vidplay / ZokoAnime) untuk menyuntikkan track subtitle valid tanpa perlu mengunduh playlist m3u8 yang berat.
+   - **Tier 3 (Otakudesu -> HiAnime Softsub Donor):** Saat memutar stream dari Otakudesu (yang hanya memiliki hardsub), Tatap mencocokkan judul ke HiAnime dan menyematkan track softsub padanannya.
+   - **Tier 4 & 5 (Dukungan Subtitle Kustom Eksternal - File Lokal & URL):**
+     - Endpoint backend baru `/api/player/sub_custom` (POST & GET) menerima teks upload file `.srt` / `.vtt` maupun URL eksternal, mengonversinya secara otomatis ke format WebVTT standar, dan mengintegrasikannya dengan mesin autosub Tatap.
+     - Android Native (`PlayerActivity.java`): Menambahkan opsi `[+] Pilih File Subtitle Lokal (.srt / .vtt)...` via Storage Access Framework dan `[+] Masukkan URL Subtitle Kustom...`.
+     - Web Desktop (`app.js` & `index.html`): Menambahkan input file lokal (`FileReader`) dan input prompt URL langsung dari antarmuka player.
+5. **Penambahan Test Suite Subtitle & Fallback:**
+   - Menambahkan test suite baru `tests/test_subtitle_selection.py` dan `tests/test_subtitle_fallback.py` (total 10 pengujian subtitle baru, seluruh 156 test suite Tatap lulus 100%).
 
 ## [2.9.1] - 2026-10-18
 

@@ -42,6 +42,7 @@ playMPV:function(b){return jpost("/api/play-mpv",b);},
 // Settings (termasuk sub_lang).
 getSettings:function(){return jget("/api/settings");},
 setSetting:function(b){return jpost("/api/settings",b);},
-checkUpdate:function(){return jget("/api/update/check");}
+checkUpdate:function(){return jget("/api/update/check");},
+uploadCustomSub:function(b){return jpost("/api/player/sub_custom",b);}
 };
 

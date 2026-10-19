@@ -1118,6 +1118,29 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                 hit["sub"] = None
                 hit["sub_lang"] = None
 
+            # Self-heal cache: jika subtitles kosong, coba panen dari HiAnime
+            if not hit.get("subtitles"):
+                clean_slug = slug.split(":", 1)[1] if ":" in slug else slug
+                hi_slug = clean_slug
+                if active_source == "otakudesu" or clean_slug.startswith("otakudesu"):
+                    raw_title = clean_slug.replace("-sub-indo", "").replace("-episode", "").replace("-", " ").strip()
+                    try:
+                        loop = asyncio.get_running_loop()
+                        matched = await _match_slug_one(loop, raw_title)
+                        if matched:
+                            hi_slug = matched
+                    except Exception:
+                        pass
+                try:
+                    loop = asyncio.get_running_loop()
+                    harvested = await loop.run_in_executor(None, lambda: hi.hianime_subtitles_for_episode(hi_slug, ep))
+                    if harvested and harvested.get("subtitles"):
+                        hit["subtitles"] = harvested["subtitles"]
+                        hit["sub"] = harvested.get("sub")
+                        hit["sub_lang"] = harvested.get("sub_lang")
+                except Exception:
+                    pass
+
             picked = hi.select_quality(hit["variants"], q)
             hit["picked"] = picked
             hit["cached"] = True
@@ -1181,6 +1204,25 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         got["picked"] = hi.select_quality(got["variants"], q)
         got["cached"] = False
         got["subtitles"] = got.get("subtitles") or []
+        if not got["subtitles"]:
+            clean_slug = slug.split(":", 1)[1] if ":" in slug else slug
+            hi_slug = clean_slug
+            if active_source == "otakudesu" or clean_slug.startswith("otakudesu"):
+                raw_title = clean_slug.replace("-sub-indo", "").replace("-episode", "").replace("-", " ").strip()
+                try:
+                    matched = await _match_slug_one(loop, raw_title)
+                    if matched:
+                        hi_slug = matched
+                except Exception:
+                    pass
+            try:
+                harvested = await loop.run_in_executor(None, lambda: hi.hianime_subtitles_for_episode(hi_slug, ep))
+                if harvested and harvested.get("subtitles"):
+                    got["subtitles"] = harvested["subtitles"]
+                    got["sub"] = harvested.get("sub")
+                    got["sub_lang"] = harvested.get("sub_lang")
+            except Exception:
+                pass
         actual_mode = got.get("mode") or mode
         got["mode"] = actual_mode
         got["intro"] = got.get("intro") or {"start": 0, "end": 0}
@@ -1810,6 +1852,106 @@ async def _translate_with_fallback(cues, src, tgt, requested_mode="gtx"):
 
     # Return cues asli jika semua penerjemah gagal
     return {"cues": cues, "level": "source", "error": last_err}
+
+
+@app.post("/api/player/sub_custom")
+async def upload_custom_sub(body: dict = None):
+    """Menerima subtitle kustom (.srt atau .vtt) dari teks upload atau URL eksternal,
+    menormalisasikannya menjadi format WebVTT standar, dan mengembalikannya untuk diputar.
+    """
+    body = body or {}
+    text = (body.get("text") or "").strip()
+    url = (body.get("url") or "").strip()
+    filename = (body.get("filename") or "").strip()
+    lang = (body.get("lang") or "en").strip().lower()
+    label = (body.get("label") or "").strip()
+
+    if not text and url:
+        try:
+            text = await _fetch_sub_text(url, "")
+        except Exception as e:
+            return fail(f"Gagal mengunduh subtitle dari URL: {e}")
+
+    if not text:
+        return fail("Teks subtitle atau URL kosong")
+
+    try:
+        from api.translate import parse_vtt, build_vtt
+        cues = parse_vtt(text)
+        if not cues:
+            return fail("Format subtitle tidak dikenali atau tidak memiliki cue valid (.srt / .vtt)")
+        norm_vtt = build_vtt(cues)
+    except Exception as e:
+        return fail(f"Gagal memproses format subtitle: {e}")
+
+    import hashlib
+    sub_id = hashlib.sha1(norm_vtt.encode("utf-8")).hexdigest()[:16]
+    cache_key = f"custom|{sub_id}"
+    await set_subtitle_cache(cache_key, norm_vtt)
+
+    clean_label = label or (f"{filename}" if filename else "Subtitle Kustom")
+    return ok({
+        "id": sub_id,
+        "url": f"/api/player/sub_custom?id={sub_id}",
+        "cues_count": len(cues),
+        "lang": lang,
+        "label": clean_label
+    })
+
+
+@app.get("/api/player/sub_custom")
+async def get_custom_sub(id: str = Query(""),
+                         url: str = Query(""),
+                         lang: str = Query(""),
+                         src: str = Query("en"),
+                         mode: str = Query(""),
+                         refresh: bool = Query(False)):
+    """Mengambil atau menerjemahkan subtitle kustom yang telah dinormalisasi."""
+    vtt_text = None
+    if id:
+        vtt_text = await get_subtitle_cache(f"custom|{id}")
+    elif url:
+        try:
+            vtt_text = await _fetch_sub_text(url, "")
+            from api.translate import parse_vtt, build_vtt
+            cues = parse_vtt(vtt_text)
+            if cues:
+                vtt_text = build_vtt(cues)
+        except Exception:
+            pass
+
+    if not vtt_text:
+        raise HTTPException(status_code=404, detail="Subtitle kustom tidak ditemukan")
+
+    # Jika pengguna meminta translasi autosub (misal dari English ke Indonesian)
+    if lang and lang.lower() != src.lower():
+        from api.translate import parse_vtt, build_vtt
+        import hashlib
+        cache_id = id or hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
+        tr_hash = hashlib.sha1(f"custom_tr|{cache_id}|{lang}".encode("utf-8")).hexdigest()
+        key_tr = f"sub2|custom|{tr_hash}"
+
+        if not refresh:
+            cached_tr = await _get_validated_subtitle_cache(key_tr, lang=lang)
+            if cached_tr:
+                resp = Response(content=cached_tr, media_type="text/vtt; charset=utf-8")
+                resp.headers["X-Translate-Tier"] = "cached-custom-tr"
+                return resp
+
+        try:
+            cues = parse_vtt(vtt_text)
+            tier = await _translate_with_fallback(cues, src, lang, requested_mode=mode or "gtx+")
+            new_text = build_vtt(tier.get("cues") or cues)
+            if tier.get("level") not in ("source", "source-fallback"):
+                await set_subtitle_cache(key_tr, new_text)
+            resp = Response(content=new_text, media_type="text/vtt; charset=utf-8")
+            resp.headers["X-Translate-Tier"] = str(tier.get("level", "gtx+"))
+            return resp
+        except Exception as e:
+            pass
+
+    return Response(content=vtt_text, media_type="text/vtt; charset=utf-8")
+
 
 def find_mpv_binary():
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

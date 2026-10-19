@@ -72,6 +72,8 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.ShortBuffer;
@@ -82,6 +84,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import android.content.Intent;
+import android.widget.EditText;
 
 public class PlayerActivity extends Activity {
     private ExoPlayer player;
@@ -223,6 +227,9 @@ public class PlayerActivity extends Activity {
     private String activeEngine = "gtx"; // "gtx" | "gtx+" | "aigtx" | "ai" | "raw"
     private boolean subEnabled = true;
     private String activeStreamMode = "sub"; // "sub" | "dub"
+    private String customSubtitleName = "";
+    private String customSubtitleUrl = "";
+    private static final int REQUEST_CODE_PICK_SUBTITLE = 8769;
     private boolean hasAiKey = false;
     private String configuredAiModel = "gemini-2.0-flash";
     private boolean isHlsMode = false;
@@ -2351,12 +2358,23 @@ public class PlayerActivity extends Activity {
             }
 
             // Bangun URL utama untuk terjemahan atau subtitle yang dipilih
-            String proxiedSub = "http://127.0.0.1:8767/api/player/sub?url=" + encodedSubUrl
-                    + "&referer=" + encodedRef
-                    + "&src=" + URLEncoder.encode(srcParam, "UTF-8")
-                    + "&lang=" + URLEncoder.encode(activeSubLang, "UTF-8")
-                    + (subModeParam.isEmpty() ? "" : "&mode=" + URLEncoder.encode(subModeParam, "UTF-8"))
-                    + (forceRefresh ? "&refresh=true" : "");
+            String proxiedSub;
+            if (activeSubUrl != null && activeSubUrl.contains("/api/player/sub_custom")) {
+                if (subModeParam.isEmpty()) {
+                    proxiedSub = activeSubUrl;
+                } else {
+                    proxiedSub = activeSubUrl + "&lang=" + URLEncoder.encode(activeSubLang, "UTF-8")
+                            + "&mode=" + URLEncoder.encode(subModeParam, "UTF-8")
+                            + (forceRefresh ? "&refresh=true" : "");
+                }
+            } else {
+                proxiedSub = "http://127.0.0.1:8767/api/player/sub?url=" + encodedSubUrl
+                        + "&referer=" + encodedRef
+                        + "&src=" + URLEncoder.encode(srcParam, "UTF-8")
+                        + "&lang=" + URLEncoder.encode(activeSubLang, "UTF-8")
+                        + (subModeParam.isEmpty() ? "" : "&mode=" + URLEncoder.encode(subModeParam, "UTF-8"))
+                        + (forceRefresh ? "&refresh=true" : "");
+            }
 
             loadSubtitlesAsync(proxiedSub, false);
         } catch (Exception e) {
@@ -2853,46 +2871,62 @@ public class PlayerActivity extends Activity {
         List<String> options = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
 
-        if (enSourceSubUrl.isEmpty() && subtitleTracks.isEmpty()) {
-            String msg = "dub".equalsIgnoreCase(activeStreamMode) ? "Audio: English Dub (Tidak ada file subtitle)" : "Tidak ada file subtitle untuk video ini";
-            options.add("Peringatan: " + msg);
+        if (enSourceSubUrl.isEmpty() && subtitleTracks.isEmpty() && customSubtitleName.isEmpty()) {
+            String msg = "dub".equalsIgnoreCase(activeStreamMode) ? "Audio: English Dub (Tidak ada file subtitle bawaan)" : "Tidak ada file subtitle bawaan untuk video ini";
+            options.add("[Info] " + msg);
             actions.add(() -> {});
         } else {
+            // 0. Subtitle Kustom yang pernah dimuat
+            if (!customSubtitleName.isEmpty()) {
+                boolean isCustomSelected = subEnabled && "custom".equals(activeSubLang);
+                options.add("[Kustom] " + customSubtitleName + (isCustomSelected ? " [Aktif]" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "custom";
+                    activeEngine = "raw";
+                    if (!customSubtitleUrl.isEmpty()) {
+                        activeSubUrl = customSubtitleUrl;
+                    }
+                });
+            }
+
             // 1. Google GTX Murni (Prioritas Pertama / Super Cepat)
-            boolean isGtxSelected = subEnabled && "id".equals(activeSubLang) && "gtx".equals(activeEngine);
-            options.add("[ID] Bahasa Indonesia (Google GTX Murni - Cepat)" + (isGtxSelected ? " [Aktif]" : ""));
-            actions.add(() -> {
-                subEnabled = true;
-                activeSubLang = "id";
-                activeEngine = "gtx";
-                activeSubUrl = enSourceSubUrl;
-            });
+            if (!enSourceSubUrl.isEmpty()) {
+                boolean isGtxSelected = subEnabled && "id".equals(activeSubLang) && "gtx".equals(activeEngine);
+                options.add("[ID] Bahasa Indonesia (Google GTX Murni - Cepat)" + (isGtxSelected ? " [Aktif]" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "id";
+                    activeEngine = "gtx";
+                    activeSubUrl = enSourceSubUrl;
+                });
 
-            // 2. GTX+ (Prioritas Kedua / GTX + Smart Fansub & Scene Detection)
-            boolean isGtxPlusSelected = subEnabled && "id".equals(activeSubLang) && ("gtx+".equals(activeEngine) || "aigtx".equals(activeEngine));
-            options.add("[ID] Bahasa Indonesia (GTX+ - Smart Fansub & Scene Detection)" + (isGtxPlusSelected ? " [Aktif]" : ""));
-            actions.add(() -> {
-                subEnabled = true;
-                activeSubLang = "id";
-                activeEngine = "gtx+";
-                activeSubUrl = enSourceSubUrl;
-            });
+                // 2. GTX+ (Prioritas Kedua / GTX + Smart Fansub & Scene Detection)
+                boolean isGtxPlusSelected = subEnabled && "id".equals(activeSubLang) && ("gtx+".equals(activeEngine) || "aigtx".equals(activeEngine));
+                options.add("[ID] Bahasa Indonesia (GTX+ - Smart Fansub & Scene Detection)" + (isGtxPlusSelected ? " [Aktif]" : ""));
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "id";
+                    activeEngine = "gtx+";
+                    activeSubUrl = enSourceSubUrl;
+                });
 
-            // 3. AI Fansub (Prioritas Ketiga / LLM Translate)
-            boolean isAiSelected = subEnabled && "id".equals(activeSubLang) && "ai".equals(activeEngine);
-            String aiOptionText = "[AI] Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
-                    + (hasAiKey ? " [SIAP]" : " [Butuh Key]")
-                    + (isAiSelected ? " [Aktif]" : "");
-            options.add(aiOptionText);
-            actions.add(() -> {
-                subEnabled = true;
-                activeSubLang = "id";
-                activeEngine = "ai";
-                activeSubUrl = enSourceSubUrl;
-                if (!hasAiKey) {
-                    Toast.makeText(this, "Perhatian: API Key AI belum disetel (:apikey <key> di home). Menggunakan GTX sebagai fallback otomatis.", Toast.LENGTH_LONG).show();
-                }
-            });
+                // 3. AI Fansub (Prioritas Ketiga / LLM Translate)
+                boolean isAiSelected = subEnabled && "id".equals(activeSubLang) && "ai".equals(activeEngine);
+                String aiOptionText = "[AI] Bahasa Indonesia (AI Fansub / " + configuredAiModel + ")"
+                        + (hasAiKey ? " [SIAP]" : " [Butuh Key]")
+                        + (isAiSelected ? " [Aktif]" : "");
+                options.add(aiOptionText);
+                actions.add(() -> {
+                    subEnabled = true;
+                    activeSubLang = "id";
+                    activeEngine = "ai";
+                    activeSubUrl = enSourceSubUrl;
+                    if (!hasAiKey) {
+                        Toast.makeText(this, "Perhatian: API Key AI belum disetel (:apikey <key> di home). Menggunakan GTX sebagai fallback otomatis.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
 
             // 4. Native Indonesian (jika tersedia di track asli)
             if (!idNativeSubUrl.isEmpty()) {
@@ -2907,7 +2941,7 @@ public class PlayerActivity extends Activity {
             }
 
             // 5. English (Original)
-            if (!enSourceSubUrl.isEmpty()) {
+            if (!enSourceSubUrl.isEmpty() && !enSourceSubUrl.equals(customSubtitleUrl)) {
                 boolean isEnSelected = subEnabled && "en".equals(activeSubLang) && "raw".equals(activeEngine);
                 options.add("[EN] English (Original / Asli)" + (isEnSelected ? " [Aktif]" : ""));
                 actions.add(() -> {
@@ -2925,7 +2959,7 @@ public class PlayerActivity extends Activity {
                 String lbl = s.optString("label", "Track " + (i + 1));
                 String lang = s.optString("lang", "").toLowerCase();
                 // Lewati track English & ID native karena sudah disediakan di menu utama di atas
-                if (url.equals(enSourceSubUrl) || url.equals(idNativeSubUrl)) {
+                if (url.equals(enSourceSubUrl) || url.equals(idNativeSubUrl) || url.equals(customSubtitleUrl)) {
                     continue;
                 }
                 boolean isThisSelected = subEnabled && "raw".equals(activeEngine) && url.equals(activeSubUrl);
@@ -2948,6 +2982,13 @@ public class PlayerActivity extends Activity {
             });
         }
 
+        // Opsi Subtitle Kustom (File Lokal / URL)
+        options.add("[+] Pilih File Subtitle Lokal (.srt / .vtt)...");
+        actions.add(this::openSubtitleFilePicker);
+
+        options.add("[+] Masukkan URL Subtitle Kustom...");
+        actions.add(this::showCustomSubtitleUrlDialog);
+
         // 7. Pengaturan Tampilan & Gaya Subtitle
         options.add("Pengaturan Tampilan (Posisi, Latar Belakang & Ukuran)...");
         actions.add(this::showSubtitleStyleDialog);
@@ -2962,7 +3003,7 @@ public class PlayerActivity extends Activity {
             if (which >= 0 && which < actions.size()) {
                 String chosen = options.get(which);
                 actions.get(which).run();
-                if (!chosen.contains("[Refresh]")) {
+                if (!chosen.contains("[Refresh]") && !chosen.contains("[+]")) {
                     getSharedPreferences("tatap_player_prefs", MODE_PRIVATE).edit()
                             .putString("pref_sub_engine", activeEngine)
                             .putString("pref_sub_lang", activeSubLang)
@@ -2986,6 +3027,221 @@ public class PlayerActivity extends Activity {
             }
         });
         builder.show();
+    }
+
+    private void openSubtitleFilePicker() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("*/*");
+            String[] mimeTypes = {"text/plain", "text/vtt", "application/x-subrip", "application/octet-stream"};
+            intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
+            startActivityForResult(intent, REQUEST_CODE_PICK_SUBTITLE);
+        } catch (Exception e) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                intent.setType("*/*");
+                startActivityForResult(intent, REQUEST_CODE_PICK_SUBTITLE);
+            } catch (Exception ex) {
+                Toast.makeText(this, "Gagal membuka pengelola berkas: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_PICK_SUBTITLE && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            loadCustomSubtitleFromUri(uri);
+        }
+    }
+
+    private void loadCustomSubtitleFromUri(Uri uri) {
+        new Thread(() -> {
+            try {
+                InputStream is = getContentResolver().openInputStream(uri);
+                if (is == null) {
+                    runOnUiThread(() -> Toast.makeText(this, "Tidak dapat membaca file subtitle", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+                reader.close();
+                is.close();
+                String rawSub = sb.toString();
+
+                String displayName = "File Lokal";
+                try (android.database.Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME);
+                        if (nameIdx >= 0) {
+                            String name = cursor.getString(nameIdx);
+                            if (name != null && !name.isEmpty()) displayName = name;
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                final String finalName = displayName;
+                String customUrl = registerCustomSubtitleToBackend(rawSub, finalName);
+                List<SubtitleCue> cues = parseVtt(rawSub);
+
+                runOnUiThread(() -> {
+                    if (cues.isEmpty()) {
+                        Toast.makeText(this, "Subtitle kosong atau format tidak dikenali (.srt/.vtt)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    customSubtitleName = finalName;
+                    customSubtitleUrl = customUrl != null ? customUrl : "";
+                    currentCues = cues;
+                    subEnabled = true;
+                    activeSubLang = "custom";
+                    activeEngine = "raw";
+                    if (!customSubtitleUrl.isEmpty()) {
+                        activeSubUrl = customSubtitleUrl;
+                        enSourceSubUrl = customSubtitleUrl;
+                    }
+                    if (tvSubtitles != null) {
+                        tvSubtitles.setText("");
+                        tvSubtitles.setVisibility(View.GONE);
+                    }
+                    updateSubStatusText(true);
+                    subtitleSyncRunnable.run();
+                    Toast.makeText(this, "Subtitle aktif: " + cues.size() + " cue (" + finalName + ")", Toast.LENGTH_SHORT).show();
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Gagal memuat subtitle: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+
+    private String registerCustomSubtitleToBackend(String text, String filename) {
+        HttpURLConnection conn = null;
+        try {
+            URL u = new URL("http://127.0.0.1:8767/api/player/sub_custom");
+            conn = (HttpURLConnection) u.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(6000);
+            conn.setReadTimeout(6000);
+            JSONObject json = new JSONObject();
+            json.put("text", text);
+            json.put("filename", filename);
+            json.put("lang", "en");
+            byte[] bytes = json.toString().getBytes(StandardCharsets.UTF_8);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(bytes);
+            }
+            if (conn.getResponseCode() == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                StringBuilder resp = new StringBuilder();
+                String l;
+                while ((l = br.readLine()) != null) resp.append(l);
+                br.close();
+                JSONObject r = new JSONObject(resp.toString());
+                if (r.optBoolean("success", false)) {
+                    JSONObject d = r.optJSONObject("data");
+                    if (d != null) {
+                        String relUrl = d.optString("url", "");
+                        if (!relUrl.isEmpty()) {
+                            return "http://127.0.0.1:8767" + relUrl;
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+        return null;
+    }
+
+    private void showCustomSubtitleUrlDialog() {
+        AlertDialog.Builder b = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
+        b.setTitle("Masukkan URL Subtitle");
+        final EditText input = new EditText(this);
+        input.setHint("https://example.com/sub.vtt atau .srt");
+        input.setTextColor(0xFFFFFFFF);
+        input.setHintTextColor(0xFF888888);
+        input.setSingleLine(true);
+        input.setPadding(40, 30, 40, 30);
+        b.setView(input);
+
+        b.setPositiveButton("Muat", (dialog, which) -> {
+            String url = input.getText().toString().trim();
+            if (url.isEmpty()) {
+                Toast.makeText(this, "URL subtitle tidak boleh kosong", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            loadCustomSubtitleFromUrl(url);
+        });
+        b.setNegativeButton("Batal", (dialog, which) -> dialog.dismiss());
+        AlertDialog dialog = b.create();
+        dialog.show();
+    }
+
+    private void loadCustomSubtitleFromUrl(String url) {
+        Toast.makeText(this, "Mengunduh subtitle dari URL...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL u = new URL("http://127.0.0.1:8767/api/player/sub_custom");
+                conn = (HttpURLConnection) u.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
+                JSONObject json = new JSONObject();
+                json.put("url", url);
+                json.put("filename", "Kustom URL");
+                byte[] bytes = json.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(bytes);
+                }
+                int respCode = conn.getResponseCode();
+                if (respCode == 200) {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                    StringBuilder resp = new StringBuilder();
+                    String l;
+                    while ((l = br.readLine()) != null) resp.append(l);
+                    br.close();
+                    JSONObject r = new JSONObject(resp.toString());
+                    if (r.optBoolean("success", false)) {
+                        JSONObject d = r.optJSONObject("data");
+                        if (d != null) {
+                            String relUrl = d.optString("url", "");
+                            String subFullUrl = "http://127.0.0.1:8767" + relUrl;
+                            runOnUiThread(() -> {
+                                customSubtitleName = "URL: " + (url.length() > 30 ? url.substring(0, 27) + "..." : url);
+                                customSubtitleUrl = subFullUrl;
+                                activeSubUrl = subFullUrl;
+                                enSourceSubUrl = subFullUrl;
+                                activeSubLang = "custom";
+                                activeEngine = "raw";
+                                subEnabled = true;
+                                applySubtitleSelection();
+                                Toast.makeText(this, "Subtitle dari URL berhasil diaktifkan", Toast.LENGTH_SHORT).show();
+                            });
+                            return;
+                        }
+                    }
+                    String err = r.optString("error", "Format tidak valid");
+                    runOnUiThread(() -> Toast.makeText(this, "Gagal memuat subtitle: " + err, Toast.LENGTH_LONG).show());
+                } else {
+                    runOnUiThread(() -> Toast.makeText(this, "Server error: HTTP " + respCode, Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                runOnUiThread(() -> Toast.makeText(this, "Koneksi gagal: " + e.getMessage(), Toast.LENGTH_LONG).show());
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }).start();
     }
 
     private void applySubtitleStyle() {
