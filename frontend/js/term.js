@@ -452,54 +452,98 @@ var Tui = (function () {
           var d=document.createElement("div");
           d.className="poster-card"+(idx===S.sel?" sel":"")+(isUnavail?" unmapped":"");
           d.tabIndex=0;
-          var idxSpan=document.createElement("span");idxSpan.className="pc-idx";idxSpan.textContent=String(idx+1).padStart(2,"0");d.appendChild(idxSpan);
+
+          var media=document.createElement("div");
+          media.className="pc-media";
+
+          if(a.poster){
+            var im=document.createElement("img");
+            im.loading="lazy";
+            im.decoding="async";
+            im.alt=a.title||"";
+            im.src=a.poster;
+            im.onerror=function(){this.style.display="none";};
+            media.appendChild(im);
+          }
+
+          var idxSpan=document.createElement("span");
+          idxSpan.className="pc-idx";
+          idxSpan.textContent=String(idx+1).padStart(2,"0");
+          media.appendChild(idxSpan);
+
+          if(isUnavail){
+            var bad=document.createElement("span");
+            bad.className="pc-bad";
+            bad.textContent="?";
+            bad.title="Tidak ada di hianime";
+            media.appendChild(bad);
+          }else if(a.score&&a.score>0){
+            var sc=document.createElement("span");
+            sc.className="pc-score";
+            sc.textContent="★ "+a.score.toFixed(1);
+            media.appendChild(sc);
+          }
+
           if(a.badge){
             var bgTag=document.createElement("span");
-            var isTam = a.badge === "TAMAT" || a.is_finished;
-            var isLongB = a.badge === "SERIAL PANJANG" || a.is_long_running;
-            var bgCol = isTam ? "rgba(5,150,105,0.92)" : (isLongB ? "rgba(217,119,6,0.92)" : "rgba(15,23,42,0.85)");
-            bgTag.className="pc-badge-tag";
-            bgTag.style.cssText="position:absolute;bottom:6px;left:6px;font-size:10px;font-weight:bold;padding:2px 5px;border-radius:3px;background:"+bgCol+";color:#fff;z-index:2;pointer-events:none;";
-            var bText = a.badge;
-            if(a.badge === "ONGOING" && a.eps_counter){
-              bText = "EP " + a.eps_counter;
+            var isTam=a.badge==="TAMAT"||a.is_finished;
+            var isLongB=a.badge==="SERIAL PANJANG"||a.is_long_running;
+            var bCls=isTam?" pc-badge-tamat":(isLongB?" pc-badge-long":" pc-badge-ep");
+            bgTag.className="pc-badge-tag"+bCls;
+            var bText=a.badge;
+            if(a.badge==="ONGOING"&&a.eps_counter){
+              bText="EP "+a.eps_counter;
             }
             bgTag.textContent=bText;
-            d.appendChild(bgTag);
+            media.appendChild(bgTag);
           }
-          if(isUnavail){var bad=document.createElement("span");bad.className="pc-bad";bad.textContent="?";bad.title="Tidak ada di hianime";d.appendChild(bad);}
-          if(a.poster){var im=document.createElement("img");im.loading="lazy";im.decoding="async";im.alt=a.title;im.src=a.poster;im.onerror=function(){this.style.display="none";};d.appendChild(im);}
-          if(S.view==="riwayat" && a.progress && a.progress >= 15){
-            var progTrack=document.createElement("div");progTrack.className="pc-progress-track";
-            var progFill=document.createElement("div");progFill.className="pc-progress-fill";
-            var pct=Math.min(100, Math.max(5, Math.round((a.progress / 1440) * 100)));
+
+          if(a.type){
+            var tp=document.createElement("span");
+            tp.className="pc-badge-type";
+            tp.textContent=String(a.type).toUpperCase();
+            media.appendChild(tp);
+          }
+
+          if(S.view==="riwayat"&&a.progress&&a.progress>=15){
+            var progTrack=document.createElement("div");
+            progTrack.className="pc-progress-track";
+            var progFill=document.createElement("div");
+            progFill.className="pc-progress-fill";
+            var pct=Math.min(100,Math.max(5,Math.round((a.progress/1440)*100)));
             progFill.style.width=pct+"%";
             progTrack.appendChild(progFill);
-            d.appendChild(progTrack);
+            media.appendChild(progTrack);
           }
-          var body=document.createElement("div");body.className="poster-body";
-          var b=document.createElement("b");b.textContent=a.title;body.appendChild(b);
-          var meta=document.createElement("div");meta.className="poster-meta";
+
+          d.appendChild(media);
+
+          var body=document.createElement("div");
+          body.className="poster-body";
+          var b=document.createElement("b");
+          b.textContent=a.title||"";
+          b.title=a.title||"";
+          body.appendChild(b);
+
+          var meta=document.createElement("div");
+          meta.className="poster-meta";
           var m=[];
           if(S.view==="riwayat"){
-            if(a.episode) m.push("Ep " + a.episode);
-            if(a.mode) m.push(String(a.mode).toUpperCase());
-            if(a.progress && a.progress >= 15 && window.App && App.formatTimeSec) m.push(App.formatTimeSec(a.progress));
+            if(a.episode)m.push("Ep "+a.episode);
+            if(a.mode)m.push(String(a.mode).toUpperCase());
+            if(a.progress&&a.progress>=15&&window.App&&App.formatTimeSec)m.push(App.formatTimeSec(a.progress));
           }else{
-            if(a.type)m.push(a.type);
             if(a.eps_counter){
               m.push("Ep "+a.eps_counter);
-            }else{
-              if(a.eps)m.push(a.eps+" ep");
-              if(a.sub)m.push("SUB "+a.sub);
-              if(a.dub)m.push("DUB "+a.dub);
+            }else if(a.eps){
+              m.push(a.eps+" ep");
             }
             if(a.duration)m.push(a.duration);
-            if(a.score)m.push(a.score.toFixed(1));
           }
-          meta.textContent=m.join(" · ");
+          meta.textContent=m.join(" · ")||"Anime";
           body.appendChild(meta);
           d.appendChild(body);
+
           if(!isUnavail){
             d.addEventListener("click",function(){App.openTitle(a.id,a.title,a.poster,a.type,a.eps_counter,a);});
           }
