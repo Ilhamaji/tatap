@@ -137,6 +137,17 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
       - *Compositor-Only Animations:* Mikro-interaksi hover hanya memanfaatkan akselerasi GPU murni (`transform: translate3d(0, -2px, 0)` dan `opacity`).
       - *Bypass Zoom pada Touch/TV:* Animasi scaling poster diisolasi hanya untuk perangkat dengan mouse/pointer melalui `@media (hover: hover)`.
     - **Test Suite Komprehensif (`tests/test_anime_card_polish.py`):** Menambahkan 4 pengujian otomatis baru yang memvalidasi keberadaan wadah `pc-media`, rasio 2/3, pseudo-element scrim, kelas badge semantik, zero backdrop-filter, dan CSS containment (seluruh 182 test suite Tatap lulus 100%).
+24. **Perbaikan Ketahanan Sistem Pembaruan Versi (Pemberantasan Error 'Koneksi Gagal' pada Opsi Update):**
+    - **Akar Masalah:** Menangani pembatasan kuota unauthenticated GitHub REST API (`HTTP 403 Forbidden` / 60 req/jam) yang sering habis pada jaringan seluler bersama (CGNAT) di Indonesia, timeout koneksi seluler/TV box, serta ketiadaan fallback jaringan.
+    - **Arsitektur Fallback Bertingkat 4-Tier pada Backend (`backend/main.py` & Paritas Chaquopy):**
+      - *Tier 1 (GitHub REST API):* Memeriksa API resmi GitHub dengan perpanjangan timeout menjadi 12.0 detik.
+      - *Tier 2 (GitHub Web Releases Redirect):* Jika Tier 1 mengembalikan HTTP 403 atau error jaringan, otomatis menghubungi halaman web rilis `https://github.com/asfaraguest/tatap/releases/latest` (bebas batas kuota API), mengekstrak nomor versi dari header redirect `Location` (`/tag/v<VER>`), dan merekonstruksi URL unduhan 4 aset resmi secara deterministik.
+      - *Tier 3 (GitHub Raw Fastly CDN):* Jika Tier 1 & 2 terganggu oleh DNS poisoning, membaca `VERSION` dan `CHANGELOG.md` via Fastly CDN (`raw.githubusercontent.com`) dengan latensi instan (< 500ms).
+      - *Tier 4 (Stale Cache Fallback):* Jika perangkat benar-benar offline, menyajikan data cache rilis sebelumnya alih-alih melempar error gagal.
+    - **Fallback Native Java Langsung pada Android (`AppUpdateManager.java`):**
+      - Menambahkan mekanisme fallback langsung via HTTPS dari kode Java native jika server backend lokal Python (`127.0.0.1:8767`) sedang sibuk atau tidak merespons, menjamin pemeriksaan update di Android tidak pernah gagal.
+    - **Perluasan Automated Test Suite (`tests/test_in_app_update.py`):**
+      - Menambahkan 2 pengujian otomatis baru (`test_backend_update_tier2_web_fallback` dan `test_backend_update_tier3_raw_fallback`) yang memverifikasi otomatisasi fallback saat API terkena HTTP 403 dan simulasi kegagalan DNS web (seluruh 184 test suite Tatap lulus 100%).
 
 ## [2.9.1] - 2026-10-18
 

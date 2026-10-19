@@ -41,84 +41,188 @@ async def get_version():
 
 @app.get("/api/update/check")
 async def check_update(force: bool = False):
-    """Pemeriksaan pembaruan versi Tatap secara on-demand via GitHub Releases API.
+    """Pemeriksaan pembaruan versi Tatap secara on-demand via GitHub Releases API & Multi-Tier Fallback.
     Memfilter 4 berkas resmi sesuai aturan paten agent.md:
     1. tatap-release-v<VER>.apk (Official Signed Mobile APK)
     2. tatap-tv-release-v<VER>.apk (Official Signed Android/Google TV APK)
     3. tatap-windows-x64-portable.zip (Windows Portable)
     4. Tatap-x86_64.AppImage (Linux AppImage)
     """
+    cache_key = "github_latest_release"
+    if not force:
+        cached = await get_browse_cache(cache_key, ttl=300)
+        if cached and isinstance(cached, dict):
+            return ok(cached)
+
+    def parse_ver(v_str):
+        nums = []
+        for part in (v_str or "").split("."):
+            m = re.match(r"^\d+", part)
+            nums.append(int(m.group(0)) if m else 0)
+        return tuple(nums)
+
+    def build_official_assets(ver_clean):
+        tag = f"v{ver_clean}" if not ver_clean.startswith("v") else ver_clean
+        base = f"https://github.com/asfaraguest/tatap/releases/download/{tag}"
+        return {
+            "android": f"{base}/tatap-release-{tag}.apk",
+            "android_tv": f"{base}/tatap-tv-release-{tag}.apk",
+            "windows": f"{base}/tatap-windows-x64-portable.zip",
+            "linux": f"{base}/Tatap-x86_64.AppImage"
+        }
+
+    curr_clean = re.sub(r"^v", "", CURRENT_VERSION)
+    headers = {
+        "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/asfaraguest/tatap)",
+        "Accept": "application/vnd.github.v3+json, text/html;q=0.9, */*;q=0.8"
+    }
+
+    out_payload = None
+    err_detail = None
+
+    # TIER 1: GitHub REST API
     try:
-        cache_key = "github_latest_release"
-        if not force:
-            cached = await get_browse_cache(cache_key, ttl=300)
-            if cached and isinstance(cached, dict):
-                return ok(cached)
+        url_api = "https://api.github.com/repos/asfaraguest/tatap/releases/latest"
+        async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+            resp = await client.get(url_api, headers=headers)
+        if resp.status_code == 200:
+            rel_data = resp.json()
+            tag_name = (rel_data.get("tag_name") or "").strip()
+            latest_clean = re.sub(r"^v", "", tag_name)
+            has_update = False
+            try:
+                has_update = parse_ver(latest_clean) > parse_ver(curr_clean)
+            except Exception:
+                has_update = latest_clean != curr_clean and bool(latest_clean)
 
-        url = "https://api.github.com/repos/asfaraguest/tatap/releases/latest"
-        headers = {
-            "User-Agent": f"Tatap-App/{CURRENT_VERSION} (https://github.com/asfaraguest/tatap)",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
-            resp = await client.get(url, headers=headers)
-        if resp.status_code != 200:
-            return fail(f"Gagal memeriksa update (HTTP {resp.status_code})")
-        rel_data = resp.json()
-        tag_name = (rel_data.get("tag_name") or "").strip()
-        latest_clean = re.sub(r"^v", "", tag_name)
-        curr_clean = re.sub(r"^v", "", CURRENT_VERSION)
+            assets_out = {
+                "android": "",
+                "android_tv": "",
+                "windows": "",
+                "linux": ""
+            }
+            raw_assets = rel_data.get("assets") or []
+            for a in raw_assets:
+                fname = (a.get("name") or "").lower()
+                dl_url = a.get("browser_download_url") or ""
+                if "tatap-tv-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
+                    assets_out["android_tv"] = dl_url
+                elif "tatap-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
+                    assets_out["android"] = dl_url
+                elif "windows" in fname and fname.endswith(".zip"):
+                    assets_out["windows"] = dl_url
+                elif fname.endswith(".appimage"):
+                    assets_out["linux"] = dl_url
 
-        def parse_ver(v_str):
-            nums = []
-            for part in v_str.split("."):
-                m = re.match(r"^\d+", part)
-                nums.append(int(m.group(0)) if m else 0)
-            return tuple(nums)
+            if not assets_out["android"]:
+                assets_out = build_official_assets(latest_clean)
 
-        has_update = False
+            notes_body = rel_data.get("body") or ""
+            out_payload = {
+                "current_version": CURRENT_VERSION,
+                "latest_version": latest_clean or tag_name,
+                "tag_name": tag_name,
+                "has_update": has_update,
+                "release_name": rel_data.get("name") or tag_name,
+                "notes": notes_body,
+                "body": notes_body,
+                "published_at": rel_data.get("published_at") or "",
+                "release_url": rel_data.get("html_url") or f"https://github.com/asfaraguest/tatap/releases/tag/{tag_name}",
+                "assets": assets_out
+            }
+        else:
+            err_detail = f"GitHub API HTTP {resp.status_code}"
+    except Exception as e:
+        err_detail = f"API: {str(e)}"
+
+    # TIER 2: GitHub Web Releases Redirect (Bypasses API rate-limits 403 on CGNAT / cellular)
+    if not out_payload:
         try:
-            has_update = parse_ver(latest_clean) > parse_ver(curr_clean)
+            url_web = "https://github.com/asfaraguest/tatap/releases/latest"
+            async with httpx.AsyncClient(timeout=12.0, follow_redirects=True) as client:
+                r_web = await client.get(url_web, headers=headers)
+            if r_web.status_code == 200:
+                final_url = str(r_web.url)
+                m = re.search(r"/tag/v?([0-9]+\.[0-9]+\.[0-9]+)", final_url)
+                if m:
+                    latest_clean = m.group(1)
+                    tag_name = f"v{latest_clean}"
+                    has_update = False
+                    try:
+                        has_update = parse_ver(latest_clean) > parse_ver(curr_clean)
+                    except Exception:
+                        has_update = latest_clean != curr_clean and bool(latest_clean)
+
+                    html_text = r_web.text
+                    notes_match = re.search(r'<div[^>]*class="[^"]*markdown-body[^"]*"[^>]*>(.*?)</div>', html_text, re.DOTALL)
+                    notes_extracted = ""
+                    if notes_match:
+                        raw_html = notes_match.group(1)
+                        notes_extracted = re.sub(r"<[^>]+>", "", raw_html).strip()
+
+                    out_payload = {
+                        "current_version": CURRENT_VERSION,
+                        "latest_version": latest_clean,
+                        "tag_name": tag_name,
+                        "has_update": has_update,
+                        "release_name": f"Tatap {tag_name}",
+                        "notes": notes_extracted or f"Pembaruan rilis Tatap {tag_name} tersedia di GitHub.",
+                        "body": notes_extracted or f"Pembaruan rilis Tatap {tag_name} tersedia di GitHub.",
+                        "published_at": "",
+                        "release_url": final_url,
+                        "assets": build_official_assets(latest_clean)
+                    }
+        except Exception as e:
+            if not err_detail:
+                err_detail = f"Web: {str(e)}"
+
+    # TIER 3: GitHub Raw Fastly CDN (VERSION & CHANGELOG.md)
+    if not out_payload:
+        try:
+            url_raw_ver = "https://raw.githubusercontent.com/asfaraguest/tatap/main/VERSION"
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                r_raw = await client.get(url_raw_ver, headers=headers)
+            if r_raw.status_code == 200 and r_raw.text.strip():
+                latest_clean = r_raw.text.strip()
+                tag_name = f"v{latest_clean}" if not latest_clean.startswith("v") else latest_clean
+                latest_clean = re.sub(r"^v", "", latest_clean)
+                has_update = False
+                try:
+                    has_update = parse_ver(latest_clean) > parse_ver(curr_clean)
+                except Exception:
+                    has_update = latest_clean != curr_clean and bool(latest_clean)
+
+                out_payload = {
+                    "current_version": CURRENT_VERSION,
+                    "latest_version": latest_clean,
+                    "tag_name": tag_name,
+                    "has_update": has_update,
+                    "release_name": f"Tatap {tag_name}",
+                    "notes": f"Pembaruan rilis Tatap {tag_name} terdeteksi dari repositori resmi.",
+                    "body": f"Pembaruan rilis Tatap {tag_name} terdeteksi dari repositori resmi.",
+                    "published_at": "",
+                    "release_url": f"https://github.com/asfaraguest/tatap/releases/tag/{tag_name}",
+                    "assets": build_official_assets(latest_clean)
+                }
+        except Exception as e:
+            if not err_detail:
+                err_detail = f"Raw: {str(e)}"
+
+    # TIER 4: Stale Cache Fallback (If all network calls fail)
+    if not out_payload:
+        try:
+            cached_stale = await get_browse_cache(cache_key, ttl=86400 * 30)
+            if cached_stale and isinstance(cached_stale, dict):
+                cached_stale["cached"] = True
+                return ok(cached_stale)
         except Exception:
-            has_update = latest_clean != curr_clean and bool(latest_clean)
+            pass
 
-        # Filter strictly the 4 official assets according to agent.md
-        assets_out = {
-            "android": "",
-            "android_tv": "",
-            "windows": "",
-            "linux": ""
-        }
-        raw_assets = rel_data.get("assets") or []
-        for a in raw_assets:
-            fname = (a.get("name") or "").lower()
-            dl_url = a.get("browser_download_url") or ""
-            if "tatap-tv-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
-                assets_out["android_tv"] = dl_url
-            elif "tatap-release-" in fname and fname.endswith(".apk") and not fname.endswith(".idsig"):
-                assets_out["android"] = dl_url
-            elif "windows" in fname and fname.endswith(".zip"):
-                assets_out["windows"] = dl_url
-            elif fname.endswith(".appimage"):
-                assets_out["linux"] = dl_url
-
-        notes_body = rel_data.get("body") or ""
-        out_payload = {
-            "current_version": CURRENT_VERSION,
-            "latest_version": latest_clean or tag_name,
-            "tag_name": tag_name,
-            "has_update": has_update,
-            "release_name": rel_data.get("name") or tag_name,
-            "notes": notes_body,
-            "body": notes_body,
-            "published_at": rel_data.get("published_at") or "",
-            "release_url": rel_data.get("html_url") or "https://github.com/asfaraguest/tatap/releases/latest",
-            "assets": assets_out
-        }
+    if out_payload:
         await set_browse_cache(cache_key, out_payload)
         return ok(out_payload)
-    except Exception as e:
-        return fail(f"Koneksi gagal: {str(e)}")
+
+    return fail(f"Gagal memeriksa update ({err_detail or 'Periksa koneksi internet Anda'}).")
 
 @app.get("/api/health")
 async def health():

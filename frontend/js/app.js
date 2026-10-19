@@ -2345,7 +2345,7 @@ function closeUpdateModal(){
 
 function checkForUpdate(manualTrigger){
   if(manualTrigger) toast("Memeriksa update ke GitHub…", 2000);
-  window.Tatap.checkUpdate().then(function(res){
+  window.Tatap.checkUpdate(!!manualTrigger).then(function(res){
     if(res && res.success && res.data){
       var d = res.data;
       if(d.has_update){

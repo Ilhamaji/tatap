@@ -1104,7 +1104,7 @@ var Tui = (function () {
           window.App.checkForUpdate(true);
         } else {
           try{
-            var ures = await window.Tatap.checkUpdate();
+            var ures = await window.Tatap.checkUpdate(true);
             if(ures && ures.success && ures.data){
               if(ures.data.has_update){
                 log("pembaruan tersedia: v" + ures.data.latest_version + " — " + ures.data.release_name,"ok");
