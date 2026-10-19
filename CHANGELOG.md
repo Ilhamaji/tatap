@@ -89,6 +89,14 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
      - Menambahkan `contain: strict;` pada `#ambient` dan `#ambient-fallback` untuk isolasi komposit GPU layer.
 14. **Test Suite Optimasi Linux AppImage (`tests/test_linux_appimage_optimization.py`):**
    - Menambahkan pengujian otomatis baru yang memvalidasi keberadaan seluruh flag akselerasi hardware dan reduksi bloat di `AppRun`, auto-detection uvloop/httptools dan `access_log=False` di backend, serta throttling guards di frontend.
+15. **Pengalihan Subtitle Fullscreen Desktop dari Windows Closed Captions ke CC Styler Tatap:**
+   - **Pencegahan Pembajakan Subtitle oleh Windows Accessibility Captions:** Mengunci `track.mode = "hidden"` pada seluruh browser desktop dan WebView2 Windows (`isDesktopEnv()`), mengeliminasi pemicuan otomatis *Windows Accessibility Closed Captions* yang sebelumnya menimpa dan memaksakan gaya teks kaku sistem operasi.
+   - **Promosi Otomatis ke Fullscreen Container (`onFullscreenChange`):** Mengalihkan secara instan pemicuan fullscreen dari elemen `<video>` langsung ke container `.ambient-stage` ketika pengguna mengetuk tombol fullscreen pada bar kontrol browser. Dengan container stage berada di Top Layer, seluruh elemen overlay kustom Tatap (`#pm-subs-overlay`), tombol CC tersemat (`#pm-fs-subs-btn`), dan panel Subtitle Styler HUD (`#pm-fs-subs-panel`) tetap aktif, terlihat, dan interaktif.
+   - **Penyembunyian Tombol CC Native Browser (`style.css`):** Menyembunyikan tombol CC bawaan `<video>` via CSS pseudo-element WebKit media controls (`::-webkit-media-controls-toggle-closed-captions-button`) agar pengguna tidak sengaja mengaktifkan CC bawaan browser/Windows.
+   - **Penerapan 100% Styling Styler Tatap:** Seluruh opsi kustomisasi subtitle Tatap (warna font Putih, Kuning, Cyan, Hijau; border Tebal, Tipis, Glow, Polos; background Transparan, Tipis, Gelap, Pekat; ukuran font S/M/L/XL; posisi vertikal; serta sinkronisasi delay real-time Z/X) kini bekerja 100% efektif pada mode fullscreen di Windows Portable (`Tatap.exe`), Linux AppImage, dan Web Desktop.
+   - **Hardening Deklarasi `video::cue`:** Menyelaraskan properti `video::cue` dengan custom variables Tatap (`var(--sub-color)`, `var(--sub-bg)`, `var(--sub-border)`) dengan tag `!important` sebagai proteksi ganda.
+16. **Test Suite Pengalihan Subtitle Windows (`tests/test_desktop_sub_windows_override.py`):**
+   - Menambahkan pengujian otomatis baru yang memverifikasi penyembunyian kontrol CC native WebKit, logika promosi fullscreen `onFullscreenChange`, dan penguncian mode track ke hidden di desktop.
 
 ## [2.9.1] - 2026-10-18
 

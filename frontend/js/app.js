@@ -1195,14 +1195,33 @@ function isFullscreenActive(){
   if(v&&v.webkitDisplayingFullscreen)return true;
   return false;
 }
+function isDesktopEnv(){
+  return !(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+}
+function onFullscreenChange(){
+  var v=$("vid");
+  var stage=document.querySelector(".ambient-stage");
+  var fsEl=document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement||document.msFullscreenElement;
+  if(fsEl&&fsEl===v&&stage&&(stage.requestFullscreen||stage.webkitRequestFullscreen)){
+    try{
+      var p;
+      if(stage.requestFullscreen) p=stage.requestFullscreen();
+      else if(stage.webkitRequestFullscreen) p=stage.webkitRequestFullscreen();
+      if(p&&p.catch) p.catch(function(){});
+    }catch(e){}
+  }
+  syncFullscreenSubtitles();
+}
 function syncFullscreenSubtitles(){
   var v=$("vid");
   if(!v||!v.textTracks)return;
   var isVidFs=isVideoFullscreen();
+  // Di desktop, kunci native track ke "hidden" agar Windows Closed Captions tidak membajak styling subtitle
+  var shouldShowNative=isVidFs&&!isDesktopEnv();
   for(var i=0;i<v.textTracks.length;i++){
     var t=v.textTracks[i];
     if(t.label&&t.label.indexOf("Tatap")>=0){
-      t.mode=isVidFs?"showing":"hidden";
+      t.mode=shouldShowNative?"showing":"hidden";
     }
   }
   paintCue();
@@ -1251,7 +1270,7 @@ function syncNativeTextTrack(vttText, cues, langCode){
 
     var applyMode=function(){
       if(trackEl.track){
-        trackEl.track.mode=isVideoFullscreen()?"showing":"hidden";
+        trackEl.track.mode=(isVideoFullscreen()&&!isDesktopEnv())?"showing":"hidden";
       }
     };
 
@@ -1357,7 +1376,7 @@ function paintCue(){
   if($("player-modal").classList.contains("hidden")){s.innerHTML="";return;}
   var rawT=v.currentTime||0;
   var t=rawT+(cur.subOffset||0);
-  if(isVideoFullscreen()){
+  if(isVideoFullscreen()&&!isDesktopEnv()){
     if(s._last!==""){s.innerHTML="";s._last="";}
     box.style.display="none";
   }else{
@@ -2684,10 +2703,10 @@ function init(){
         try{ v.playbackRate = currentPlaybackSpeed; }catch(e){}
       }
     });
-    v.addEventListener("fullscreenchange",syncFullscreenSubtitles);
-    v.addEventListener("webkitfullscreenchange",syncFullscreenSubtitles);
-    v.addEventListener("webkitbeginfullscreen",syncFullscreenSubtitles);
-    v.addEventListener("webkitendfullscreen",syncFullscreenSubtitles);
+    v.addEventListener("fullscreenchange",onFullscreenChange);
+    v.addEventListener("webkitfullscreenchange",onFullscreenChange);
+    v.addEventListener("webkitbeginfullscreen",onFullscreenChange);
+    v.addEventListener("webkitendfullscreen",onFullscreenChange);
     v.addEventListener("dblclick",function(e){
       e.preventDefault();
       toggleFullscreen();
@@ -2723,10 +2742,10 @@ function init(){
       if(v.msRequestFullscreen)v.msRequestFullscreen=fsHandler;
     }
   }
-  document.addEventListener("fullscreenchange",syncFullscreenSubtitles);
-  document.addEventListener("webkitfullscreenchange",syncFullscreenSubtitles);
-  document.addEventListener("mozfullscreenchange",syncFullscreenSubtitles);
-  document.addEventListener("MSFullscreenChange",syncFullscreenSubtitles);
+  document.addEventListener("fullscreenchange",onFullscreenChange);
+  document.addEventListener("webkitfullscreenchange",onFullscreenChange);
+  document.addEventListener("mozfullscreenchange",onFullscreenChange);
+  document.addEventListener("MSFullscreenChange",onFullscreenChange);
   var pmFs=$("pm-fs");
   if(pmFs)pmFs.addEventListener("click",toggleFullscreen);
   var skipBtn=$("pm-skip-btn");

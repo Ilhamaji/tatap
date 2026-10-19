@@ -441,7 +441,7 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 
 /* Overlay subtitle milik app: posisi di atas video, pointer tembus.
    Harmonis dan konsisten antara mode windowed dan fullscreen. */
-.subs-overlay{position:absolute;left:0;right:0;bottom:var(--sub-bottom, 7%);z-index:4;display:flex;justify-content:center;pointer-events:none;padding:0 6%;transition:bottom .2s ease}
+.subs-overlay{position:absolute;left:0;right:0;bottom:var(--sub-bottom, 7%);z-index:10;display:flex;justify-content:center;pointer-events:none;padding:0 6%;transition:bottom .2s ease}
 .subs-overlay span{display:inline-block;max-width:100%;text-align:center;color:var(--sub-color, #fff);background:var(--sub-bg, rgba(0,0,0,.72));
   padding:.2em .6em;border-radius:4px;line-height:1.45;font-weight:600;
   text-shadow:var(--sub-border, -1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000,0 2px 4px rgba(0,0,0,.8));font-family:inherit}
@@ -828,7 +828,7 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
 }
 .ambient-stage:fullscreen .subs-overlay,
 .ambient-stage:-webkit-full-screen .subs-overlay {
-  bottom:var(--sub-bottom, 7%);padding:0 6%;
+  bottom:var(--sub-bottom, 7%);padding:0 6%;z-index:10;
 }
 .ambient-stage:fullscreen .subs-overlay.sz-s span,
 .ambient-stage:-webkit-full-screen .subs-overlay.sz-s span {
@@ -847,10 +847,22 @@ body.no-ambient #ambient,body.no-ambient #ambient-fallback{display:none}
   font-size:clamp(28px,2.8vw + 1.1rem,48px);
 }
 
+/* Sembunyikan tombol CC native browser di <video> controls agar Windows Closed Captions tidak dibajak */
+video::-webkit-media-controls-closed-captions-container,
+video::-webkit-media-controls-closed-captions-track-list,
+video::-webkit-media-controls-toggle-closed-captions-button {
+  display: none !important;
+}
+
 /* Native video cues (rendered when browser fullscreens the <video> directly) */
 video::cue {
-  color:#fff;background:rgba(0,0,0,.78);font-family:inherit;font-weight:600;line-height:1.45;font-size:1.25rem;
-  text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000;
+  color:var(--sub-color, #fff) !important;
+  background:var(--sub-bg, rgba(0,0,0,.78)) !important;
+  font-family:inherit !important;
+  font-weight:600 !important;
+  line-height:1.45 !important;
+  font-size:1.25rem !important;
+  text-shadow:var(--sub-border, -1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000) !important;
 }
 .player-foot{padding:8px 4px}
 .player-foot>.variants{flex:0 1 auto;max-width:55%}
