@@ -13,34 +13,10 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
-## [2.10.1] - 2026-10-20
-
-### Justifikasi SemVer 2.0.0 (PATCH: 2.10.0 -> 2.10.1)
-Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug hilangnya poster anime pada riwayat tontonan, peningkatan antarmuka thumbnail visual pada strip "Lanjutkan Menonton" di beranda serta grid tab Riwayat, dan mekanisme auto-backfill poster yang backward-compatible tanpa adanya breaking changes maupun perombakan arsitektur database baru:
-1. **Penyajian Thumbnail Visual 16:9 pada Strip "Lanjutkan Menonton" di Beranda (`app.js`, `style.css`):**
-   - Mengubah strip horizontal "Lanjutkan menonton" (`#continue-sec` / `#continue-row`) dari sebelumnya hanya berupa kotak teks polos tanpa gambar menjadi kartu visual horizontal (`.hist-card`) dengan thumbnail rasio sinematik 16:9 (`.hist-thumb-wrap`).
-   - Melengkapi thumbnail dengan badge episode melayang (`.hist-ep-badge`), ikon play saat hover (`.hist-play-badge`), serta progress track bar (`.hist-progress-track` & `.hist-progress-fill`) di dasar thumbnail yang menampilkan proporsi menit tontonan secara presisi.
-   - Menyediakan fallback placeholder anggun (`.hist-thumb-ph`) dengan ikon Tatap jika berkas poster sedang memuat atau gagal dimuat, mencegah terjadinya layout shift.
-   - Memperbaiki visibilitas strip lanjutkan menonton agar tampil di beranda katalog (`katalog`, `musim`, `cari`).
-2. **Pencegahan Terhapusnya Poster Anime pada Watch History & Auto-Backfill (`backend/database/__init__.py`):**
-   - Menyelidiki akar masalah terhapusnya poster pada `watch_history`: saat memutar anime atau memperbarui progres tontonan, pemanggilan `add_history` tanpa argumen `poster` sebelumnya mengeksekusi `DELETE FROM watch_history` dan menyisipkan string kosong, melenyapkan URL poster yang tersimpan.
-   - Memperbaiki `add_history` agar otomatis memeriksa dan mengawetkan (*preserve*) nilai `poster` dan `type` dari rekor sebelumnya, serta melakukan fallback pencarian ke tabel `bookmarks`.
-   - Menambahkan mekanisme auto-backfill pada `get_history()` yang secara cerdas mengisi kembali poster dan tipe anime dari tabel `bookmarks` jika sebelumnya kosong, lalu memperbarui basis data SQLite secara atomik.
-3. **Ekstraksi Poster pada Detail HiAnime & Forwarding MPV (`backend/api/hianime.py`, `backend/main.py`):**
-   - Memperbarui `hianime_details(slug)` agar mengekstrak URL poster anime dari elemen `class="film-poster-img"` atau `class="film-poster"`.
-   - Mengirimkan metadata `poster` pada respons endpoint `/api/anime/{slug}/episodes`.
-   - Menyesuaikan handler `/api/play-mpv` agar turut meneruskan `poster` dan `type` ke `add_history`.
-4. **Fallback Placeholder Anti-Kotak Hitam Kosong pada Grid Riwayat (`term.js`, `style.css`):**
-   - Menambahkan fallback placeholder `.pc-thumb-ph` pada kartu grid tab Riwayat (`poster-grid`), mencegah kartu menjadi kotak hitam kosong saat poster belum tersedia atau terjadi kegagalan jaringan gambar.
-5. **Paritas Penuh Chaquopy Android & Suite Uji Otomatis (`tests/test_watch_history_thumbnail.py`):**
-   - Menyinkronkan 100% seluruh modifikasi backend ke `android/app/src/main/python/backend/`.
-   - Menambahkan unit test otomatis baru yang menguji preservasi poster, auto-backfill bookmarks, paritas Chaquopy, dan integritas token CSS/JS frontend.
-   - Seluruh 211 automated test suite di repositori Tatap lulus 100%.
-
 ## [2.10.0] - 2026-10-20
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.9.4 -> 2.10.0)
-Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan kapabilitas antarmuka baru dan perombakan arsitektur tampilan desktop tanpa breaking changes:
+Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan kapabilitas antarmuka baru, visual thumbnail sinematik 16:9 pada riwayat tontonan, perombakan arsitektur tampilan desktop, dan pencegahan hilangnya poster pada database tanpa breaking changes:
 1. **Perombakan Layout Desktop Platform (Centered Container & Fluid Ergonomics):**
    - Menambahkan pembatas lebar maksimal `max-width: 1560px` terpusat (`margin: 0 auto`) pada layar desktop (`>= 1024px`), mencegah kartu anime merentang pipih tanpa batas pada monitor ultrawide dan 4K.
    - Mengoptimalkan media queries grid poster desktop: kartu diperlebar secara ergonomis dari sebelumnya 155px menjadi `minmax(165px, 1fr)` pada layar `>= 769px` dan `minmax(182px, 1fr)` pada layar `>= 1280px`.
@@ -49,15 +25,33 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
 2. **Katalog Anime Sebagai Default Homescreen Saat Startup:**
    - Menjadikan **Katalog Anime** (`/api/catalog`) sebagai tampilan awal default saat aplikasi Tatap pertama kali dibuka di platform Desktop maupun Web Browser.
    - Tab navigasi `Katalog` (`tab-nav-katalog`) aktif secara otomatis dan memuat katalog populer lengkap dengan kartu anime, kontrol paginasi, dan tombol filter katalog tanpa lagi menampilkan prompt pencarian kosong (*"siap [ ] ketik judul"*).
-3. **Hardening Startup Backend & Dialog Kesalahan GUI (`linux/AppRun`):**
+3. **Penyajian Thumbnail Visual 16:9 pada Strip "Lanjutkan Menonton" di Beranda (`app.js`, `style.css`):**
+   - Mengubah strip horizontal "Lanjutkan menonton" (`#continue-sec` / `#continue-row`) dari sebelumnya hanya berupa kotak teks polos tanpa gambar menjadi kartu visual horizontal (`.hist-card`) dengan thumbnail rasio sinematik 16:9 (`.hist-thumb-wrap`).
+   - Melengkapi thumbnail dengan badge episode melayang (`.hist-ep-badge`), ikon play saat hover (`.hist-play-badge`), serta progress track bar (`.hist-progress-track` & `.hist-progress-fill`) di dasar thumbnail yang menampilkan proporsi menit tontonan secara presisi.
+   - Menyediakan fallback placeholder anggun (`.hist-thumb-ph`) dengan ikon Tatap jika berkas poster sedang memuat atau gagal dimuat, mencegah terjadinya layout shift.
+   - Memperbaiki visibilitas strip lanjutkan menonton agar tampil di beranda katalog (`katalog`, `musim`, `cari`).
+4. **Pencegahan Terhapusnya Poster Anime pada Watch History & Auto-Backfill (`backend/database/__init__.py`):**
+   - Menyelidiki akar masalah terhapusnya poster pada `watch_history`: saat memutar anime atau memperbarui progres tontonan, pemanggilan `add_history` tanpa argumen `poster` sebelumnya mengeksekusi `DELETE FROM watch_history` dan menyisipkan string kosong, melenyapkan URL poster yang tersimpan.
+   - Memperbaiki `add_history` agar otomatis memeriksa dan mengawetkan (*preserve*) nilai `poster` dan `type` dari rekor sebelumnya, serta melakukan fallback pencarian ke tabel `bookmarks`.
+   - Menambahkan mekanisme auto-backfill pada `get_history()` yang secara cerdas mengisi kembali poster dan tipe anime dari tabel `bookmarks` jika sebelumnya kosong, lalu memperbarui basis data SQLite secara atomik.
+5. **Ekstraksi Poster pada Detail HiAnime & Forwarding MPV (`backend/api/hianime.py`, `backend/main.py`):**
+   - Memperbarui `hianime_details(slug)` agar mengekstrak URL poster anime dari elemen `class="film-poster-img"` atau `class="film-poster"`.
+   - Mengirimkan metadata `poster` pada respons endpoint `/api/anime/{slug}/episodes`.
+   - Menyesuaikan handler `/api/play-mpv` agar turut meneruskan `poster` dan `type` ke `add_history`.
+6. **Fallback Placeholder Anti-Kotak Hitam Kosong pada Grid Riwayat (`term.js`, `style.css`):**
+   - Menambahkan fallback placeholder `.pc-thumb-ph` pada kartu grid tab Riwayat (`poster-grid`), mencegah kartu menjadi kotak hitam kosong saat poster belum tersedia atau terjadi kegagalan jaringan gambar.
+7. **Hardening Startup Backend & Dialog Kesalahan GUI (`linux/AppRun`):**
    - Mengalihkan output server Python ke berkas log terpusat `${DATA_DIR}/server.log`.
    - Menambahkan pembersihan port 8767 cerdas via Python socket dan deteksi instance sehat yang sudah berjalan (`/api/ping`) untuk mencegah tabrakan socket (`[Errno 98] Address already in use`).
    - Menaikkan batas waktu tunggu startup ke 15 detik dengan interval polling 200ms (75 iterasi), menjamin pembukaan instan saat server siap dan toleran terhadap cold boot.
    - Menampilkan dialog kesalahan grafis (`zenity`, `kdialog`, `xmessage`, atau `notify-send`) yang menyajikan cuplikan log terakhir saat server gagal merespons, mencegah aplikasi keluar hening (*silent exit*).
-4. **Handshake Startup Frontend & Overlay Pemulihan Koneksi (`app.js`, `api.js`, `index.html`):**
+8. **Handshake Startup Frontend & Overlay Pemulihan Koneksi (`app.js`, `api.js`, `index.html`):**
    - Menambahkan handshake `/api/ping` dengan mekanisme auto-retry 5 kali saat inisialisasi browser untuk mencegah error koneksi prematur saat backend sedang *warming up*.
    - Menyediakan modal overlay diagnostik `#backend-error-overlay` (*"Backend Tatap Belum Terhubung"*) lengkap dengan tombol interaktif *"Coba Hubungkan Ulang"*, penyalin informasi debug, serta *auto-reconnect poller* setiap 3 detik.
-5. **Penambahan Test Suite Otomatis (`tests/test_desktop_catalog_and_startup.py`):**
+9. **Paritas Penuh Chaquopy Android & Suite Uji Otomatis (`tests/test_watch_history_thumbnail.py`):**
+   - Menyinkronkan 100% seluruh modifikasi backend ke `android/app/src/main/python/backend/`.
+   - Menambahkan 9 unit test otomatis baru (`tests/test_desktop_catalog_and_startup.py` dan `tests/test_watch_history_thumbnail.py`) yang menguji layout desktop, startup hardening, preservasi poster, auto-backfill bookmarks, paritas Chaquopy, dan integritas token CSS/JS frontend.
+   - Seluruh 211 automated test suite di repositori Tatap lulus 100%.
    - 5 unit test baru memvalidasi styling container desktop, default view katalog, struktur overlay error, handshake JS, dan AppRun hardening.
    - Seluruh 207 automated tests di repositori Tatap lulus 100%.
 
