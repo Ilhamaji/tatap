@@ -29,8 +29,8 @@ def test_term_js_rendersel_supports_poster_cards_and_trows():
     assert 'box.querySelectorAll(".poster-card, .trow")' in content, (
         "renderSel() wajib mengueri .poster-card dan .trow agar navigasi keyboard bekerja pada tampilan katalog, musim, riwayat, dsb."
     )
-    assert 'all[S.sel].scrollIntoView' in content
-    assert 'all[S.sel].focus' in content
+    assert 'scrollIntoView' in content
+    assert 'selEl.focus' in content or 'all[S.sel].focus' in content
 
 
 def test_term_js_movesel_and_grid_cols():

@@ -82,7 +82,17 @@ Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
     - **Kontrol Volume Keyboard di Video Player Desktop (`ArrowUp` / `ArrowDown`):** Menambahkan pengaturan volume bertahap (+/- 10%) dengan indikator toast visual pada pemutar video HTML5 desktop saat menekan `ArrowUp` atau `ArrowDown`.
     - **Styling Indikator Fokus Aksesibilitas (`:focus-visible` di `style.css`):** Menambahkan cincin fokus cyan bertepi tajam (`outline: 2px solid rgba(25,208,208,0.75)`) pada `.poster-card` dan tombol `.ep` saat dijelajahi via keyboard.
     - **Indikator Statusbar (`index.html`):** Memperbarui teks pintasan statusbar menjadi `<b>↑↓←→</b> pilih` untuk mencerminkan navigasi 4 arah.
-    - **Suite Uji Otomatis Baru (`tests/test_desktop_keyboard_navigation.py`):** Menambahkan 8 unit test otomatis yang memverifikasi seluruh fungsionalitas navigasi keyboard, transisi input, seleksi grid 2D, modal episode, dan volume player. Seluruh 232 automated test suite di repositori Tatap lulus 100%.
+    - **Suite Uji Otomatis Baru (`tests/test_desktop_keyboard_navigation.py`):** Menambahkan 8 unit test otomatis yang memverifikasi seluruh fungsionalitas navigasi keyboard, transisi input, seleksi grid 2D, modal episode, dan volume player.
+14. **Perbaikan Masalah Auto-Scroll ke Bawah pada View Masih Tayang (`term.js`):**
+    - **Akar Masalah Teratasi:** Mendiagnosis bug *cascading focus loop* di mana elemen banner header dual-lane (`is_header: true`) di dalam `S.items` tidak memiliki class `.poster-card`, sehingga query DOM `all = box.querySelectorAll(".poster-card, .trow")` mengalami pergeseran indeks. Mengklik kartu baris atas sebelumnya memfokuskan kartu berikutnya secara programatik dan memicu loop fokus berantai yang menyeret scroll ke dasar halaman.
+    - **Seleksi Deterministik Berbasis `data-idx`:** Mengganti pencarian `all[S.sel]` dengan selektor langsung `box.querySelector('[data-idx="' + S.sel + '"]')` yang menyelaraskan indeks secara presisi dengan data `S.items`.
+    - **Guard Pencegahan Rekursi Fokus:** Menambahkan kondisi `if(document.activeElement !== selEl)` sebelum memanggil `selEl.focus()`, memastikan interaksi mouse click tidak pernah memicu loop fokus berulang ke kartu lain.
+15. **Paginasi Pencarian Desktop & Eliminasi Kebocoran Anime Tamat di Musim Saat Ini (`term.js`, `api.js`, `backend/main.py`, Chaquopy parity):**
+    - **Pagination Pencarian Desktop (`view: "cari"`):** Menambahkan parameter `page` pada `window.Tatap.search` di `frontend/js/api.js`. Mengaktifkan pager (`hasPagination = S.total > 1`) pada pencarian di `frontend/js/term.js`, menyimpan `S.searchQuery = q`, menambahkan nomor halaman pada judul `(Hal X)`, dan memperbaiki `loadView()` serta `pagePrev()`/`pageNext()` agar menavigasi halaman pencarian alih-alih me-reset ke riwayat pencarian lama.
+    - **Reset Pointer Seleksi Keyboard:** Menjamin reset `S.sel = -1` pada seluruh transisi halaman (termasuk tab Favorit dan Riwayat).
+    - **Pembersihan Anime Tamat pada Musim Saat Ini (`which=now`):** Menyetel query AniList menjadi `status_in = ["RELEASING"]` khusus `which == "now"`, serta menyematkan filter pengaman sekunder `if which == "now" and is_finished: continue` untuk menyingkirkan anime Movie (1/1 episode) dan anime selesai dari tab Musim Ini.
+    - **Pembaruan Cache Key `seasonal_v4`:** Menaikkan versi cache key dari `seasonal_v3` ke `seasonal_v4` pada `backend/main.py` dan Chaquopy parity (`android/app/src/main/python/backend/main.py`).
+    - **Suite Uji Otomatis Baru (`tests/test_seasonal_and_navigation_fixes.py`):** Menambahkan 5 pengujian otomatis baru. Seluruh 237 pengujian otomatis di repositori Tatap lulus 100%.
 
 ## [2.9.4] - 2026-10-20
 

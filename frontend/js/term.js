@@ -215,7 +215,14 @@ var Tui = (function () {
   }
 
   async function loadView(){
-    if(S.view==="cari"){renderRecents();return;}
+    if(S.view==="cari"){
+      if(S.searchQuery){
+        doSearch(S.searchQuery, S.page);
+      } else {
+        renderRecents();
+      }
+      return;
+    }
     try{
       var r=await apiCall(S.view);
       if(!r){log("gagal load: response kosong","err");return;}
@@ -652,8 +659,6 @@ var Tui = (function () {
     var hasPagination = false;
     if(S.view === "terbaru"){
       hasPagination = !!(SCHEDULE_DAYS && SCHEDULE_DAYS.length > 1);
-    } else if(S.view === "cari"){
-      hasPagination = false;
     } else {
       hasPagination = (S.total > 1);
     }
@@ -722,12 +727,17 @@ var Tui = (function () {
     if(!box)return;
     var all=box.querySelectorAll(".poster-card, .trow");
     for(var i=0;i<all.length;i++){
+      var itemIdx = parseInt(all[i].getAttribute("data-idx"), 10);
       var isUnm=all[i].classList.contains("unmapped");
-      all[i].classList.toggle("sel",i===S.sel&&!isUnm);
+      all[i].classList.toggle("sel", itemIdx === S.sel && !isUnm);
     }
-    if(all[S.sel]){
-      all[S.sel].scrollIntoView({block:"nearest", inline:"nearest"});
-      try{all[S.sel].focus({preventScroll:true});}catch(_){}
+    if(S.sel < 0) return;
+    var selEl = box.querySelector('[data-idx="' + S.sel + '"]');
+    if(selEl){
+      selEl.scrollIntoView({block:"nearest", inline:"nearest"});
+      if(document.activeElement !== selEl){
+        try{selEl.focus({preventScroll:true});}catch(_){}
+      }
     }
   }
   function openSelected(){
@@ -748,7 +758,10 @@ var Tui = (function () {
     doSearch(q);
   }
 
-  async function doSearch(q){
+  async function doSearch(q, page){
+    var p = page || 1;
+    S.searchQuery = q;
+    S.page = p;
     var t0=Date.now();
     var qlow=(q||"").trim().toLowerCase();
     if(qlow==="hentai"||qlow.indexOf("hentai")>=0){
@@ -761,11 +774,16 @@ var Tui = (function () {
     }
     try{
       var src = (window.cur && window.cur.source) || "";
-      var r = await window.Tatap.search(q, src);
+      var r = await window.Tatap.search(q, src, p);
       if(!r||!r.success){log("search error: "+(r&&r.error||"??"),"err");return;}
-      S.items=r.data.results||[];S.sel=-1;S.total=1;
-      $("results-title").textContent=S.items.length?"Hasil untuk \""+q+"\"":"Tidak ketemu \""+q+"\"";
-      $("results-meta").textContent=S.items.length+" judul · "+(Date.now()-t0)+"ms"+(r.data.cached?" · cached":"");
+      var d = r.data || {};
+      S.items=d.results||[];
+      S.sel=-1;
+      S.page=d.page||p;
+      S.total=d.total_pages||1;
+      var pageSuffix = S.page > 1 ? (" (Hal " + S.page + ")") : "";
+      $("results-title").textContent=S.items.length?("Hasil untuk \""+q+"\""+pageSuffix):("Tidak ketemu \""+q+"\"");
+      $("results-meta").textContent=S.items.length+" judul · "+(Date.now()-t0)+"ms"+(d.cached?" · cached":"");
       renderResults();renderPager();
     }catch(e){log("err: "+e.message,"err");}
   }
@@ -1344,14 +1362,25 @@ var Tui = (function () {
       if(curIdx < 0) curIdx = 0;
       if(curIdx > 0){
         S.scheduleDay = SCHEDULE_DAYS[curIdx - 1];
+        S.sel = -1;
         updateScheduleChips();
         loadView();
+      }
+      return;
+    }
+    if(S.view==="cari" && S.searchQuery){
+      if(S.page > 1){
+        S.page--;
+        S.sel = -1;
+        doSearch(S.searchQuery, S.page);
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
       }
       return;
     }
     if(S.view==="favorit" && S.rawBookmarks){
       if(S.page>1){
         S.page--;
+        S.sel = -1;
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawBookmarks.slice(start,start+pageSize);
@@ -1363,6 +1392,7 @@ var Tui = (function () {
     if(S.view==="riwayat" && S.rawHistory){
       if(S.page>1){
         S.page--;
+        S.sel = -1;
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawHistory.slice(start,start+pageSize);
@@ -1373,6 +1403,7 @@ var Tui = (function () {
     }
     if(S.page>1){
       S.page--;
+      S.sel = -1;
       loadView();
       try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
     }
@@ -1384,14 +1415,25 @@ var Tui = (function () {
       if(curIdx < 0) curIdx = 0;
       if(curIdx < SCHEDULE_DAYS.length - 1){
         S.scheduleDay = SCHEDULE_DAYS[curIdx + 1];
+        S.sel = -1;
         updateScheduleChips();
         loadView();
+      }
+      return;
+    }
+    if(S.view==="cari" && S.searchQuery){
+      if(S.page < S.total){
+        S.page++;
+        S.sel = -1;
+        doSearch(S.searchQuery, S.page);
+        try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
       }
       return;
     }
     if(S.view==="favorit" && S.rawBookmarks){
       if(S.page<S.total){
         S.page++;
+        S.sel = -1;
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawBookmarks.slice(start,start+pageSize);
@@ -1403,6 +1445,7 @@ var Tui = (function () {
     if(S.view==="riwayat" && S.rawHistory){
       if(S.page<S.total){
         S.page++;
+        S.sel = -1;
         var pageSize=24;
         var start=(S.page-1)*pageSize;
         S.items=S.rawHistory.slice(start,start+pageSize);
@@ -1413,6 +1456,7 @@ var Tui = (function () {
     }
     if(S.page<S.total){
       S.page++;
+      S.sel = -1;
       loadView();
       try{window.scrollTo({top:0,behavior:"smooth"});}catch(_){}
     }

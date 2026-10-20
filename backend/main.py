@@ -533,7 +533,7 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 season_name, season_year = name_cur, year_cur
             cache_id = which or "now"
 
-        key = f"seasonal_v3|{cache_id}|page={page}"
+        key = f"seasonal_v4|{cache_id}|page={page}"
         hit = await get_browse_cache(key)
         if hit:
             hit["cached"] = True
@@ -543,7 +543,7 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
                 hit["total_pages"] = page + 1
             return ok(hit)
 
-        status_in = None if is_future else ["RELEASING", "FINISHED"]
+        status_in = ["RELEASING"] if which == "now" else (None if is_future else ["RELEASING", "FINISHED"])
         page_data = await loop.run_in_executor(
             None, lambda: al.season_page(season_name, season_year, page, 25, status_in=status_in))
 
@@ -574,6 +574,8 @@ async def seasonal(which: str = Query("", pattern="^(now|prev|airing)$|^$"),
             eps_rel, eps_tot = al.compute_episode_counts(m)
             status_str = (m.get("status") or "").lower()
             is_finished = status_str in ("finished", "completed") or (eps_tot > 0 and eps_rel >= eps_tot)
+            if which == "now" and (is_finished or status_str in ("finished", "completed")):
+                continue
             if is_finished:
                 status_str = "finished"
                 eps_cnt = f"{eps_tot}/{eps_tot}" if eps_tot > 0 else "?/?"

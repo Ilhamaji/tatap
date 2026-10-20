@@ -10,7 +10,7 @@ async function jget(u){var r=await fetch(apiBase()+u);return r.json();}
 async function jpost(u,b){var r=await fetch(apiBase()+u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b||{})});return r.json();}
 async function jdel(u){var r=await fetch(apiBase()+u,{method:"DELETE"});return r.json();}
 window.Tatap={
-search:function(q,source){return jget("/api/search?q="+encodeURIComponent(q)+(source?"&source="+encodeURIComponent(source):""));},
+search:function(q,source,page){return jget("/api/search?q="+encodeURIComponent(q)+(source?"&source="+encodeURIComponent(source):"")+(page?"&page="+page:""));},
 catalog:function(p){return jget("/api/catalog?page="+(p||1));},
 seasonNow:function(p){return jget("/api/seasonal?which=now&page="+(p||1));},
 stillAiring:function(p){return jget("/api/seasonal?which=airing&page="+(p||1));},
