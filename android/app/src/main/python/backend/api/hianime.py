@@ -253,7 +253,8 @@ def hianime_details(slug: str) -> dict:
         "duration": "",
         "studio": "",
         "genres": [],
-        "source": ""
+        "source": "",
+        "poster": ""
     }
     try:
         if not slug or "hentai" in slug.lower():
@@ -262,6 +263,13 @@ def hianime_details(slug: str) -> dict:
         if not html_txt:
             return out
         import html as _html
+
+        # Poster
+        m_post = re.search(r'class="film-poster-img"[^>]*src="([^"]+)"', html_txt)
+        if not m_post:
+            m_post = re.search(r'class="film-poster"[^>]*>.*?<img[^>]*src="([^"]+)"', html_txt, re.S)
+        if m_post:
+            out["poster"] = m_post.group(1).strip()
 
         # Synopsis
         m = re.search(r'class="film-description[^\"]*"[^>]*>(.*?)</div>', html_txt, re.S)

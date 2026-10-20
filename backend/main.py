@@ -1082,7 +1082,8 @@ async def episodes(slug: str):
             "episodes": eps,
             "total": len(eps),
             "synopsis": syn_val,
-            "detail": detail_data
+            "detail": detail_data,
+            "poster": (detail_data.get("poster", "") if isinstance(detail_data, dict) else "")
         }
         await set_browse_cache(cache_key, data)
         data["cached"] = False
@@ -2205,7 +2206,7 @@ async def play_mpv(body: dict = None):
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=creationflags)
-        await add_history(slug, body.get("title", slug), ep, mode)
+        await add_history(slug, body.get("title", slug), ep, mode, poster=body.get("poster", ""), type=body.get("type", ""))
         return ok({"cmd": cmd, "picked": picked, "subs_attached": len(downloaded)})
     except Exception as e:
         return fail(str(e))

@@ -463,12 +463,18 @@ function loadEps(){
       cur.meta = detail;
       renderDetailMeta(detail);
     }
+    var respPoster = (r.data.poster || (r.data.detail && r.data.detail.poster)) || "";
+    if(!cur.poster && respPoster){
+      cur.poster = respPoster;
+    }
     window.Tatap.history().then(function(h){
       if(thisSlug !== cur.slug) return;
       var foundInHist = false;
       (h.data || []).forEach(function(x){
         if(x.slug === thisSlug){
           foundInHist = true;
+          if(!cur.poster && x.poster) cur.poster = x.poster;
+          if(!cur.type && x.type) cur.type = x.type;
           if(!cur.watched) cur.watched = {};
           cur.watched[x.episode] = 1;
           cur.lastWatchedEp = x.episode;
@@ -797,7 +803,15 @@ function openPlayer(ep, resumeTime, forceRefresh){
     }
     var streamUrl = (r.data.master && (r.data.master.indexOf(".m3u8") >= 0 || r.data.master.indexOf("/hls") >= 0)) ? r.data.master : (picked ? picked.url : "");
     playUrl(streamUrl,r.data.referer,cur.activeSub,r.data.referer,resumeTime,token);
-    window.Tatap.saveHist({slug:cur.slug,title:cur.title,episode:ep,mode:cur.mode,progress:resumeTime||0}).then(function(){renderContinue();});
+    window.Tatap.saveHist({
+      slug: cur.slug,
+      title: cur.title,
+      episode: ep,
+      mode: cur.mode,
+      progress: resumeTime || 0,
+      poster: cur.poster || "",
+      type: cur.type || ""
+    }).then(function(){ renderContinue(); });
   }).catch(function(err){
     if(cur.playToken !== token || cur.slug !== reqSlug || $("player-modal").classList.contains("hidden")) return;
     if(!forceRefresh){
@@ -2100,22 +2114,102 @@ function renderContinue(){
   window.Tatap.history().then(function(r){
     var h=(r.data||[]).slice(0,10);
     var sec=$("continue-sec");
+    if(!sec) return;
     if(!h.length){sec.classList.add("hidden");return;}
-    var inCari=!window.Tui||Tui.view()==="cari";
-    sec.classList.toggle("hidden",!inCari);
-    var box=$("continue-row");box.innerHTML="";
+    var isHome=!window.Tui||["katalog","musim","cari"].indexOf(Tui.view())>=0;
+    sec.classList.toggle("hidden",!isHome);
+    var box=$("continue-row");if(!box)return;
+    box.innerHTML="";
     for(var i=0;i<h.length;i++){
       (function(x){
         var d=document.createElement("div");d.className="hist-card";
-        var b=document.createElement("b");b.textContent=x.title;d.appendChild(b);
+        d.tabIndex=0;
+
+        // Container thumbnail 16:9
+        var thumbWrap=document.createElement("div");
+        thumbWrap.className="hist-thumb-wrap";
+
+        // Fallback placeholder jika poster belum ada atau gagal load
+        var ph=document.createElement("div");
+        ph.className="hist-thumb-ph";
+        ph.innerHTML='<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span>TATAP</span>';
+
+        if(x.poster){
+          var img=document.createElement("img");
+          img.className="hist-thumb";
+          img.loading="lazy";
+          img.decoding="async";
+          img.alt=x.title||"";
+          img.src=x.poster;
+          img.onerror=function(){
+            this.style.display="none";
+            ph.style.display="flex";
+          };
+          ph.style.display="none";
+          thumbWrap.appendChild(img);
+          thumbWrap.appendChild(ph);
+        } else {
+          thumbWrap.appendChild(ph);
+        }
+
+        // Floating Episode Badge
+        var epBadge=document.createElement("span");
+        epBadge.className="hist-ep-badge";
+        epBadge.textContent="EP "+(x.episode||"1");
+        thumbWrap.appendChild(epBadge);
+
+        // Hover Play Badge
+        var playBadge=document.createElement("div");
+        playBadge.className="hist-play-badge";
+        playBadge.innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>';
+        thumbWrap.appendChild(playBadge);
+
+        // Progress bar di bagian bawah thumbnail
+        if(x.progress && x.progress >= 15){
+          var progTrack=document.createElement("div");
+          progTrack.className="hist-progress-track";
+          var progFill=document.createElement("div");
+          progFill.className="hist-progress-fill";
+          var pct=Math.min(100, Math.max(5, Math.round((x.progress / 1440) * 100)));
+          progFill.style.width=pct+"%";
+          progTrack.appendChild(progFill);
+          thumbWrap.appendChild(progTrack);
+        }
+
+        d.appendChild(thumbWrap);
+
+        // Info container (Judul & Progres)
+        var info=document.createElement("div");
+        info.className="hist-info";
+        var b=document.createElement("b");
+        b.className="hist-title";
+        b.textContent=x.title||"";
+        b.title=x.title||"";
+        info.appendChild(b);
+
         var s=document.createElement("span");
-        var progStr = (x.progress && x.progress >= 15) ? (" · " + formatTimeSec(x.progress)) : "";
-        s.textContent="ep "+x.episode+progStr+" · "+x.mode+" · lanjutkan ▶";
-        d.appendChild(s);
-        d.addEventListener("click",function(){
-          cur.slug=x.slug;cur.title=x.title;cur.mode=x.mode||"sub";syncSeg();
-          openTitle(x.slug,x.title);openPlayer(x.episode);
+        s.className="hist-meta";
+        var progStr=(x.progress&&x.progress>=15)?(" · "+formatTimeSec(x.progress)):"";
+        var modeStr=x.mode?String(x.mode).toUpperCase():"SUB";
+        s.textContent="Ep "+x.episode+progStr+" · "+modeStr+" · Lanjutkan ▶";
+        info.appendChild(s);
+
+        d.appendChild(info);
+
+        var playAction=function(){
+          cur.slug=x.slug;cur.title=x.title;cur.poster=x.poster||"";cur.type=x.type||"";cur.mode=x.mode||"sub";syncSeg();
+          openTitle(x.slug,x.title,x.poster,x.type);
+          openPlayer(x.episode,x.progress||0);
+        };
+
+        d.addEventListener("click",playAction);
+        d.addEventListener("keydown",function(e){
+          if(e.key==="Enter"||e.key===" "){
+            e.preventDefault();
+            playAction();
+          }
         });
+
         box.appendChild(d);
       })(h[i]);
     }

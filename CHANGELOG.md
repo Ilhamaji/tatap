@@ -13,6 +13,30 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.10.1] - 2026-10-20
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.10.0 -> 2.10.1)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug hilangnya poster anime pada riwayat tontonan, peningkatan antarmuka thumbnail visual pada strip "Lanjutkan Menonton" di beranda serta grid tab Riwayat, dan mekanisme auto-backfill poster yang backward-compatible tanpa adanya breaking changes maupun perombakan arsitektur database baru:
+1. **Penyajian Thumbnail Visual 16:9 pada Strip "Lanjutkan Menonton" di Beranda (`app.js`, `style.css`):**
+   - Mengubah strip horizontal "Lanjutkan menonton" (`#continue-sec` / `#continue-row`) dari sebelumnya hanya berupa kotak teks polos tanpa gambar menjadi kartu visual horizontal (`.hist-card`) dengan thumbnail rasio sinematik 16:9 (`.hist-thumb-wrap`).
+   - Melengkapi thumbnail dengan badge episode melayang (`.hist-ep-badge`), ikon play saat hover (`.hist-play-badge`), serta progress track bar (`.hist-progress-track` & `.hist-progress-fill`) di dasar thumbnail yang menampilkan proporsi menit tontonan secara presisi.
+   - Menyediakan fallback placeholder anggun (`.hist-thumb-ph`) dengan ikon Tatap jika berkas poster sedang memuat atau gagal dimuat, mencegah terjadinya layout shift.
+   - Memperbaiki visibilitas strip lanjutkan menonton agar tampil di beranda katalog (`katalog`, `musim`, `cari`).
+2. **Pencegahan Terhapusnya Poster Anime pada Watch History & Auto-Backfill (`backend/database/__init__.py`):**
+   - Menyelidiki akar masalah terhapusnya poster pada `watch_history`: saat memutar anime atau memperbarui progres tontonan, pemanggilan `add_history` tanpa argumen `poster` sebelumnya mengeksekusi `DELETE FROM watch_history` dan menyisipkan string kosong, melenyapkan URL poster yang tersimpan.
+   - Memperbaiki `add_history` agar otomatis memeriksa dan mengawetkan (*preserve*) nilai `poster` dan `type` dari rekor sebelumnya, serta melakukan fallback pencarian ke tabel `bookmarks`.
+   - Menambahkan mekanisme auto-backfill pada `get_history()` yang secara cerdas mengisi kembali poster dan tipe anime dari tabel `bookmarks` jika sebelumnya kosong, lalu memperbarui basis data SQLite secara atomik.
+3. **Ekstraksi Poster pada Detail HiAnime & Forwarding MPV (`backend/api/hianime.py`, `backend/main.py`):**
+   - Memperbarui `hianime_details(slug)` agar mengekstrak URL poster anime dari elemen `class="film-poster-img"` atau `class="film-poster"`.
+   - Mengirimkan metadata `poster` pada respons endpoint `/api/anime/{slug}/episodes`.
+   - Menyesuaikan handler `/api/play-mpv` agar turut meneruskan `poster` dan `type` ke `add_history`.
+4. **Fallback Placeholder Anti-Kotak Hitam Kosong pada Grid Riwayat (`term.js`, `style.css`):**
+   - Menambahkan fallback placeholder `.pc-thumb-ph` pada kartu grid tab Riwayat (`poster-grid`), mencegah kartu menjadi kotak hitam kosong saat poster belum tersedia atau terjadi kegagalan jaringan gambar.
+5. **Paritas Penuh Chaquopy Android & Suite Uji Otomatis (`tests/test_watch_history_thumbnail.py`):**
+   - Menyinkronkan 100% seluruh modifikasi backend ke `android/app/src/main/python/backend/`.
+   - Menambahkan unit test otomatis baru yang menguji preservasi poster, auto-backfill bookmarks, paritas Chaquopy, dan integritas token CSS/JS frontend.
+   - Seluruh 211 automated test suite di repositori Tatap lulus 100%.
+
 ## [2.10.0] - 2026-10-20
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.9.4 -> 2.10.0)

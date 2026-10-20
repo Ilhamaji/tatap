@@ -69,7 +69,12 @@ var Tui = (function () {
     if(v === "terbaru") updateScheduleChips();
     var cfBtn = $("btn-catalog-filter");
     if(cfBtn) cfBtn.classList.toggle("hidden", v !== "katalog");
-    $("continue-sec").classList.add("hidden");
+    if(window.App && App.renderContinue){
+      App.renderContinue();
+    } else {
+      var cSec = $("continue-sec");
+      if(cSec) cSec.classList.add("hidden");
+    }
     switch(v){
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
@@ -457,14 +462,25 @@ var Tui = (function () {
           var media=document.createElement("div");
           media.className="pc-media";
 
+          var ph=document.createElement("div");
+          ph.className="pc-thumb-ph";
+          ph.innerHTML='<svg class="ui-icon pc-ph-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg><span>TATAP</span>';
+
           if(a.poster){
             var im=document.createElement("img");
             im.loading="lazy";
             im.decoding="async";
             im.alt=a.title||"";
             im.src=a.poster;
-            im.onerror=function(){this.style.display="none";};
+            im.onerror=function(){
+              this.style.display="none";
+              ph.style.display="flex";
+            };
+            ph.style.display="none";
             media.appendChild(im);
+            media.appendChild(ph);
+          } else {
+            media.appendChild(ph);
           }
 
           var idxSpan=document.createElement("span");
@@ -656,7 +672,12 @@ var Tui = (function () {
   function setViewSilent(v){
     S.view=v;S.page=1;
     $("pager").classList.add("hidden");
-    $("continue-sec").classList.add("hidden");
+    if(window.App && App.renderContinue){
+      App.renderContinue();
+    } else {
+      var cSec = $("continue-sec");
+      if(cSec) cSec.classList.add("hidden");
+    }
     $("lane-season-sec").classList.add("hidden");
     $("lane-still-sec").classList.add("hidden");
     var sBar = $("schedule-days-bar");
