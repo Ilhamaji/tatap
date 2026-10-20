@@ -265,10 +265,16 @@ public class MainActivity extends Activity {
         });
         rvGrid.setLayoutManager(glm);
         rvGrid.setAdapter(adapter);
-        // Performance tuning: bedakan antara Android TV (ramah low-RAM STB) dan Mobile
+        // Performance tuning: bedakan antara Android TV (ramah low-RAM STB & 60 FPS) dan Mobile
         rvGrid.setHasFixedSize(true);
         if (TvFocusHelper.isTv(this)) {
-            rvGrid.setItemViewCacheSize(4);
+            // Pada TV: hilangkan layout animation agar tidak membebani GPU TV Stick
+            rvGrid.setLayoutAnimation(null);
+            // Sediakan cache 10 view (cukup untuk 1 baris atas & bawah) tanpa boros RAM (< 1.5MB)
+            rvGrid.setItemViewCacheSize(10);
+            RecyclerView.RecycledViewPool pool = new RecyclerView.RecycledViewPool();
+            pool.setMaxRecycledViews(0, 12);
+            rvGrid.setRecycledViewPool(pool);
         } else {
             rvGrid.setItemViewCacheSize(20);
             rvGrid.setDrawingCacheEnabled(true);
@@ -2448,7 +2454,9 @@ public class MainActivity extends Activity {
             if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
             if (rvGrid != null) {
                 rvGrid.setVisibility(View.VISIBLE);
-                rvGrid.scheduleLayoutAnimation();
+                if (!TvFocusHelper.isTv(MainActivity.this)) {
+                    rvGrid.scheduleLayoutAnimation();
+                }
                 rvGrid.scrollToPosition(0);
                 if (TvFocusHelper.isTv(MainActivity.this)) {
                     rvGrid.post(() -> {

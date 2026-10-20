@@ -7,11 +7,11 @@
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
-    app:cardCornerRadius="8dp"
+    app:cardCornerRadius="@dimen/tv_card_corner_radius"
     app:cardElevation="0dp"
     app:cardBackgroundColor="#11141C"
     app:strokeColor="#1C202C"
-    app:strokeWidth="1dp">
+    app:strokeWidth="1.5dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -45,11 +45,12 @@
                 android:layout_gravity="top|start"
                 android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_type"
-                android:paddingHorizontal="5dp"
-                android:paddingVertical="2dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2.5dp"
                 android:text="TV"
                 android:textColor="#E2E8F0"
                 android:textSize="@dimen/tv_badge_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold" />
 
             <!-- Top Right: Score Badge -->
@@ -60,8 +61,8 @@
                 android:layout_gravity="top|end"
                 android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_score"
-                android:paddingHorizontal="5dp"
-                android:paddingVertical="2dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2.5dp"
                 android:gravity="center_vertical"
                 app:drawableStartCompat="@drawable/ic_star_filled"
                 app:drawableTint="#FBBF24"
@@ -69,6 +70,7 @@
                 android:text="8.5"
                 android:textColor="#FBBF24"
                 android:textSize="@dimen/tv_badge_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:visibility="gone" />
 
@@ -80,11 +82,12 @@
                 android:layout_gravity="bottom|start"
                 android:layout_margin="6dp"
                 android:background="@drawable/bg_badge_sub"
-                android:paddingHorizontal="5dp"
-                android:paddingVertical="2dp"
+                android:paddingHorizontal="6dp"
+                android:paddingVertical="2.5dp"
                 android:text="SUB ID"
                 android:textColor="#F1F5F9"
                 android:textSize="@dimen/tv_badge_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold" />
         </FrameLayout>
 

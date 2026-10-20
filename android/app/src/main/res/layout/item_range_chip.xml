@@ -11,7 +11,7 @@
     app:cardElevation="0dp"
     app:cardBackgroundColor="#161B26"
     app:strokeColor="#2A3347"
-    app:strokeWidth="1dp">
+    app:strokeWidth="1.5dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -26,7 +26,8 @@
             android:layout_height="wrap_content"
             android:text="1 - 100"
             android:textColor="#F1F5F9"
-            android:textSize="11.5sp"
+            android:textSize="@dimen/tab_text_size"
+            android:fontFamily="sans-serif-medium"
             android:textStyle="bold" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

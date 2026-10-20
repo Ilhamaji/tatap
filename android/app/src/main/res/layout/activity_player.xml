@@ -249,7 +249,8 @@
                 android:layout_height="wrap_content"
                 android:text="Memuat Video..."
                 android:textColor="#FFFFFF"
-                android:textSize="14.5sp"
+                android:textSize="@dimen/player_title_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:singleLine="true"
                 android:ellipsize="end" />
@@ -261,7 +262,8 @@
                 android:layout_marginTop="1dp"
                 android:text="Subtitle: Auto (Indonesia)"
                 android:textColor="#94A3B8"
-                android:textSize="11sp" />
+                android:textSize="@dimen/tv_card_meta_text_size"
+                android:fontFamily="sans-serif" />
         </LinearLayout>
 
         <!-- Tombol Skala Layar / Mode Fullscreen (Fit, Zoom, Fill) -->

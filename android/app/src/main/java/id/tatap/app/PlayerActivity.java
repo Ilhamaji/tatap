@@ -1536,6 +1536,13 @@ public class PlayerActivity extends Activity {
                                 playerView.showController();
                             }
                             updateExoButtonStates();
+                            if (TvFocusHelper.isTv(this)) {
+                                if (btnExoNext != null && btnExoNext.isEnabled()) {
+                                    btnExoNext.requestFocus();
+                                } else if (btnSkipOpEd != null && btnSkipOpEd.getVisibility() == View.VISIBLE) {
+                                    btnSkipOpEd.requestFocus();
+                                }
+                            }
                         } else {
                             player.play();
                             hideTopBar();
@@ -1554,6 +1561,13 @@ public class PlayerActivity extends Activity {
                                 playerView.showController();
                             }
                             updateExoButtonStates();
+                            if (TvFocusHelper.isTv(this)) {
+                                if (btnExoNext != null && btnExoNext.isEnabled()) {
+                                    btnExoNext.requestFocus();
+                                } else if (btnSkipOpEd != null && btnSkipOpEd.getVisibility() == View.VISIBLE) {
+                                    btnSkipOpEd.requestFocus();
+                                }
+                            }
                         } else {
                             player.play();
                             hideTopBar();
@@ -1608,7 +1622,37 @@ public class PlayerActivity extends Activity {
                     boolean isTvLeft = TvFocusHelper.isTv(this);
                     boolean isPlayingLeft = (player != null && player.isPlaying());
                     if (isTvLeft && !isPlayingLeft) {
-                        // Di Android TV saat video ter-pause: biarkan D-Pad bernavigasi antar tombol kontrol
+                        // Di Android TV saat video ter-pause: D-Pad Kiri mengarahkan ke Prev Episode atau Play
+                        if (hasFocusOnTopBar) {
+                            showTopBarBriefly();
+                            break; // Biarkan navigasi horizontal antar tombol header di top bar
+                        }
+                        if (playerView != null) {
+                            playerView.showController();
+                        }
+                        View currentFocused = getCurrentFocus();
+                        if (currentFocused == btnSkipOpEd && btnExoNext != null && btnExoNext.isEnabled()) {
+                            btnExoNext.requestFocus();
+                            return true;
+                        }
+                        if (currentFocused == btnExoNext) {
+                            View playBtn = playerView != null ? playerView.findViewById(androidx.media3.ui.R.id.exo_play_pause) : null;
+                            if (playBtn == null && playerView != null) playBtn = playerView.findViewById(androidx.media3.ui.R.id.exo_play);
+                            if (playBtn != null && playBtn.getVisibility() == View.VISIBLE) {
+                                playBtn.requestFocus();
+                                return true;
+                            }
+                        }
+                        if (btnExoPrev != null && btnExoPrev.isEnabled() && currentFocused != btnExoPrev) {
+                            btnExoPrev.requestFocus();
+                            return true;
+                        }
+                        View playBtn = playerView != null ? playerView.findViewById(androidx.media3.ui.R.id.exo_play_pause) : null;
+                        if (playBtn == null && playerView != null) playBtn = playerView.findViewById(androidx.media3.ui.R.id.exo_play);
+                        if (playBtn != null && playBtn.getVisibility() == View.VISIBLE) {
+                            playBtn.requestFocus();
+                            return true;
+                        }
                         break;
                     }
                     if (hasFocusOnTopBar) {
@@ -1633,7 +1677,35 @@ public class PlayerActivity extends Activity {
                     boolean isTvRight = TvFocusHelper.isTv(this);
                     boolean isPlayingRight = (player != null && player.isPlaying());
                     if (isTvRight && !isPlayingRight) {
-                        // Di Android TV saat video ter-pause: biarkan D-Pad bernavigasi antar tombol kontrol
+                        // Di Android TV saat video ter-pause: D-Pad Kanan mengarahkan ke Next Episode atau Skip Op/Ed
+                        if (hasFocusOnTopBar) {
+                            showTopBarBriefly();
+                            break; // Biarkan navigasi horizontal antar tombol header di top bar
+                        }
+                        if (playerView != null) {
+                            playerView.showController();
+                        }
+                        View currentFocused = getCurrentFocus();
+                        if (currentFocused == btnExoPrev) {
+                            View playBtn = playerView != null ? playerView.findViewById(androidx.media3.ui.R.id.exo_play_pause) : null;
+                            if (playBtn == null && playerView != null) playBtn = playerView.findViewById(androidx.media3.ui.R.id.exo_play);
+                            if (playBtn != null && playBtn.getVisibility() == View.VISIBLE) {
+                                playBtn.requestFocus();
+                                return true;
+                            }
+                        }
+                        if (isSkipVisible && currentFocused == btnExoNext) {
+                            btnSkipOpEd.requestFocus();
+                            return true;
+                        }
+                        if (btnExoNext != null && btnExoNext.isEnabled() && currentFocused != btnExoNext) {
+                            btnExoNext.requestFocus();
+                            return true;
+                        }
+                        if (isSkipVisible && currentFocused != btnSkipOpEd) {
+                            btnSkipOpEd.requestFocus();
+                            return true;
+                        }
                         break;
                     }
                     if (hasFocusOnTopBar) {
@@ -1657,6 +1729,22 @@ public class PlayerActivity extends Activity {
                     return true;
 
                 case KeyEvent.KEYCODE_DPAD_UP:
+                    if (TvFocusHelper.isTv(this)) {
+                        showTopBarBriefly();
+                        if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
+                            btnSubSelector.requestFocus();
+                            return true;
+                        } else if (btnQuality != null && btnQuality.getVisibility() == View.VISIBLE) {
+                            btnQuality.requestFocus();
+                            return true;
+                        } else if (btnAspect != null && btnAspect.getVisibility() == View.VISIBLE) {
+                            btnAspect.requestFocus();
+                            return true;
+                        } else if (btnPlayerBack != null) {
+                            btnPlayerBack.requestFocus();
+                            return true;
+                        }
+                    }
                     if (isSkipFocused) {
                         showTopBarBriefly();
                         if (btnSubSelector != null && btnSubSelector.getVisibility() == View.VISIBLE) {
@@ -1677,14 +1765,30 @@ public class PlayerActivity extends Activity {
                     break;
 
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    if (TvFocusHelper.isTv(this) && isSkipVisible && !isSkipFocused) {
+                    if (TvFocusHelper.isTv(this)) {
                         if (isTopBarActive) {
                             hideTopBar();
                         }
-                        btnSkipOpEd.requestFocus();
-                        boolean inIntro = (introEndMs > introStartMs && player != null
-                                && player.getCurrentPosition() >= introStartMs && player.getCurrentPosition() < introEndMs);
-                        updateSkipButtonLabel(inIntro);
+                        if (playerView != null) {
+                            playerView.showController();
+                        }
+                        if (isSkipVisible && !isSkipFocused) {
+                            btnSkipOpEd.requestFocus();
+                            boolean inIntro = (introEndMs > introStartMs && player != null
+                                    && player.getCurrentPosition() >= introStartMs && player.getCurrentPosition() < introEndMs);
+                            updateSkipButtonLabel(inIntro);
+                            return true;
+                        }
+                        if (btnExoNext != null && btnExoNext.isEnabled() && btnExoNext.getVisibility() == View.VISIBLE) {
+                            btnExoNext.requestFocus();
+                            return true;
+                        }
+                        View playBtn = playerView != null ? playerView.findViewById(androidx.media3.ui.R.id.exo_play_pause) : null;
+                        if (playBtn == null && playerView != null) playBtn = playerView.findViewById(androidx.media3.ui.R.id.exo_play);
+                        if (playBtn != null && playBtn.getVisibility() == View.VISIBLE) {
+                            playBtn.requestFocus();
+                            return true;
+                        }
                         return true;
                     }
                     if (isSkipFocused) {

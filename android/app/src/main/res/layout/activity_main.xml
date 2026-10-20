@@ -249,7 +249,8 @@
                 android:drawableTint="#FFFFFF"
                 android:text="Musim Ini"
                 android:textColor="#FFFFFF"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -272,7 +273,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Masih Tayang"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -295,7 +297,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Jadwal"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -318,7 +321,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Riwayat"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -341,7 +345,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Favorit"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -364,7 +369,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Katalog"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold"
                 android:layout_marginEnd="6dp" />
 
@@ -387,7 +393,8 @@
                 android:drawableTint="#8892B0"
                 android:text="Genre"
                 android:textColor="#8892B0"
-                android:textSize="11.5sp"
+                android:textSize="@dimen/tab_text_size"
+                android:fontFamily="sans-serif-medium"
                 android:textStyle="bold" />
         </LinearLayout>
     </HorizontalScrollView>
@@ -539,7 +546,8 @@
             android:layout_weight="1"
             android:text="Tayang Musim Ini"
             android:textColor="#F1F5F9"
-            android:textSize="14sp"
+            android:textSize="@dimen/section_title_text_size"
+            android:fontFamily="sans-serif-medium"
             android:textStyle="bold" />
 
         <TextView
@@ -558,7 +566,8 @@
             android:drawableTint="#38BDF8"
             android:text="Filter"
             android:textColor="#38BDF8"
-            android:textSize="11sp"
+            android:textSize="@dimen/tab_text_size"
+            android:fontFamily="sans-serif-medium"
             android:textStyle="bold"
             android:visibility="gone" />
 
@@ -568,7 +577,8 @@
             android:layout_height="wrap_content"
             android:text=""
             android:textColor="#64748B"
-            android:textSize="11.5sp" />
+            android:textSize="@dimen/tv_card_meta_text_size"
+            android:fontFamily="sans-serif" />
     </LinearLayout>
 
     <!-- Content Area with Floating Overlay -->
