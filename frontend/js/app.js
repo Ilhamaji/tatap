@@ -558,21 +558,25 @@ function renderEpGrid(){
 
   if(shown > 0){
     box.appendChild(frag);
-    if(lastEp){
-      setTimeout(function(){
-        var activeBtn = box.querySelector(".ep.last-watch");
-        if(activeBtn){
-          try {
-            activeBtn.scrollIntoView({behavior: "smooth", block: "nearest", inline: "nearest"});
-          } catch(e){}
-        }
-      }, 50);
-    }
+    setTimeout(function(){
+      var activeBtn = box.querySelector(".ep.last-watch") || box.querySelector(".ep");
+      if(activeBtn){
+        try {
+          activeBtn.scrollIntoView({behavior: "smooth", block: "nearest", inline: "nearest"});
+          activeBtn.focus({preventScroll: true});
+        } catch(e){}
+      }
+    }, 50);
   } else {
     box.innerHTML = "<p class='dim'>Tidak ada episode cocok filter.</p>";
   }
 }
-function closeTitle(){$("title-modal").classList.add("hidden");}
+function closeTitle(){
+  $("title-modal").classList.add("hidden");
+  if(typeof Tui!=="undefined"&&Tui.renderSel){
+    setTimeout(function(){ Tui.renderSel(); }, 30);
+  }
+}
 function syncSeg(){
   document.querySelectorAll("#mode-seg button").forEach(function(x){x.classList.toggle("active",x.getAttribute("data-mode")===cur.mode);});
 }
@@ -2259,6 +2263,123 @@ function startAmbient(){
     }catch(e){}
   },1200);
 }
+function getEpGridCols(){
+  var box = $("tm-eps");
+  if(!box) return 1;
+  var btns = box.querySelectorAll(".ep");
+  if(btns.length < 2) return 1;
+  var firstTop = btns[0].offsetTop;
+  for(var c=1; c<btns.length; c++){
+    if(btns[c].offsetTop > firstTop + 5){
+      return c;
+    }
+  }
+  return btns.length;
+}
+
+function handleTitleModalKey(e){
+  var isFilter = (e.target && e.target.id === "ep-filter");
+  var epBox = $("tm-eps");
+  if(!epBox) return;
+  var epBtns = Array.prototype.slice.call(epBox.querySelectorAll(".ep"));
+
+  if(isFilter){
+    if(e.key === "Escape"){
+      e.target.blur();
+      return;
+    }
+    if(e.key === "Enter" || e.key === "ArrowDown"){
+      e.preventDefault();
+      e.target.blur();
+      if(epBtns.length > 0){
+        epBtns[0].focus();
+      }
+      return;
+    }
+    return;
+  }
+
+  if(e.key === "/"){
+    e.preventDefault();
+    var flt = $("ep-filter");
+    if(flt){ flt.focus(); flt.select(); }
+    return;
+  }
+
+  if(e.key === "f" || e.key === "F"){
+    var bm = $("tm-bookmark-btn");
+    if(bm){ e.preventDefault(); bm.click(); }
+    return;
+  }
+
+  if(e.key === "s" || e.key === "S"){
+    var src = $("tm-source-btn");
+    if(src){ e.preventDefault(); src.click(); }
+    return;
+  }
+
+  if(!epBtns.length) return;
+
+  var activeIdx = epBtns.indexOf(document.activeElement);
+  var cols = getEpGridCols();
+
+  if(e.key === "ArrowRight"){
+    e.preventDefault();
+    var nextIdx = (activeIdx < 0) ? 0 : (activeIdx + 1) % epBtns.length;
+    epBtns[nextIdx].focus();
+    epBtns[nextIdx].scrollIntoView({block: "nearest", inline: "nearest"});
+    return;
+  }
+  if(e.key === "ArrowLeft"){
+    e.preventDefault();
+    var prevIdx = (activeIdx <= 0) ? epBtns.length - 1 : activeIdx - 1;
+    epBtns[prevIdx].focus();
+    epBtns[prevIdx].scrollIntoView({block: "nearest", inline: "nearest"});
+    return;
+  }
+  if(e.key === "ArrowDown"){
+    e.preventDefault();
+    if(activeIdx < 0){
+      epBtns[0].focus();
+    } else {
+      var downIdx = (activeIdx + cols) % epBtns.length;
+      epBtns[downIdx].focus();
+      epBtns[downIdx].scrollIntoView({block: "nearest", inline: "nearest"});
+    }
+    return;
+  }
+  if(e.key === "ArrowUp"){
+    e.preventDefault();
+    if(activeIdx < 0){
+      epBtns[0].focus();
+    } else if(activeIdx < cols){
+      var flt = $("ep-filter");
+      if(flt){ flt.focus(); flt.select(); }
+      else {
+        var upIdx = (activeIdx - cols + epBtns.length) % epBtns.length;
+        epBtns[upIdx].focus();
+        epBtns[upIdx].scrollIntoView({block: "nearest", inline: "nearest"});
+      }
+    } else {
+      var upIdx = (activeIdx - cols + epBtns.length) % epBtns.length;
+      epBtns[upIdx].focus();
+      epBtns[upIdx].scrollIntoView({block: "nearest", inline: "nearest"});
+    }
+    return;
+  }
+  if(e.key === "Enter" || e.key === " "){
+    if(activeIdx >= 0){
+      e.preventDefault();
+      epBtns[activeIdx].click();
+    } else if(epBtns.length > 0){
+      e.preventDefault();
+      var defBtn = epBox.querySelector(".ep.last-watch") || epBtns[0];
+      defBtn.click();
+    }
+    return;
+  }
+}
+
 function onKeyPlayer(e){
   var t=(e.target.tagName||"");
   var typing=t==="INPUT"||t==="SELECT"||t==="TEXTAREA";
@@ -2273,11 +2394,30 @@ function onKeyPlayer(e){
     if($("resume-modal") && !$("resume-modal").classList.contains("hidden")){dismissResumeModal();return;}
     if($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")){closeDrawer();return;}
     if($("update-modal") && !$("update-modal").classList.contains("hidden")){closeUpdateModal();return;}
+    if($("genre-modal") && !$("genre-modal").classList.contains("hidden")){
+      if(typeof Tui!=="undefined"&&Tui.closeGenreModal) Tui.closeGenreModal();
+      else $("genre-modal").classList.add("hidden");
+      return;
+    }
+    if($("catalog-filter-modal") && !$("catalog-filter-modal").classList.contains("hidden")){
+      if(typeof Tui!=="undefined"&&Tui.closeCatalogFilterModal) Tui.closeCatalogFilterModal();
+      else $("catalog-filter-modal").classList.add("hidden");
+      return;
+    }
+    if($("help-overlay") && !$("help-overlay").classList.contains("hidden")){
+      $("help-overlay").classList.add("hidden");
+      return;
+    }
     if(!$("player-modal").classList.contains("hidden"))closePlayer();
     else if(!$("title-modal").classList.contains("hidden"))closeTitle();
     return;
   }
-  if($("player-modal").classList.contains("hidden"))return;
+  if($("player-modal").classList.contains("hidden")){
+    if(!$("title-modal").classList.contains("hidden")){
+      handleTitleModalKey(e);
+    }
+    return;
+  }
   if(e.key===" "){e.preventDefault();if(v.paused)v.play();else v.pause();}
   else if(e.key==="f"||e.key==="F"){e.preventDefault();toggleFullscreen();}
   else if(e.key==="n")stepEp(1);
@@ -2295,6 +2435,16 @@ function onKeyPlayer(e){
   }
   else if(e.key==="ArrowRight"){e.preventDefault();v.currentTime+=5;}
   else if(e.key==="ArrowLeft"){e.preventDefault();v.currentTime-=5;}
+  else if(e.key==="ArrowUp"){
+    e.preventDefault();
+    v.volume=Math.min(1, Math.round(((v.volume||1)+0.1)*10)/10);
+    toast("Volume: "+Math.round(v.volume*100)+"%", 1200);
+  }
+  else if(e.key==="ArrowDown"){
+    e.preventDefault();
+    v.volume=Math.max(0, Math.round(((v.volume||1)-0.1)*10)/10);
+    toast("Volume: "+Math.round(v.volume*100)+"%", 1200);
+  }
 }
 
 function syncSubSize(){
