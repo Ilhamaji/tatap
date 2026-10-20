@@ -13,6 +13,32 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.10.1] - 2026-10-21
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.10.0 -> 2.10.1)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug keamanan kritis (*security vulnerability fix*), pencegahan kebocoran resource (*resource leak fix*), serta peningkatan stabilitas internal tanpa memodifikasi kontrak antarmuka eksternal (*backward-compatible security & reliability patch*):
+1. **Mitigasi Celah Kritis SSRF (Server-Side Request Forgery) & Intranet Scanning (`backend/main.py`):**
+   - Mengatasi kerentanan di mana endpoint proxy `/api/player/video`, `/api/player/sub`, dan `/api/player/sub_custom` memiliki konfigurasi CORS `Access-Control-Allow-Origin: *` dan sebelumnya hanya memverifikasi awalan skema `http`.
+   - Mengimplementasikan fungsi validasi terpusat `_validate_external_proxy_url(url)` yang menolak seluruh skema non-HTTP/HTTPS serta memblokir akses ke alamat IP privat RFC 1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), alamat loopback (`127.0.0.0/8`, `localhost`, `0.0.0.0`, `::1`), link-local/cloud metadata (`169.254.0.0/16`, `169.254.169.254`), multicast, dan domain intranet (`.local`, `.internal`) dengan status `HTTP 403 Forbidden`.
+   - Mencegah skrip jahat pada halaman web eksternal di peramban pengguna menyalahgunakan backend lokal Tatap (`127.0.0.1:8767`) untuk memindai jaringan lokal pengguna atau membaca layanan internal.
+2. **Eliminasi Kebocoran File Descriptor Socket pada TLS Desync Streaming (`backend/api/desync.py`):**
+   - Menyelidiki akar masalah terputusnya streaming video saat pengguna melakukan *seek*, *pause*, atau perpindahan episode: FastAPI `StreamingResponse` menginterupsi generator `tls_desync_stream` via `GeneratorExit`.
+   - Menata ulang generator `tls_desync_stream` dan fungsi transmisi `tls_desync_request` ke dalam blok `try...finally:`, menjamin pemanggilan `raw_sock.close()` selalu dieksekusi dalam kondisi apa pun sehingga mencegah akumulasi socket descriptor tak tertutup (`OSError: [Errno 24] Too many open files`).
+   - Menerapkan batasan kapasitas maksimum memori (*bounded cache* 256 entri) pada tabel in-memory `_DNS_CACHE`.
+3. **Graceful Connection Pool Cleanup pada FastAPI Lifespan (`backend/main.py`):**
+   - Menambahkan prosedur pembersihan koneksi jaringan asinkron saat server menerima sinyal *shutdown* pada handler `lifespan(app)`.
+   - Menutup connection pool `_direct_client` via `await _direct_client.aclose()`, serta memanggil pembersihan persistent client pada `api.anilist.close_al_client()`, `api.hianime.close_shared_client()`, dan `api.otakudesu.close_otaku_client()`.
+4. **Resiliensi Rate Limiting AniList & Optimasi Traversal Prekuel (`backend/api/anilist.py`):**
+   - Mengimplementasikan pelacak *backoff cooldown* in-memory `_al_rate_limit_until`: jika upstream AniList merespons `HTTP 429 Too Many Requests`, sistem secara cerdas membaca header `Retry-After` (default 60 detik) dan menahan request berikutnya agar tidak memperpanjang penalti ban IP pengguna, melainkan langsung mengalirkan *fallback* katalog HiAnime / data lokal.
+   - Mengoptimalkan penelusuran rantai prekuel pada `anime_relations()` dari 5 langkah menjadi 3 langkah maksimal, menghemat konsumsi kuota AniList secara drastis saat membuka modal detail anime berseri panjang.
+5. **Perbaikan Resolusi URL Relatif Master M3U8 (`backend/api/hianime.py`):**
+   - Memperbaiki metode pembacaan variant stream pada `_probe_master` agar menggunakan RFC-compliant `urllib.parse.urljoin(master_url, v_url)` alih-alih penggabungan string mentah `base + v_url`, mencegah terbentuknya URL cacat dengan double slash (`//`) pada CDN upstream bertingkat.
+6. **Penguatan Defense-in-Depth Sanitasi XSS Frontend (`frontend/js/app.js`, `frontend/js/term.js`):**
+   - Memperluas utilitas pembersih string `esc()` di antarmuka web desktop dan antarmuka TUI agar turut meng-escape karakter tanda kutip tunggal (`'` $\to$ `&#39;`), menutup celah penyisipan HTML injection pada atribut berelemen kutip tunggal.
+7. **Suite Pengujian Keamanan & Resiliensi Otomatis (`tests/test_security_and_resilience.py`):**
+   - Menambahkan 6 unit test baru yang memverifikasi penolakan SSRF, kelulusan URL publik sah, penutupan socket saat interupsi generator, serta pelacakan backoff AniList 429.
+   - Seluruh 243 unit test lulus 100%.
+
 ## [2.10.0] - 2026-10-20
 
 ### Justifikasi SemVer 2.0.0 (MINOR: 2.9.4 -> 2.10.0)

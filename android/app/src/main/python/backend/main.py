@@ -19,6 +19,29 @@ frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "f
 async def lifespan(app: FastAPI):
     await init_db()
     yield
+    # Graceful shutdown: tutup connection pool video dan persistent client API
+    global _direct_client
+    if _direct_client is not None:
+        try:
+            await _direct_client.aclose()
+        except Exception:
+            pass
+        _direct_client = None
+    try:
+        from api.anilist import close_al_client
+        close_al_client()
+    except Exception:
+        pass
+    try:
+        from api.hianime import close_shared_client
+        close_shared_client()
+    except Exception:
+        pass
+    try:
+        from api.otakudesu import close_otaku_client
+        close_otaku_client()
+    except Exception:
+        pass
 
 from version import __version__ as CURRENT_VERSION
 app = FastAPI(title="Tatap", version=CURRENT_VERSION, lifespan=lifespan)
@@ -1401,6 +1424,47 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
     except Exception as e:
         return fail(str(e))
 
+def _validate_external_proxy_url(url: str) -> None:
+    """Validasi keamanan URL proxy eksternal untuk mencegah SSRF (Server-Side Request Forgery).
+    Menolak skema non-HTTP(S), IP private, loopback, link-local, multicast, dan localhost."""
+    if not url or not isinstance(url, str):
+        raise HTTPException(status_code=400, detail="URL proxy tidak valid")
+    clean_u = url.strip()
+    import urllib.parse as _up
+    import ipaddress as _ipa
+    import socket as _sock
+
+    p = _up.urlsplit(clean_u)
+    if p.scheme.lower() not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Skema URL hanya boleh http atau https")
+    hostname = (p.hostname or "").strip().lower()
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Hostname URL tidak ditemukan")
+
+    if hostname in ("localhost", "0.0.0.0", "127.0.0.1", "::1") or hostname.endswith(".local") or hostname.endswith(".internal"):
+        raise HTTPException(status_code=403, detail="Akses ke host lokal dilarang (SSRF protection)")
+
+    # Pengecekan IP numerik langsung
+    try:
+        ip = _ipa.ip_address(hostname)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+            raise HTTPException(status_code=403, detail="Akses ke IP privat/lokal dilarang (SSRF protection)")
+        return
+    except ValueError:
+        pass
+
+    # Resolusi DNS untuk mendeteksi domain yang menunjuk ke IP lokal/privat
+    try:
+        addr_info = _sock.getaddrinfo(hostname, None, _sock.AF_UNSPEC, _sock.SOCK_STREAM)
+        for family, socktype, proto, canonname, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip = _ipa.ip_address(ip_str)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast or ip.is_reserved or ip.is_unspecified:
+                raise HTTPException(status_code=403, detail=f"Resolusi domain mengarah ke IP privat/lokal ({ip_str})")
+    except (_sock.gaierror, _sock.herror):
+        pass
+
+
 def _is_m3u8_url(url: str, ctype: str = "") -> bool:
     """Deteksi akurat apakah URL adalah playlist m3u8 atau segmen video/audio."""
     if "mpegurl" in (ctype or "").lower():
@@ -1440,6 +1504,8 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             url = real if real.startswith("http") else url
         except Exception:
             pass
+
+    _validate_external_proxy_url(url)
 
     is_m3u8 = _is_m3u8_url(url)
     media_type = "application/vnd.apple.mpegurl" if is_m3u8 else "video/mp2t"
@@ -1699,6 +1765,10 @@ async def _prewarm_sub_translation(url: str, referer: str, src: str = "en", lang
     """Prefetch subtitle translate di latar belakang jika belum ada di cache."""
     if not url or not url.startswith("http") or not lang or lang == src:
         return
+    try:
+        _validate_external_proxy_url(url)
+    except HTTPException:
+        return
     import hashlib
     base_hash = hashlib.sha1((url + "|" + (referer or "") + "|" + lang).encode("utf-8")).hexdigest()
     key_gtx = "sub2|gtx|" + base_hash
@@ -1742,6 +1812,7 @@ async def proxy_sub(url: str = Query(""),
     dan proteksi cache poisoning."""
     if not url.startswith("http"):
         return Response(status_code=400)
+    _validate_external_proxy_url(url)
 
     # Lang kosong atau sama dengan sumber -> return source apa adanya
     if not lang or lang == src:
@@ -2010,6 +2081,7 @@ async def upload_custom_sub(body: dict = None):
 
     if not text and url:
         try:
+            _validate_external_proxy_url(url)
             text = await _fetch_sub_text(url, "")
         except Exception as e:
             return fail(f"Gagal mengunduh subtitle dari URL: {e}")
@@ -2053,6 +2125,7 @@ async def get_custom_sub(id: str = Query(""),
     if id:
         vtt_text = await get_subtitle_cache(f"custom|{id}")
     elif url:
+        _validate_external_proxy_url(url)
         try:
             vtt_text = await _fetch_sub_text(url, "")
             from api.translate import parse_vtt, build_vtt

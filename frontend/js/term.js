@@ -3,7 +3,7 @@ var Tui = (function () {
   var MAXLOG = 200;
 
   function $(id){return document.getElementById(id);}
-  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
   function isModalOpen(){
     return (!$("title-modal").classList.contains("hidden")) ||
            (!$("player-modal").classList.contains("hidden")) ||

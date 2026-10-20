@@ -44,7 +44,7 @@ function adjustPlaySpeed(dir){
 }
 
 function $(id){return document.getElementById(id);}
-function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
 function toast(msg,ms){
   $("toast-msg").textContent=msg;
   $("toast").classList.remove("hidden");

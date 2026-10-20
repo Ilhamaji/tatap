@@ -369,6 +369,17 @@ def _get_shared_client():
     return _shared_client
 
 
+def close_shared_client():
+    """Tutup shared client HiAnime saat aplikasi shutdown."""
+    global _shared_client
+    if _shared_client is not None:
+        try:
+            _shared_client.close()
+        except Exception:
+            pass
+        _shared_client = None
+
+
 def _fetch(url, referer=None, timeout=12):
     last_err = ""
     # 1. Coba via curl_cffi impersonate Chrome jika tersedia di lingkungan
@@ -1010,7 +1021,8 @@ def _validate_master_playlist(master_url: str, referer: str, variants: list, bod
                         break
                 if v_url:
                     if not v_url.startswith("http"):
-                        v_url = base + v_url
+                        import urllib.parse as _up
+                        v_url = _up.urljoin(master_url, v_url)
                     parsed_variants.append({"q": q, "url": v_url})
             continue
         # Absolute atau relative URL ke segment/variant playlist.
