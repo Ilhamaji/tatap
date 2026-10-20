@@ -2114,10 +2114,12 @@ function renderContinue(){
   window.Tatap.history().then(function(r){
     var h=(r.data||[]).slice(0,10);
     var sec=$("continue-sec");
-    if(!sec) return;
-    if(!h.length){sec.classList.add("hidden");return;}
-    var isHome=!window.Tui||["katalog","musim","cari"].indexOf(Tui.view())>=0;
-    sec.classList.toggle("hidden",!isHome);
+    if(sec){
+      // Riwayat tontonan diisolasi eksklusif pada view "riwayat" (#results)
+      sec.classList.add("hidden");
+      sec.style.display="none";
+    }
+    if(!h.length) return;
     var box=$("continue-row");if(!box)return;
     box.innerHTML="";
     for(var i=0;i<h.length;i++){

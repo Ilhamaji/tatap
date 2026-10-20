@@ -62,19 +62,13 @@ var Tui = (function () {
     $("empty-state").style.display="none";
     $("results").innerHTML="";$("results-title").textContent="memuat...";$("results-meta").textContent="";
     $("pager").classList.add("hidden");
-    $("lane-season-sec").classList.toggle("hidden",v!=="musim");
-    $("lane-still-sec").classList.toggle("hidden",v!=="lanjutan");
+    var cSec = $("continue-sec");
+    if(cSec) cSec.classList.add("hidden");
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
     if(v === "terbaru") updateScheduleChips();
     var cfBtn = $("btn-catalog-filter");
     if(cfBtn) cfBtn.classList.toggle("hidden", v !== "katalog");
-    if(window.App && App.renderContinue){
-      App.renderContinue();
-    } else {
-      var cSec = $("continue-sec");
-      if(cSec) cSec.classList.add("hidden");
-    }
     switch(v){
       case "cari":$("results-title").textContent="cari judul";$("empty-state").style.display="";break;
       case "musim":$("results-title").textContent="Tayang musim ini";break;
@@ -168,6 +162,58 @@ var Tui = (function () {
     return null;
   }
 
+  function updateResultsTitle(d){
+    switch(S.view){
+      case "musim":{
+        var sName = (d && d.season) ? String(d.season).toUpperCase() : "";
+        $("results-title").textContent = sName ? ("Tayang musim ini · " + sName) : "Tayang musim ini";
+        break;
+      }
+      case "lanjutan":{
+        $("results-title").textContent = "Masih tayang (lanjut)";
+        break;
+      }
+      case "terbaru":{
+        var lblDay = SCHEDULE_LABELS[S.scheduleDay] || S.scheduleDay || "Hari Ini";
+        var isToday = d && (d.is_today || (d.current_day === S.scheduleDay));
+        if(lblDay === "Hari Ini" || S.scheduleDay === "today"){
+          $("results-title").textContent = "Jadwal rilis (Hari Ini)";
+        } else {
+          $("results-title").textContent = "Jadwal rilis (" + lblDay + (isToday ? " · Hari Ini" : "") + ")";
+        }
+        break;
+      }
+      case "katalog":{
+        $("results-title").textContent = getCatalogFilterTitle();
+        break;
+      }
+      case "riwayat":{
+        $("results-title").textContent = "Riwayat Menonton";
+        break;
+      }
+      case "favorit":{
+        $("results-title").textContent = "Anime Favorit";
+        break;
+      }
+      case "season-custom":{
+        var sf = S.seasonFilter || {season: "", year: ""};
+        var sUpper = String(sf.season || (d && d.season) || "").toUpperCase();
+        var yVal = sf.year || (d && d.year) || "";
+        $("results-title").textContent = "Season: " + (sUpper || "?") + (yVal ? (" " + yVal) : "");
+        break;
+      }
+      case "cari":{
+        break;
+      }
+      default:{
+        if(d && d.season){
+          $("results-title").textContent = S.view + " · " + String(d.season).toUpperCase();
+        }
+        break;
+      }
+    }
+  }
+
   async function loadView(){
     if(S.view==="cari"){renderRecents();return;}
     try{
@@ -214,17 +260,12 @@ var Tui = (function () {
         S.sel = -1;
         if(d.current_day) updateScheduleChips(d.current_day);
         else updateScheduleChips();
-        var lblDay = SCHEDULE_LABELS[S.scheduleDay] || S.scheduleDay;
-        var isToday = d.is_today || (d.current_day === S.scheduleDay);
-        $("results-title").textContent = "Jadwal rilis (" + lblDay + (isToday ? " · Hari Ini" : "") + ")";
       }else if(Array.isArray(d)){
         S.items=d;S.page=1;S.total=1;S.sel=-1;
       }else{
         S.items=d.items||[];S.page=d.page||1;S.total=d.total_pages||1;S.sel=-1;
       }
-      var label=$("results-title").textContent;
-      if(d.season) label+=" · "+String(d.season).toUpperCase();
-      $("results-title").textContent=label;
+      updateResultsTitle(d);
       if(S.view === "riwayat"){
         var totalHist = S.rawHistory ? S.rawHistory.length : S.items.length;
         if(totalHist > 0){
@@ -672,14 +713,8 @@ var Tui = (function () {
   function setViewSilent(v){
     S.view=v;S.page=1;
     $("pager").classList.add("hidden");
-    if(window.App && App.renderContinue){
-      App.renderContinue();
-    } else {
-      var cSec = $("continue-sec");
-      if(cSec) cSec.classList.add("hidden");
-    }
-    $("lane-season-sec").classList.add("hidden");
-    $("lane-still-sec").classList.add("hidden");
+    var cSec = $("continue-sec");
+    if(cSec) cSec.classList.add("hidden");
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", v !== "terbaru");
     updateNavTabs(v);
