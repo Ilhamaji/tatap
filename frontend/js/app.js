@@ -2377,13 +2377,6 @@ function switchSource(targetSource){
 function openDrawer(){
   var p = $("drawer-panel");
   if(p) p.classList.remove("hidden");
-  // Update status di footer drawer
-  var hEl = $("health");
-  var dHText = $("drawer-health-text");
-  if(dHText && hEl){
-    dHText.textContent = hEl.textContent || "Online";
-    dHText.className = hEl.className || "dim";
-  }
 }
 function closeDrawer(){
   var p = $("drawer-panel");
@@ -2774,6 +2767,10 @@ function updateBackendHealth(isOnline){
   if(hEl){
     hEl.textContent = isOnline ? "Online" : "Offline";
     hEl.className = "health " + (isOnline ? "ok" : "bad");
+  }
+  var dHText = $("drawer-health-text");
+  if(dHText){
+    dHText.textContent = isOnline ? "Online" : "Offline";
   }
 }
 
