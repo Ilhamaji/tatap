@@ -1023,7 +1023,10 @@ public class PlayerActivity extends Activity {
                 if (playbackState == Player.STATE_BUFFERING) {
                     if (layoutBuffering != null) {
                         layoutBuffering.setVisibility(View.VISIBLE);
-                        if (tvBufferingText != null) tvBufferingText.setText("MEMUAT STREAM...");
+                        if (tvBufferingText != null) {
+                            tvBufferingText.setText("MEMUAT STREAM...");
+                            tvBufferingText.setVisibility(View.VISIBLE);
+                        }
                     }
                 } else if (playbackState == Player.STATE_READY) {
                     if (layoutBuffering != null) {
@@ -2468,7 +2471,7 @@ public class PlayerActivity extends Activity {
                         if (layoutBuffering != null) {
                             layoutBuffering.setVisibility(View.VISIBLE);
                             if (tvBufferingText != null) {
-                                tvBufferingText.setText("RETRY STREAM (FAILOVER)...");
+                                tvBufferingText.setText("MENGHUBUNGKAN ULANG...");
                                 tvBufferingText.setVisibility(View.VISIBLE);
                             }
                         }
@@ -2488,7 +2491,10 @@ public class PlayerActivity extends Activity {
 
         if (layoutBuffering != null) {
             layoutBuffering.setVisibility(View.VISIBLE);
-            if (tvBufferingText != null) tvBufferingText.setText("MEMUAT STREAM...");
+            if (tvBufferingText != null) {
+                tvBufferingText.setText("MEMUAT STREAM...");
+                tvBufferingText.setVisibility(View.VISIBLE);
+            }
         }
 
         try {
@@ -4311,7 +4317,10 @@ public class PlayerActivity extends Activity {
 
         if (layoutBuffering != null) {
             layoutBuffering.setVisibility(View.VISIBLE);
-            if (tvBufferingText != null) tvBufferingText.setText("MEMUAT EPISODE " + ep + "...");
+            if (tvBufferingText != null) {
+                tvBufferingText.setText("MEMUAT EPISODE " + ep + "...");
+                tvBufferingText.setVisibility(View.VISIBLE);
+            }
         }
 
         // Rekam episode baru ke riwayat

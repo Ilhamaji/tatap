@@ -25,10 +25,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="S1"
-            android:textColor="#38BDF8"
-            android:textSize="@dimen/tab_text_size"
+            android:textColor="@color/text_accent"
+            android:textSize="@dimen/text_subhead"
             android:fontFamily="sans-serif-medium"
-            android:textStyle="bold" />
+            android:letterSpacing="0.02" />
 
         <TextView
             android:id="@+id/tv_season_title"
@@ -36,8 +36,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
             android:text="Judul Season"
-            android:textColor="#F1F5F9"
-            android:textSize="@dimen/tab_text_size"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_subhead"
             android:fontFamily="sans-serif-medium"
             android:singleLine="true"
             android:ellipsize="end" />

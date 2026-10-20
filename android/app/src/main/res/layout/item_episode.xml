@@ -27,10 +27,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="SELESAI"
-            android:textColor="#10B981"
-            android:textSize="@dimen/tv_badge_text_size"
+            android:textColor="@color/text_success"
+            android:textSize="@dimen/text_badge"
             android:fontFamily="sans-serif-medium"
-            android:textStyle="bold"
+            android:letterSpacing="0.04"
             android:visibility="gone"
             android:layout_marginBottom="1dp" />
 
@@ -39,9 +39,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="EP 01"
-            android:textColor="#F1F5F9"
-            android:textSize="@dimen/tv_card_title_text_size"
-            android:fontFamily="sans-serif-medium"
-            android:textStyle="bold" />
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_title_medium"
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

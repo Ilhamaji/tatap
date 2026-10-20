@@ -25,9 +25,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="1 - 100"
-            android:textColor="#F1F5F9"
-            android:textSize="@dimen/tab_text_size"
-            android:fontFamily="sans-serif-medium"
-            android:textStyle="bold" />
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_subhead"
+            android:fontFamily="sans-serif-medium" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

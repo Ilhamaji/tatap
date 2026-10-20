@@ -90,6 +90,12 @@ def test_semantic_typography_dimens():
     def_map = {item.attrib.get("name"): item.text for item in tree_def.getroot().findall("dimen")}
     tv_map = {item.attrib.get("name"): item.text for item in tree_tv.getroot().findall("dimen")}
 
-    assert float(tv_map["tv_card_title_text_size"].replace("sp", "")) > float(def_map["tv_card_title_text_size"].replace("sp", ""))
-    assert float(tv_map["tv_card_title_height"].replace("dp", "")) > float(def_map["tv_card_title_height"].replace("dp", ""))
-    assert float(tv_map["detail_title_text_size"].replace("sp", "")) > float(def_map["detail_title_text_size"].replace("sp", ""))
+    def resolve_val(m, k):
+        v = m[k]
+        if v.startswith("@dimen/"):
+            return resolve_val(m, v.replace("@dimen/", ""))
+        return float(v.replace("sp", "").replace("dp", ""))
+
+    assert resolve_val(tv_map, "tv_card_title_text_size") > resolve_val(def_map, "tv_card_title_text_size")
+    assert resolve_val(tv_map, "tv_card_title_height") > resolve_val(def_map, "tv_card_title_height")
+    assert resolve_val(tv_map, "detail_title_text_size") > resolve_val(def_map, "detail_title_text_size")
