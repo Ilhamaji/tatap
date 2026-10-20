@@ -193,26 +193,37 @@
       <polygon points="13 19 22 12 13 5 13 19" fill="currentColor"/>
       <polygon points="2 19 11 12 2 5 2 19" fill="currentColor"/>
     </symbol>
+    <!-- Server Alert / Offline -->
+    <symbol id="icon-server-alert" viewBox="0 0 24 24">
+      <rect x="2" y="3" width="20" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+      <rect x="2" y="14" width="20" height="7" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+      <line x1="6" y1="6.5" x2="6.01" y2="6.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="6" y1="17.5" x2="6.01" y2="17.5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="5.5" x2="19" y2="7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="19" y1="5.5" x2="16" y2="7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="16" y1="16.5" x2="19" y2="18.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <line x1="19" y1="16.5" x2="16" y2="18.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+    </symbol>
   </defs>
 </svg>
 <div id="crt" aria-hidden="true"></div>
 <div id="bg-glow" aria-hidden="true"></div>
 
 <header class="tui-head">
-  <div class="head-brand" id="head-brand" title="Kembali ke Beranda (Musim Ini)" role="button" tabindex="0" aria-label="Tatap Beranda">
+  <div class="head-brand" id="head-brand" title="Kembali ke Beranda (Katalog Anime)" role="button" tabindex="0" aria-label="Tatap Beranda">
     <svg class="brand-logo-mark" viewBox="0 0 24 24" aria-hidden="true">
       <use href="#icon-brand-mark"/>
     </svg>
     <span class="brand-name">TATAP</span>
-    <span class="brand-ver" id="brand-ver">v2.9.4</span>
+    <span class="brand-ver" id="brand-ver">v2.10.0</span>
   </div>
   <nav class="nav-tabs-bar" id="nav-tabs-bar" role="navigation" aria-label="Navigasi Utama">
-    <button class="nav-tab-btn active" data-view="musim" id="tab-nav-musim">Musim Ini</button>
+    <button class="nav-tab-btn active" data-view="katalog" id="tab-nav-katalog">Katalog</button>
+    <button class="nav-tab-btn" data-view="musim" id="tab-nav-musim">Musim Ini</button>
     <button class="nav-tab-btn" data-view="terbaru" id="tab-nav-terbaru">Terbaru</button>
     <button class="nav-tab-btn" data-view="lanjutan" id="tab-nav-lanjutan">Masih Tayang</button>
     <button class="nav-tab-btn" data-view="riwayat" id="tab-nav-riwayat">Riwayat</button>
     <button class="nav-tab-btn" data-view="favorit" id="tab-nav-favorit">Favorit</button>
-    <button class="nav-tab-btn" data-view="katalog" id="tab-nav-katalog">Katalog</button>
   </nav>
   <div class="head-actions">
     <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
@@ -275,7 +286,7 @@
     <div class="drawer-head">
       <div class="drawer-title">
         <span class="brand-name">TATAP</span>
-        <span class="dim small">v2.9.4</span>
+        <span class="dim small">v2.10.0</span>
       </div>
       <button class="icon-btn big" id="drawer-close" title="Tutup Menu (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
     </div>
@@ -703,6 +714,40 @@
       <button id="pm-next" title="Episode berikutnya (n)">NEXT <svg class="ui-icon"><use href="#icon-step-next"/></svg></button>
     </div>
     <div class="player-hint dim small">Space play/pause · ←/→ seek 5 dtk · f fullscreen · [ / ] kecepatan · n/p ganti episode · m mute · Esc tutup</div>
+  </div>
+</div>
+
+<!-- BACKEND STARTUP ERROR / RECONNECT OVERLAY -->
+<div id="backend-error-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="be-title">
+  <div class="backend-error-sheet">
+    <div class="be-head">
+      <div class="be-icon-wrap">
+        <svg class="ui-icon be-alert-icon"><use href="#icon-server-alert"/></svg>
+      </div>
+      <div>
+        <h2 id="be-title" class="be-title">Backend Tatap Belum Terhubung</h2>
+        <span class="dim small">Server Lokal http://127.0.0.1:8767</span>
+      </div>
+    </div>
+    <div class="be-body">
+      <p>Tidak dapat terhubung ke server backend lokal Tatap. Hal ini biasanya terjadi jika:</p>
+      <ul>
+        <li>Proses backend Python masih dalam tahap inisialisasi / <i>warming up</i>.</li>
+        <li>Port <code>8767</code> terblokir firewall atau sedang digunakan oleh aplikasi lain.</li>
+        <li>Proses backend terhenti saat awal mulai dibuka.</li>
+      </ul>
+      <div id="be-status-box" class="be-status-box">
+        <span id="be-status-text" class="dim">Mencoba menghubungkan kembali secara otomatis...</span>
+      </div>
+    </div>
+    <div class="be-actions">
+      <button id="be-retry-btn" class="btn btn-primary be-btn">
+        <svg class="ui-icon"><use href="#icon-switch"/></svg> Coba Hubungkan Ulang
+      </button>
+      <button id="be-copy-debug-btn" class="btn btn-secondary be-btn">
+        Salin Info Diagnostik
+      </button>
+    </div>
   </div>
 </div>
 

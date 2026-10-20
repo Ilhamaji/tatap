@@ -28,6 +28,7 @@ animeDetail:function(slug){return jget("/api/anime/"+encodeURIComponent(slug)+"/
 relations:function(slug,title){return jget("/api/anime/"+encodeURIComponent(slug)+"/relations?title="+encodeURIComponent(title||""));},
 resolve:function(slug,ep,mode,q,source,force){return jget("/api/stream/resolve?slug="+encodeURIComponent(slug)+"&ep="+ep+"&mode="+(mode||"sub")+"&q="+(q||"best")+(source?"&source="+encodeURIComponent(source):"")+(force?"&force=true":""));},
 genres:function(){return jget("/api/genres");},
+ping:function(){return jget("/api/ping");},
 health:function(){return jget("/api/health");},
 history:function(){return jget("/api/history");},
 saveHist:function(b){return jpost("/api/history",b);},

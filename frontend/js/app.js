@@ -2642,6 +2642,11 @@ function init(){
     checkForUpdate(true);
   });
 
+  var beRetry = $("be-retry-btn");
+  if(beRetry) beRetry.addEventListener("click", manualRetryBackend);
+  var beCopy = $("be-copy-debug-btn");
+  if(beCopy) beCopy.addEventListener("click", copyBackendDebugInfo);
+
   var umClose = $("um-close");
   if(umClose) umClose.addEventListener("click", closeUpdateModal);
   var um = $("update-modal");
@@ -2659,6 +2664,140 @@ function init(){
     recordWatchProgress(true);
   });
 
-  window.Tui.boot();
+  checkBackendStartup(function(){
+    window.Tui.boot();
+  }, function(){
+    window.Tui.boot();
+  });
+}
+
+var _autoReconnectTimer = null;
+
+function updateBackendHealth(isOnline){
+  var hEl = $("health");
+  if(hEl){
+    hEl.textContent = isOnline ? "Online" : "Offline";
+    hEl.className = "health " + (isOnline ? "ok" : "bad");
+  }
+}
+
+function startAutoReconnect(){
+  if(_autoReconnectTimer) return;
+  _autoReconnectTimer = setInterval(function(){
+    if(!window.Tatap || !window.Tatap.ping) return;
+    window.Tatap.ping().then(function(r){
+      if(r && r.success){
+        stopAutoReconnect();
+        var beOverlay = $("backend-error-overlay");
+        if(beOverlay) beOverlay.classList.add("hidden");
+        updateBackendHealth(true);
+        toast("Backend Tatap terhubung!");
+        if(window.Tui && window.Tui.setView){
+          window.Tui.setView("katalog");
+        }
+      }
+    }).catch(function(){});
+  }, 3000);
+}
+
+function stopAutoReconnect(){
+  if(_autoReconnectTimer){
+    clearInterval(_autoReconnectTimer);
+    _autoReconnectTimer = null;
+  }
+}
+
+function checkBackendStartup(onSuccess, onFail){
+  var attempts = 0;
+  var maxAttempts = 5;
+  var intervalMs = 600;
+  var beOverlay = $("backend-error-overlay");
+  var beStatusText = $("be-status-text");
+
+  function ping(){
+    window.Tatap.ping().then(function(r){
+      if(r && r.success){
+        stopAutoReconnect();
+        if(beOverlay) beOverlay.classList.add("hidden");
+        updateBackendHealth(true);
+        if(onSuccess) onSuccess();
+      } else {
+        retryOrFail();
+      }
+    }).catch(function(err){
+      retryOrFail(err);
+    });
+  }
+
+  function retryOrFail(err){
+    attempts++;
+    if(attempts < maxAttempts){
+      if(beStatusText) beStatusText.textContent = "Menunggu backend (" + attempts + "/" + maxAttempts + ")...";
+      setTimeout(ping, intervalMs);
+    } else {
+      updateBackendHealth(false);
+      if(beOverlay) beOverlay.classList.remove("hidden");
+      if(beStatusText) beStatusText.textContent = "Gagal terhubung ke localhost:8767. Memeriksa ulang otomatis setiap 3 detik...";
+      startAutoReconnect();
+      if(onFail) onFail(err);
+    }
+  }
+
+  ping();
+}
+
+function manualRetryBackend(){
+  var btn = $("be-retry-btn");
+  var statusText = $("be-status-text");
+  if(btn) btn.disabled = true;
+  if(statusText) statusText.textContent = "Menghubungi http://127.0.0.1:8767/api/ping...";
+  window.Tatap.ping().then(function(r){
+    if(btn) btn.disabled = false;
+    if(r && r.success){
+      stopAutoReconnect();
+      var beOverlay = $("backend-error-overlay");
+      if(beOverlay) beOverlay.classList.add("hidden");
+      updateBackendHealth(true);
+      toast("Backend berhasil terhubung!");
+      if(window.Tui && window.Tui.setView){
+        window.Tui.setView("katalog");
+      }
+    } else {
+      if(statusText) statusText.textContent = "Backend merespons error. Mencoba lagi...";
+    }
+  }).catch(function(e){
+    if(btn) btn.disabled = false;
+    if(statusText) statusText.textContent = "Gagal terhubung: " + (e && e.message || "Connection refused") + ". Mencoba lagi dalam 3 detik...";
+    startAutoReconnect();
+  });
+}
+
+function copyBackendDebugInfo(){
+  var brandEl = $("brand-ver");
+  var ver = brandEl ? brandEl.textContent : "v2.10.0";
+  var apiHost = typeof apiBase === "function" ? (apiBase() || "http://127.0.0.1:8767 (origin)") : "http://127.0.0.1:8767";
+  var info = [
+    "=== Tatap Backend Debug Info ===",
+    "Version: " + ver,
+    "Location: " + window.location.href,
+    "API Base: " + apiHost,
+    "User Agent: " + navigator.userAgent,
+    "Time: " + new Date().toISOString(),
+    "Endpoint Tested: /api/ping",
+    "Status: Connection refused or timeout"
+  ].join("\n");
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(info).then(function(){
+        toast("Info diagnostik disalin ke clipboard!");
+      });
+    } else {
+      toast("Clipboard API tidak tersedia.");
+      console.warn(info);
+    }
+  }catch(_){
+    toast("Gagal menyalin, periksa console log.");
+    console.error(info);
+  }
 }
 init();

@@ -1,5 +1,5 @@
 var Tui = (function () {
-  var S = {view:"cari",items:[],sel:-1,page:1,total:1,filter:{},promptFoc:false,seasonFilter:null};
+  var S = {view:"katalog",items:[],sel:-1,page:1,total:1,filter:{},promptFoc:false,seasonFilter:null};
   var MAXLOG = 200;
 
   function $(id){return document.getElementById(id);}
@@ -11,6 +11,7 @@ var Tui = (function () {
            ($("genre-modal") && !$("genre-modal").classList.contains("hidden")) ||
            ($("catalog-filter-modal") && !$("catalog-filter-modal").classList.contains("hidden")) ||
            ($("drawer-panel") && !$("drawer-panel").classList.contains("hidden")) ||
+           ($("backend-error-overlay") && !$("backend-error-overlay").classList.contains("hidden")) ||
            ($("update-modal") && !$("update-modal").classList.contains("hidden"));
   }
 
@@ -1402,8 +1403,7 @@ var Tui = (function () {
     var btnPgNext = $("pg-next");
     if(btnPgNext) btnPgNext.addEventListener("click", function(e){ e.preventDefault(); pageNext(); });
     $("sb-view").textContent="view: "+S.view;
-    renderRecents();
-    renderPager();
+    setView("katalog");
   }
 
   return {boot:boot,log:log,clearLog:clearLog,setView:setView,loadView:loadView,moveSel:moveSel,renderSel:renderSel,openSelected:openSelected,startSearch:startSearch,doSearch:doSearch,renderResults:renderResults,renderPager:renderPager,renderRecents:renderRecents,cmdUsage:cmdUsage,openGenreModal:openGenreModal,openCatalogFilterModal:openCatalogFilterModal,closeCatalogFilterModal:closeCatalogFilterModal,applyGenreFilter:function(genreOrSlug){applyGenreFilter(slugifyGenre(genreOrSlug));},slugifyGenre:slugifyGenre,view:function(){return S.view;},state:function(){return S;}};

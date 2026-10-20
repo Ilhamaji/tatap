@@ -13,6 +13,30 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.10.0] - 2026-10-20
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.9.4 -> 2.10.0)
+Kenaikan digit MINOR diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memperkenalkan penambahan kapabilitas antarmuka baru dan perombakan arsitektur tampilan desktop tanpa breaking changes:
+1. **Perombakan Layout Desktop Platform (Centered Container & Fluid Ergonomics):**
+   - Menambahkan pembatas lebar maksimal `max-width: 1560px` terpusat (`margin: 0 auto`) pada layar desktop (`>= 1024px`), mencegah kartu anime merentang pipih tanpa batas pada monitor ultrawide dan 4K.
+   - Mengoptimalkan media queries grid poster desktop: kartu diperlebar secara ergonomis dari sebelumnya 155px menjadi `minmax(165px, 1fr)` pada layar `>= 769px` dan `minmax(182px, 1fr)` pada layar `>= 1280px`.
+   - Menambahkan efek hover elevasi kartu yang halus (`translate3d(0, -4px, 0)`) dengan *cyan rim glow* lembut (`box-shadow: 0 12px 28px -4px rgba(0,0,0,0.85), 0 0 18px rgba(25,208,208,0.22)`).
+   - Memperbaiki tipografi judul kartu anime di desktop (`font-size: 13.5px`, `line-height: 1.38`, `height: 2.76em`) untuk keterbacaan optimal.
+2. **Katalog Anime Sebagai Default Homescreen Saat Startup:**
+   - Menjadikan **Katalog Anime** (`/api/catalog`) sebagai tampilan awal default saat aplikasi Tatap pertama kali dibuka di platform Desktop maupun Web Browser.
+   - Tab navigasi `Katalog` (`tab-nav-katalog`) aktif secara otomatis dan memuat katalog populer lengkap dengan kartu anime, kontrol paginasi, dan tombol filter katalog tanpa lagi menampilkan prompt pencarian kosong (*"siap [ ] ketik judul"*).
+3. **Hardening Startup Backend & Dialog Kesalahan GUI (`linux/AppRun`):**
+   - Mengalihkan output server Python ke berkas log terpusat `${DATA_DIR}/server.log`.
+   - Menambahkan pembersihan port 8767 cerdas via Python socket dan deteksi instance sehat yang sudah berjalan (`/api/ping`) untuk mencegah tabrakan socket (`[Errno 98] Address already in use`).
+   - Menaikkan batas waktu tunggu startup ke 15 detik dengan interval polling 200ms (75 iterasi), menjamin pembukaan instan saat server siap dan toleran terhadap cold boot.
+   - Menampilkan dialog kesalahan grafis (`zenity`, `kdialog`, `xmessage`, atau `notify-send`) yang menyajikan cuplikan log terakhir saat server gagal merespons, mencegah aplikasi keluar hening (*silent exit*).
+4. **Handshake Startup Frontend & Overlay Pemulihan Koneksi (`app.js`, `api.js`, `index.html`):**
+   - Menambahkan handshake `/api/ping` dengan mekanisme auto-retry 5 kali saat inisialisasi browser untuk mencegah error koneksi prematur saat backend sedang *warming up*.
+   - Menyediakan modal overlay diagnostik `#backend-error-overlay` (*"Backend Tatap Belum Terhubung"*) lengkap dengan tombol interaktif *"Coba Hubungkan Ulang"*, penyalin informasi debug, serta *auto-reconnect poller* setiap 3 detik.
+5. **Penambahan Test Suite Otomatis (`tests/test_desktop_catalog_and_startup.py`):**
+   - 5 unit test baru memvalidasi styling container desktop, default view katalog, struktur overlay error, handshake JS, dan AppRun hardening.
+   - Seluruh 207 automated tests di repositori Tatap lulus 100%.
+
 ## [2.9.4] - 2026-10-20
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.9.3 -> 2.9.4)
