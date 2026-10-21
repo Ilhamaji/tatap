@@ -28,12 +28,10 @@ struct TatapApp: App {
         
         // Check server ping until ready
         Task {
-            var ready = false
             for _ in 0..<20 {
                 do {
                     let (_, response) = try await URLSession.shared.data(from: URL(string: "http://127.0.0.1:\(TatapConfig.serverPort)/api/ping")!)
                     if (response as? HTTPURLResponse)?.statusCode == 200 {
-                        ready = true
                         break
                     }
                 } catch {

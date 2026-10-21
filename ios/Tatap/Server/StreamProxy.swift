@@ -59,13 +59,17 @@ final class StreamProxy {
                     let pattern = #"URI="([^"]+)""#
                     if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                         let nsLine = trimmed as NSString
-                        let modLine = regex.stringByReplacingMatches(in: trimmed, options: [], range: NSRange(location: 0, length: nsLine.length)) { match, _, _ in
+                        let matches = regex.matches(in: trimmed, options: [], range: NSRange(location: 0, length: nsLine.length))
+                        var modified = trimmed
+                        for match in matches.reversed() {
                             let originalURI = nsLine.substring(with: match.range(at: 1))
                             let absoluteURL = URL(string: originalURI, relativeTo: baseURL)?.absoluteString ?? originalURI
                             let proxied = "\(proxyBase)\(absoluteURL.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")\(refParam)"
-                            return "URI=\"\(proxied)\""
+                            if let swiftRange = Range(match.range(at: 1), in: modified) {
+                                modified.replaceSubrange(swiftRange, with: proxied)
+                            }
                         }
-                        newLines.append(modLine)
+                        newLines.append(modified)
                         continue
                     }
                 }
