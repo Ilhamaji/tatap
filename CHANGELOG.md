@@ -13,6 +13,37 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.10.2] - 2026-10-21
+
+### Justifikasi SemVer 2.0.0 (PATCH: 2.10.1 -> 2.10.2)
+Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena memuat perbaikan bug navigasi (*navigation bug fixes*), perbaikan kompatibilitas platform Android TV dan 10-Foot UI, eliminasi *orphan focus*, pencegahan *virtual keyboard popup thrashing*, serta implementasi hierarki tombol Back berjenjang tanpa mengubah kontrak antarmuka eksternal (*backward-compatible platform ergonomics & bug fix patch*):
+1. **Zero Orphan Focus & Focus History Stack (`frontend/js/app.js`):**
+   - Mengimplementasikan `TvNavigationManager` yang mencatat `activeZone` (`tabs`, `search`, `chips`, `grid`, `detail-modal`, `player-hud`, `settings-modal`) dan `focusHistoryStack`.
+   - Menambahkan mekanisme preservasi fokus sebelum dan sesudah re-render DOM (`innerHTML = ''`), menyimpan indeks elemen fokus dan memulihkannya secara otomatis setelah render selesai, sehingga fokus tidak pernah terlempar ke `document.body`.
+   - Mengelola tumpukan riwayat fokus saat membuka Detail Anime, dialog Resume Watch, atau masuk ke Video Player, serta memulihkan fokus dan posisi scroll persis ke kartu atau episode pemicu saat pengguna menekan Back.
+2. **Geometric & Dynamic Grid Spatial Navigation (`frontend/js/app.js`, `frontend/js/term.js`):**
+   - Menghilangkan modulo statis `(idx + cols) % total` yang memicu wrap-around ke baris teratas saat pengguna menekan D-Pad Bawah di baris terbawah.
+   - Mengimplementasikan kalkulasi geometris spasial 2D via `getBoundingClientRect()` dan dynamic row grouping.
+   - Mengatasi edge-case baris terakhir tidak penuh: jika baris terakhir memiliki jumlah item lebih sedikit, target fokus otomatis dikunci ke item terakhir di baris bawah tersebut (`Math.min(targetIndex, items.length - 1)`).
+   - Menambahkan pemanggilan seragam `targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })` pada setiap perpindahan fokus remote TV.
+3. **Player HUD State Machine & Auto-Hide Fix (`frontend/js/app.js`, `frontend/css/style.css`):**
+   - Memisahkan state fokus pemutaran video menjadi 3 mode tegas:
+     a) `PLAYER_IDLE`: HUD tersembunyi. D-Pad Kiri/Kanan langsung melakukan seek 5 detik tanpa terhalang kontrol tersembunyi; OK melakukan Play/Pause (atau eksekusi AniSkip jika aktif); Up memunculkan HUD kontrol atas; Down memfokuskan AniSkip atau bar bawah.
+     b) `PLAYER_HUD_ACTIVE`: HUD tampil dengan timer auto-hide 4000ms (4 detik) yang di-reset pada setiap interaksi D-Pad. Saat timer habis dan `hidePlayerControls()` berjalan, kelas `.tv-focus` dan `blur()` dibersihkan dari seluruh tombol HUD sebelum kembali ke mode `PLAYER_IDLE`.
+     c) `PLAYER_MODAL_ACTIVE`: Saat dialog pengaturan (Subtitle/Resolusi/Kecepatan/Resume) terbuka, timer auto-hide dihentikan sementara (*suspended*) dan navigasi dikunci (*focus trap*) di dalam dialog sampai ditutup.
+4. **Two-Stage Search Input Focus vs Virtual Keyboard (IME) (`frontend/js/app.js`, `frontend/index.html`, `MainActivity.java`):**
+   - Pada mode TV di antarmuka web, kolom pencarian `#cmd` berstatus `readonly` saat navigasi visual D-Pad (Stage 1), mencegah Virtual Keyboard (IME) muncul menutupi layar hanya karena dilewati cursor D-Pad.
+   - Mode ketik aktif (Stage 2) hanya dibuka ketika pengguna menekan tombol OK/Enter pada kolom pencarian.
+   - Di Android TV native (`MainActivity.java`), `layoutSearchBox` menerima fokus visual D-Pad terlebih dahulu, dan `etSearch` tidak memanggil `showKeyboard(SHOW_FORCED)` secara agresif. Tombol Back dan D-Pad Bawah menutup keyboard via `hideSoftInputFromWindow` dan mengembalikan fokus navigasi.
+5. **6-Level Back Button Hierarchy & Indikator Visual .tv-focus (`frontend/css/style.css`, `MainActivity.java`):**
+   - Memastikan seluruh elemen interaktif memiliki `tabindex="0"`.
+   - Memperkuat styling visual `.tv-focus` dengan `outline: 3px solid var(--accent)`, `transform: scale(1.06)`, `z-index: 20`, dan `scroll-margin: 72px` agar tidak terpotong header sticky maupun batas overscan TV.
+   - Menata alur penanganan tombol Back (`Escape` / `KEYCODE_BACK`) berjenjang 6-level:
+     (1) Tutup IME / keluar search edit $\to$ (2) Tutup modal dialog aktif $\to$ (3) Sembunyikan Player HUD $\to$ (4) Keluar Player ke Detail Episode $\to$ (5) Tutup Detail ke Grid Beranda $\to$ (6) Konfirmasi double-back (Toast 2000ms) untuk keluar aplikasi di layar utama.
+6. **Unit Test Suite Otomatis Navigasi TV (`tests/test_tv_dpad_navigation.py`):**
+   - Menambahkan 5 unit test komprehensif yang menguji ke-5 spesifikasi di atas.
+   - Seluruh 248 test suite unit tests Tatap lulus 100%.
+
 ## [2.10.1] - 2026-10-21
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.10.0 -> 2.10.1)

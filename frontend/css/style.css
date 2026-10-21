@@ -616,8 +616,8 @@ button{font-family:inherit}
 .ambient-stage{position:relative;border-radius:6px;background:#000;flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;width:100%}
 .ambient-stage.idle{cursor:none}
 .ambient-stage video{position:relative;z-index:2;width:100%;height:auto;max-height:calc(96vh - 110px);aspect-ratio:16/9;background:#000;display:block;border-radius:4px;object-fit:contain}
-.player-shell.idle .player-foot,.player-shell.idle .player-hint{opacity:0;pointer-events:none}
-.player-foot,.player-hint{transition:opacity .4s ease}
+.player-shell.idle .player-head,.player-shell.idle .player-foot,.player-shell.idle .player-hint{opacity:0;pointer-events:none}
+.player-head,.player-foot,.player-hint{transition:opacity .4s ease}
 #ambient,#ambient-fallback{position:absolute;left:-60px;right:-60px;top:-60px;bottom:-60px;z-index:1;width:calc(100% + 120px);height:calc(100% + 120px);pointer-events:none;transform:translate3d(0,0,0);contain:strict}
 #ambient{filter:blur(24px) saturate(1.4);opacity:.45;will-change:transform,opacity}
 #ambient-fallback{filter:blur(24px);opacity:.40;z-index:0;transition:background 1.2s ease;background:transparent;will-change:transform}
@@ -888,3 +888,60 @@ video::cue {
 .be-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:4px}
 .be-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;font-size:12px;font-weight:600;border-radius:var(--r);cursor:pointer;transition:all .15s}
 .be-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ---- TV 10-FOOT UI DPAD FOCUS SPECIFICATION ---- */
+.tv-focus,
+:focus-visible {
+  outline: 3px solid var(--accent, #19d0d0) !important;
+  outline-offset: 2px !important;
+  transform: scale(1.06) !important;
+  z-index: 20 !important;
+  scroll-margin: 72px !important;
+  box-shadow: 0 0 18px rgba(25, 208, 208, 0.6) !important;
+  transition: transform 0.15s ease, outline 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+/* TV Focus adjustments for specific elements to prevent layout clipping */
+.nav-tab-btn.tv-focus {
+  transform: scale(1.05) !important;
+  background: var(--surface-active) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+.search-input-wrap.tv-focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 18px rgba(25, 208, 208, 0.5), inset 0 1px 2px rgba(0,0,0,0.5) !important;
+  transform: scale(1.02) !important;
+}
+.ep-range-chip.tv-focus,
+.cf-chip.tv-focus {
+  transform: scale(1.08) !important;
+  border-color: var(--accent) !important;
+  background: rgba(25, 208, 208, 0.2) !important;
+  color: #fff !important;
+}
+.poster-card.tv-focus,
+.hist-card.tv-focus {
+  transform: translate3d(0, -4px, 0) scale(1.06) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 12px 28px -4px rgba(0,0,0,0.85), 0 0 20px rgba(25, 208, 208, 0.5) !important;
+}
+.ep.tv-focus {
+  transform: scale(1.08) !important;
+  border-color: var(--accent) !important;
+  background: rgba(25, 208, 208, 0.25) !important;
+  color: #fff !important;
+}
+.player-head-btns button.tv-focus,
+.player-head-btns select.tv-focus,
+.player-foot button.tv-focus,
+.player-foot select.tv-focus,
+.sub-size button.tv-focus,
+.sub-translate.tv-focus,
+.pm-skip-btn.tv-focus {
+  transform: scale(1.08) !important;
+  border-color: var(--accent) !important;
+  background: rgba(25, 208, 208, 0.25) !important;
+  color: #fff !important;
+}
+

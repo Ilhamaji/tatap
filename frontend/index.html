@@ -215,18 +215,18 @@
       <use href="#icon-brand-mark"/>
     </svg>
     <span class="brand-name">TATAP</span>
-    <span class="brand-ver" id="brand-ver">v2.10.1</span>
+    <span class="brand-ver" id="brand-ver">v2.10.2</span>
   </div>
   <nav class="nav-tabs-bar" id="nav-tabs-bar" role="navigation" aria-label="Navigasi Utama">
-    <button class="nav-tab-btn active" data-view="katalog" id="tab-nav-katalog">Katalog</button>
-    <button class="nav-tab-btn" data-view="musim" id="tab-nav-musim">Musim Ini</button>
-    <button class="nav-tab-btn" data-view="terbaru" id="tab-nav-terbaru">Terbaru</button>
-    <button class="nav-tab-btn" data-view="lanjutan" id="tab-nav-lanjutan">Masih Tayang</button>
-    <button class="nav-tab-btn" data-view="riwayat" id="tab-nav-riwayat">Riwayat</button>
-    <button class="nav-tab-btn" data-view="favorit" id="tab-nav-favorit">Favorit</button>
+    <button class="nav-tab-btn active" data-view="katalog" id="tab-nav-katalog" tabindex="0">Katalog</button>
+    <button class="nav-tab-btn" data-view="musim" id="tab-nav-musim" tabindex="0">Musim Ini</button>
+    <button class="nav-tab-btn" data-view="terbaru" id="tab-nav-terbaru" tabindex="0">Terbaru</button>
+    <button class="nav-tab-btn" data-view="lanjutan" id="tab-nav-lanjutan" tabindex="0">Masih Tayang</button>
+    <button class="nav-tab-btn" data-view="riwayat" id="tab-nav-riwayat" tabindex="0">Riwayat</button>
+    <button class="nav-tab-btn" data-view="favorit" id="tab-nav-favorit" tabindex="0">Favorit</button>
   </nav>
   <div class="head-actions">
-    <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu">
+    <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu" tabindex="0">
       <span class="drawer-btn-icon"><svg class="ui-icon"><use href="#icon-menu"/></svg></span>
     </button>
   </div>
@@ -244,16 +244,16 @@
       <div class="sec-title-wrap">
         <h2 id="results-title">siap</h2>
         <span id="results-meta" class="dim small"></span>
-        <button id="btn-catalog-filter" class="icon-btn catalog-filter-btn hidden" title="Filter Katalog (Cross Filter Urutan + Tahun + Bulan)"><svg class="ui-icon"><use href="#icon-filter"/></svg> Filter</button>
+        <button id="btn-catalog-filter" class="icon-btn catalog-filter-btn hidden" title="Filter Katalog (Cross Filter Urutan + Tahun + Bulan)" tabindex="0"><svg class="ui-icon"><use href="#icon-filter"/></svg> Filter</button>
       </div>
       <div id="schedule-days-bar" class="seg schedule-days-bar hidden" role="group" aria-label="Filter Hari Rilis">
-        <button class="ep-range-chip" data-day="monday">Senin</button>
-        <button class="ep-range-chip" data-day="tuesday">Selasa</button>
-        <button class="ep-range-chip" data-day="wednesday">Rabu</button>
-        <button class="ep-range-chip" data-day="thursday">Kamis</button>
-        <button class="ep-range-chip" data-day="friday">Jumat</button>
-        <button class="ep-range-chip" data-day="saturday">Sabtu</button>
-        <button class="ep-range-chip" data-day="sunday">Minggu</button>
+        <button class="ep-range-chip" data-day="monday" tabindex="0">Senin</button>
+        <button class="ep-range-chip" data-day="tuesday" tabindex="0">Selasa</button>
+        <button class="ep-range-chip" data-day="wednesday" tabindex="0">Rabu</button>
+        <button class="ep-range-chip" data-day="thursday" tabindex="0">Kamis</button>
+        <button class="ep-range-chip" data-day="friday" tabindex="0">Jumat</button>
+        <button class="ep-range-chip" data-day="saturday" tabindex="0">Sabtu</button>
+        <button class="ep-range-chip" data-day="sunday" tabindex="0">Minggu</button>
       </div>
     </div>
     <div id="results"></div>
@@ -276,7 +276,7 @@
     <div class="drawer-head">
       <div class="drawer-title">
         <span class="brand-name">TATAP</span>
-        <span class="dim small">v2.10.1</span>
+        <span class="dim small">v2.10.2</span>
       </div>
       <button class="icon-btn big" id="drawer-close" title="Tutup Menu (Esc)"><svg class="ui-icon"><use href="#icon-close"/></svg></button>
     </div>
@@ -570,10 +570,10 @@
 
 <footer class="bottom-bar">
   <div class="bottom-search-row">
-    <div class="search-input-wrap">
+    <div class="search-input-wrap" id="search-input-wrap" tabindex="0" role="searchbox" aria-label="Cari anime">
       <svg class="ui-icon search-lead-icon" aria-hidden="true"><use href="#icon-search"/></svg>
       <span class="prompt-ps1">tatap$</span>
-      <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul anime, atau :perintah (cth: :update, :musim, :bantuan)">
+      <input id="cmd" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="cari judul anime, atau :perintah (cth: :update, :musim, :bantuan)" readonly>
       <span class="caret" aria-hidden="true"></span>
       <kbd class="search-kbd-hint" title="Pintasan keyboard: tekan '/' untuk cari">/</kbd>
     </div>

@@ -152,6 +152,7 @@ public class MainActivity extends Activity {
     private String filterCatalogMonth = "";
     private String filterCatalogType = "";
     private String filterCatalogStatus = "";
+    private long lastBackPressTime = 0L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -507,6 +508,17 @@ public class MainActivity extends Activity {
             return false;
         });
 
+        if (TvFocusHelper.isTv(this)) {
+            if (layoutSearchBox != null) {
+                layoutSearchBox.setFocusable(true);
+                TvFocusHelper.attachFocusScale(layoutSearchBox, 1.04f, 4f);
+            }
+            if (etSearch != null) {
+                etSearch.setFocusable(false);
+                etSearch.setFocusableInTouchMode(false);
+            }
+        }
+
         if (layoutSearchBox != null) {
             layoutSearchBox.setOnClickListener(v -> activateSearchInput());
             layoutSearchBox.setOnKeyListener((v, keyCode, event) -> {
@@ -522,10 +534,33 @@ public class MainActivity extends Activity {
 
         if (etSearch != null) {
             etSearch.setOnClickListener(v -> activateSearchInput());
-            etSearch.setOnFocusChangeListener((v, hasFocus) -> {
-                if (hasFocus && TvFocusHelper.isTv(this)) {
-                    showKeyboard();
+            etSearch.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_BACK) {
+                        hideKeyboard();
+                        etSearch.clearFocus();
+                        if (TvFocusHelper.isTv(this)) {
+                            etSearch.setFocusable(false);
+                            etSearch.setFocusableInTouchMode(false);
+                            if (layoutSearchBox != null) layoutSearchBox.requestFocus();
+                        }
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        hideKeyboard();
+                        etSearch.clearFocus();
+                        if (TvFocusHelper.isTv(this)) {
+                            etSearch.setFocusable(false);
+                            etSearch.setFocusableInTouchMode(false);
+                            if (layoutTabsSegmented != null) {
+                                layoutTabsSegmented.requestFocus();
+                            } else if (rvGrid != null) {
+                                rvGrid.requestFocus();
+                            }
+                        }
+                        return true;
+                    }
                 }
+                return false;
             });
         }
 
@@ -753,13 +788,24 @@ public class MainActivity extends Activity {
         if (etSearch != null && etSearch.hasFocus()) {
             etSearch.clearFocus();
             hideKeyboard();
+            if (TvFocusHelper.isTv(this)) {
+                etSearch.setFocusable(false);
+                etSearch.setFocusableInTouchMode(false);
+                if (layoutSearchBox != null) layoutSearchBox.requestFocus();
+            }
             return;
         }
         if (!"musim".equals(currentView)) {
             resetFiltersToTab("musim");
             return;
         }
-        super.onBackPressed();
+        long now = System.currentTimeMillis();
+        if (now - lastBackPressTime < 2000L) {
+            super.onBackPressed();
+        } else {
+            lastBackPressTime = now;
+            Toast.makeText(this, "Tekan sekali lagi untuk keluar dari Tatap", Toast.LENGTH_SHORT).show();
+        }
     }
 
 
@@ -2097,6 +2143,8 @@ public class MainActivity extends Activity {
 
     private void activateSearchInput() {
         if (etSearch == null) return;
+        etSearch.setFocusable(true);
+        etSearch.setFocusableInTouchMode(true);
         etSearch.requestFocus();
         showKeyboard();
     }

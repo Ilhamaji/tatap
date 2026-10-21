@@ -325,7 +325,9 @@ var Tui = (function () {
   }
 
   function renderResults(){
-    var box=$("results");box.innerHTML="";
+    var box=$("results");
+    var savedIdx = (window.TvNavigationManager ? window.TvNavigationManager.saveFocusedIndex("#results", ".poster-card, .trow") : -1);
+    box.innerHTML="";
     var sBar = $("schedule-days-bar");
     if(sBar) sBar.classList.toggle("hidden", S.view !== "terbaru");
     var isTxt = S.view==="cari" || S.view==="terbaru";
@@ -653,6 +655,9 @@ var Tui = (function () {
       }
       box.appendChild(grid);
     }
+    if(window.TvNavigationManager){
+      window.TvNavigationManager.restoreFocusedIndex("#results", ".poster-card, .trow", savedIdx, S.sel >= 0 ? S.sel : 0);
+    }
   }
 
   function renderPager(){
@@ -710,7 +715,44 @@ var Tui = (function () {
     if(S.sel < 0){
       next = (d > 0) ? 0 : count - 1;
     } else {
-      next = (S.sel + d + count) % count;
+      if(Math.abs(d) > 1){
+        if(d > 0){
+          if(S.sel + d >= count){
+            if(S.sel >= count - getGridCols()){
+              if(window.TvNavigationManager){
+                window.TvNavigationManager.setFocus($("search-input-wrap"), "search");
+                return;
+              }
+            }
+            next = count - 1;
+          } else {
+            next = S.sel + d;
+          }
+        } else {
+          if(S.sel + d < 0){
+            if(window.TvNavigationManager){
+              var sched = $("schedule-days-bar");
+              if(sched && !sched.classList.contains("hidden")){
+                var firstChip = sched.querySelector(".ep-range-chip");
+                if(firstChip){
+                  window.TvNavigationManager.setFocus(firstChip, "chips");
+                  return;
+                }
+              }
+              var actTab = document.querySelector(".nav-tab-btn.active") || document.querySelector(".nav-tab-btn");
+              if(actTab){
+                window.TvNavigationManager.setFocus(actTab, "tabs");
+                return;
+              }
+            }
+            next = 0;
+          } else {
+            next = S.sel + d;
+          }
+        }
+      } else {
+        next = (S.sel + d + count) % count;
+      }
     }
     for(var step=0;step<count;step++){
       if(S.items[next] && !S.items[next].is_header){
@@ -729,12 +771,17 @@ var Tui = (function () {
     for(var i=0;i<all.length;i++){
       var itemIdx = parseInt(all[i].getAttribute("data-idx"), 10);
       var isUnm=all[i].classList.contains("unmapped");
-      all[i].classList.toggle("sel", itemIdx === S.sel && !isUnm);
+      var isThis = (itemIdx === S.sel && !isUnm);
+      all[i].classList.toggle("sel", isThis);
+      all[i].classList.toggle("tv-focus", isThis);
     }
     if(S.sel < 0) return;
     var selEl = box.querySelector('[data-idx="' + S.sel + '"]');
     if(selEl){
       selEl.scrollIntoView({block:"nearest", inline:"nearest"});
+      if(window.TvNavigationManager){
+        window.TvNavigationManager.setFocus(selEl, "grid", { scroll: true });
+      }
       if(document.activeElement !== selEl){
         try{selEl.focus({preventScroll:true});}catch(_){}
       }
@@ -1270,7 +1317,8 @@ var Tui = (function () {
   function onKey(e){
     var t=(e.target.tagName||"");
     var typing = t==="INPUT"||t==="SELECT"||t==="TEXTAREA";
-    if(e.key==="Escape"){
+    if(e.key==="Escape" || e.key==="Backspace"){
+      if(!typing && window.TvNavigationManager && window.TvNavigationManager.handleBack(e)){return;}
       if(isModalOpen()){App.onKeyPlayer(e);return;}
       if(typing){$("cmd").blur();S.promptFoc=false;return;}
       if(S.sel>=0){S.sel=-1;renderSel();return;}
@@ -1496,6 +1544,112 @@ var Tui = (function () {
     inp.addEventListener("blur",onPromptBlur);
     inp.addEventListener("input",function(){if(inp.value.indexOf(":")===0){/* could show command hints */}});
     document.addEventListener("keydown",onKey);
+
+    var searchWrap = $("search-input-wrap");
+    if(searchWrap){
+      searchWrap.addEventListener("click", function(){
+        if(window.TvNavigationManager) window.TvNavigationManager.enterSearchTypingMode();
+        else focusPrompt();
+      });
+      searchWrap.addEventListener("keydown", function(e){
+        if(e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          if(window.TvNavigationManager) window.TvNavigationManager.enterSearchTypingMode();
+          else focusPrompt();
+        } else if(e.key === "ArrowUp"){
+          e.preventDefault();
+          if(S.items.length){
+            if(window.TvNavigationManager){
+              window.TvNavigationManager.restoreFocusedIndex("#results", ".poster-card, .trow", S.items.length - 1, S.items.length - 1);
+            } else {
+              moveSel(1);
+            }
+          }
+        }
+      });
+    }
+
+    var tabsBar = $("nav-tabs-bar");
+    if(tabsBar){
+      tabsBar.addEventListener("keydown", function(e){
+        var tabBtns = Array.prototype.slice.call(tabsBar.querySelectorAll(".nav-tab-btn"));
+        var curIdx = tabBtns.indexOf(document.activeElement);
+        if(curIdx < 0){
+          for(var t = 0; t < tabBtns.length; t++){
+            if(tabBtns[t].classList.contains("tv-focus")){ curIdx = t; break; }
+          }
+        }
+        if(e.key === "ArrowRight"){
+          e.preventDefault();
+          var nextIdx = (curIdx >= tabBtns.length - 1 || curIdx < 0) ? 0 : curIdx + 1;
+          if(window.TvNavigationManager) window.TvNavigationManager.setFocus(tabBtns[nextIdx], "tabs");
+          else tabBtns[nextIdx].focus();
+        } else if(e.key === "ArrowLeft"){
+          e.preventDefault();
+          var prevIdx = (curIdx <= 0) ? tabBtns.length - 1 : curIdx - 1;
+          if(window.TvNavigationManager) window.TvNavigationManager.setFocus(tabBtns[prevIdx], "tabs");
+          else tabBtns[prevIdx].focus();
+        } else if(e.key === "ArrowDown"){
+          e.preventDefault();
+          var sched = $("schedule-days-bar");
+          if(sched && !sched.classList.contains("hidden")){
+            var firstChip = sched.querySelector(".ep-range-chip");
+            if(firstChip){
+              if(window.TvNavigationManager) window.TvNavigationManager.setFocus(firstChip, "chips");
+              else firstChip.focus();
+              return;
+            }
+          }
+          if(S.items.length){
+            if(window.TvNavigationManager){
+              window.TvNavigationManager.restoreFocusedIndex("#results", ".poster-card, .trow", 0, 0);
+            } else {
+              moveSel(1);
+            }
+          }
+        }
+      });
+    }
+
+    var schedBar = $("schedule-days-bar");
+    if(schedBar){
+      schedBar.addEventListener("keydown", function(e){
+        var chips = Array.prototype.slice.call(schedBar.querySelectorAll(".ep-range-chip"));
+        var curIdx = chips.indexOf(document.activeElement);
+        if(curIdx < 0){
+          for(var c = 0; c < chips.length; c++){
+            if(chips[c].classList.contains("tv-focus")){ curIdx = c; break; }
+          }
+        }
+        if(e.key === "ArrowRight"){
+          e.preventDefault();
+          var nextIdx = (curIdx >= chips.length - 1 || curIdx < 0) ? 0 : curIdx + 1;
+          if(window.TvNavigationManager) window.TvNavigationManager.setFocus(chips[nextIdx], "chips");
+          else chips[nextIdx].focus();
+        } else if(e.key === "ArrowLeft"){
+          e.preventDefault();
+          var prevIdx = (curIdx <= 0) ? chips.length - 1 : curIdx - 1;
+          if(window.TvNavigationManager) window.TvNavigationManager.setFocus(chips[prevIdx], "chips");
+          else chips[prevIdx].focus();
+        } else if(e.key === "ArrowUp"){
+          e.preventDefault();
+          var actTab = document.querySelector(".nav-tab-btn.active") || document.querySelector(".nav-tab-btn");
+          if(actTab){
+            if(window.TvNavigationManager) window.TvNavigationManager.setFocus(actTab, "tabs");
+            else actTab.focus();
+          }
+        } else if(e.key === "ArrowDown"){
+          e.preventDefault();
+          if(S.items.length){
+            if(window.TvNavigationManager){
+              window.TvNavigationManager.restoreFocusedIndex("#results", ".poster-card, .trow", 0, 0);
+            } else {
+              moveSel(1);
+            }
+          }
+        }
+      });
+    }
     $("help-close").addEventListener("click",function(){$("help-overlay").classList.add("hidden");});
     $("help-overlay").addEventListener("click",function(e){if(e.target===$("help-overlay"))$("help-overlay").classList.add("hidden");});
     // Genre modal listeners
