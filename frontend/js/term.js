@@ -530,7 +530,7 @@ var Tui = (function () {
           }
           var isUnavail=!a.id;
           var d=document.createElement("div");
-          d.className="poster-card"+(idx===S.sel?" sel":"")+(isUnavail?" unmapped":"");
+          d.className="poster-card anime-card"+(idx===S.sel?" sel":"")+(isUnavail?" unmapped":"");
           d.tabIndex=0;
           d.setAttribute("data-idx",String(idx));
           d.addEventListener("focus",function(){
@@ -1280,6 +1280,12 @@ var Tui = (function () {
         if(S.filter&&Object.keys(S.filter).length) extra+=" filter="+JSON.stringify(S.filter);
         if(S.seasonFilter) extra+=" season="+S.seasonFilter.season+" "+S.seasonFilter.year;
         log("view="+S.view+" page="+S.page+"/"+S.total+" items="+S.items.length+(S.sel>=0?" sel="+S.sel:"")+extra,"ok");break;
+      case "lite":case "lowspec":case "perf":
+        if(window.Tatap && window.Tatap.toggleLiteMode){
+          var lRes = window.Tatap.toggleLiteMode(args);
+          log(lRes.message, lRes.active ? "ok" : "dim");
+        }
+        break;
       case "update":case "upgrade":
         log("memeriksa rilis terbaru ke GitHub...","dim");
         if(window.App && window.App.checkForUpdate){
@@ -1515,6 +1521,17 @@ var Tui = (function () {
 
   function boot(){
     var inp=$("cmd");
+    inp.addEventListener("input", function(){
+      var isColon = inp.value.trim().indexOf(":") === 0;
+      var wrap = $("search-input-wrap");
+      if(isColon){
+        inp.classList.add("terminal-cmd");
+        if(wrap) wrap.classList.add("terminal-mode");
+      } else {
+        inp.classList.remove("terminal-cmd");
+        if(wrap) wrap.classList.remove("terminal-mode");
+      }
+    });
     inp.addEventListener("keydown",function(e){
       if(e.key==="Enter"){e.preventDefault();_hPos=loadCmdHist().length;submitPrompt();}
       else if(e.key==="Escape"){inp.blur();S.promptFoc=false;}

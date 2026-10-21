@@ -2742,19 +2742,20 @@ function startAmbient(){
   var v=$("vid");
   v.setAttribute("crossorigin","anonymous");
   var tmp=document.createElement("canvas");
-  tmp.width=48;tmp.height=27;
+  tmp.width=16;tmp.height=9;
   var tctx=null;
   try{tctx=tmp.getContext("2d",{willReadFrequently:true});}catch(e){tctx=tmp.getContext("2d");}
   setInterval(function(){
     if(document.hidden)return;
+    if(document.body.classList.contains("lite-mode"))return;
     if(document.body.classList.contains("no-ambient"))return;
     if($("player-modal").classList.contains("hidden"))return;
     if(v.paused||v.ended||v.readyState<2||v.videoWidth===0)return;
     if(isVideoFullscreen())return;
     try{
-      tctx.drawImage(v,0,0,48,27);
+      tctx.drawImage(v,0,0,16,9);
       var px;
-      try{px=tctx.getImageData(0,0,48,27).data;}
+      try{px=tctx.getImageData(0,0,16,9).data;}
       catch(taint){
         var h=0,s=String(cur.slug)+cur.ep;
         for(var k=0;k<s.length;k++)h=(h*31+s.charCodeAt(k))%360;
@@ -2762,13 +2763,13 @@ function startAmbient(){
         return;
       }
       var r=0,g=0,b=0,n=0;
-      for(var i=0;i<px.length;i+=12){r+=px[i];g+=px[i+1];b+=px[i+2];n++;}
+      for(var i=0;i<px.length;i+=4){r+=px[i];g+=px[i+1];b+=px[i+2];n++;}
       r=Math.round(r/n);g=Math.round(g/n);b=Math.round(b/n);
-      var g2=ctx.createLinearGradient(0,0,96,54);
+      var g2=ctx.createLinearGradient(0,0,16,9);
       g2.addColorStop(0,"rgb("+r+","+g+","+b+")");
       g2.addColorStop(1,"rgb("+Math.round(b*.7)+","+Math.round(r*.6)+","+Math.round(g*.8)+")");
       ctx.fillStyle=g2;
-      ctx.fillRect(0,0,96,54);
+      ctx.fillRect(0,0,16,9);
       setFallback(r,g,b);
     }catch(e){}
   },1200);
@@ -3229,8 +3230,52 @@ App = {
   }
 };
 
+function isLiteModePreferred(){
+  var pref = localStorage.getItem("tatap_lite_mode");
+  if(pref === "1") return true;
+  if(pref === "0") return false;
+  try {
+    if(navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
+    if(navigator.deviceMemory && navigator.deviceMemory <= 2) return true;
+  } catch(e) {}
+  return false;
+}
+
+function setLiteMode(enabled, manual){
+  if(manual){
+    localStorage.setItem("tatap_lite_mode", enabled ? "1" : "0");
+  }
+  document.body.classList.toggle("lite-mode", !!enabled);
+  var badge = $("badge-lite-mode");
+  if(badge){
+    badge.classList.toggle("hidden", !enabled);
+  }
+}
+
+function toggleLiteMode(arg){
+  var current = document.body.classList.contains("lite-mode");
+  var next;
+  if(arg === "on" || arg === "1") next = true;
+  else if(arg === "off" || arg === "0") next = false;
+  else next = !current;
+  setLiteMode(next, true);
+  var msg = next ? "Low-Spec / Performance Mode aktif (hemat CPU/RAM)" : "Low-Spec / Performance Mode dinonaktifkan";
+  toast(msg);
+  return { active: next, message: msg };
+}
+
+window.Tatap = window.Tatap || {};
+window.Tatap.isLiteModePreferred = isLiteModePreferred;
+window.Tatap.setLiteMode = setLiteMode;
+window.Tatap.toggleLiteMode = toggleLiteMode;
+
 function init(){
   loadPrefs();
+  setLiteMode(isLiteModePreferred(), false);
+  var badgeLite = $("badge-lite-mode");
+  if(badgeLite){
+    badgeLite.addEventListener("click", function(){ toggleLiteMode(); });
+  }
   try{
     var sz=localStorage.getItem("tatap_subsize");
     if(sz==="s"||sz==="m"||sz==="l")cur.subSize=sz;

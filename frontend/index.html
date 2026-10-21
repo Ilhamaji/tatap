@@ -226,6 +226,7 @@
     <button class="nav-tab-btn" data-view="favorit" id="tab-nav-favorit" tabindex="0">Favorit</button>
   </nav>
   <div class="head-actions">
+    <span id="badge-lite-mode" class="badge-lite-mode hidden" title="Mode Rendah Daya / Lite Aktif (Ketik :lite untuk beralih)" role="button" tabindex="0">LITE</span>
     <button id="btn-drawer-head" class="icon-btn header-drawer-btn" title="Buka Menu & Navigasi (☰)" aria-label="Menu" tabindex="0">
       <span class="drawer-btn-icon"><svg class="ui-icon"><use href="#icon-menu"/></svg></span>
     </button>
@@ -665,7 +666,7 @@
     </div>
     <div class="ambient-stage">
       <div id="ambient-fallback" aria-hidden="true"></div>
-      <canvas id="ambient" width="96" height="54" aria-hidden="true"></canvas>
+      <canvas id="ambient" width="16" height="9" aria-hidden="true"></canvas>
       <video id="vid" controls playsinline preload="auto"></video>
       <div id="pm-gesture-stage" class="gesture-stage" aria-hidden="true">
         <div id="pm-ripple-left" class="gesture-ripple left"><span class="ripple-icon"><svg class="ui-icon"><use href="#icon-rewind"/></svg></span><span class="ripple-text">-10s</span></div>
