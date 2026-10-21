@@ -6,40 +6,107 @@ final class HiAnimeScraper {
     static let shared = HiAnimeScraper()
     
     private let session: URLSession
-    private let baseURL = "https://hianime.at"
+    private let mirrorDomains = ["hianime.to", "hianime.at", "hianime.nz"]
+    private var currentDomainIndex = 0
     private let megaKey = "638d9703649479b1897c88b9011e5173e3a39e944f2b1c4161a4030616a22ae7"
     private let megaIV  = "a7491cf64b8da07c93836eb4516ff8d5"
+    
+    private var baseURL: String {
+        return "https://\(mirrorDomains[currentDomainIndex])"
+    }
     
     private init() {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 15.0
         config.httpAdditionalHeaders = [
             "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
             "X-Requested-With": "XMLHttpRequest"
         ]
         self.session = URLSession(configuration: config)
     }
     
-    // MARK: - Find Anime Slug
-    func findSlug(for title: String) async -> String? {
+    // MARK: - Smart Title Cleanup
+    private func cleanTitle(_ title: String) -> [String] {
+        var variants: [String] = [title]
+        
+        // Remove season markers and special chars
+        let cleaned = title
+            .replacingOccurrences(of: #"\s+Season\s+\d+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+S\d+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"[:\-\—!?]"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if cleaned != title {
+            variants.append(cleaned)
+        }
+        
+        // Remove "Part X" markers
+        let noPart = title.replacingOccurrences(of: #"\s+Part\s+\d+"#, with: "", options: .regularExpression)
+        if noPart != title {
+            variants.append(noPart)
+        }
+        
+        return variants
+    }
+    
+    // MARK: - Find Anime Slug with Multi-Title & Mirror Fallback
+    func findSlug(for title: String, alternateTitle: String? = nil) async -> String? {
+        var searchTitles = cleanTitle(title)
+        if let alt = alternateTitle, !alt.isEmpty {
+            searchTitles.append(contentsOf: cleanTitle(alt))
+        }
+        
+        // Try each mirror domain
+        for domainIdx in 0..<mirrorDomains.count {
+            currentDomainIndex = domainIdx
+            
+            // Try each title variant
+            for searchTitle in searchTitles {
+                if let slug = await tryFindSlug(searchTitle) {
+                    print("[HiAnime] Found slug '\(slug)' using domain '\(mirrorDomains[domainIdx])' for title '\(searchTitle)'")
+                    return slug
+                }
+            }
+        }
+        
+        print("[HiAnime] No slug found for any title variant across all mirrors")
+        return nil
+    }
+    
+    private func tryFindSlug(_ title: String) async -> String? {
         guard let encoded = title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "\(baseURL)/search?keyword=\(encoded)") else {
             return nil
         }
         
         do {
-            let (data, _) = try await session.data(from: url)
+            var request = URLRequest(url: url)
+            request.setValue(baseURL, forHTTPHeaderField: "Referer")
+            
+            let (data, _) = try await session.data(for: request)
             guard let html = String(data: data, encoding: .utf8) else { return nil }
             
-            let pattern = #"<a href="/watch/([^"?]+)"#
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                let ns = html as NSString
-                if let match = regex.firstMatch(in: html, options: [], range: NSRange(location: 0, length: ns.length)) {
-                    return ns.substring(with: match.range(at: 1))
+            // Try multiple patterns for robustness
+            let patterns = [
+                #"<a[^>]+href="/watch/([^"?]+)"[^>]*class="[^"]*film-poster-ahref"#,
+                #"<a[^>]+class="[^"]*film-poster-ahref[^"]*"[^>]+href="/watch/([^"?]+)"#,
+                #"<a href="/watch/([^"?]+)"[^>]*title="[^"]*\Q\(title)\E"#,
+                #"<a href="/watch/([^"?]+)"#
+            ]
+            
+            for pattern in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) {
+                    let ns = html as NSString
+                    if let match = regex.firstMatch(in: html, options: [], range: NSRange(location: 0, length: ns.length)) {
+                        return ns.substring(with: match.range(at: 1))
+                    }
                 }
             }
         } catch {
-            print("[HiAnime] Slug search failed: \(error)")
+            print("[HiAnime] Search failed on \(baseURL): \(error)")
         }
         return nil
     }

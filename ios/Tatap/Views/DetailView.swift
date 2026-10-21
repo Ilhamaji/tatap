@@ -189,16 +189,42 @@ struct DetailView: View {
                         }
                         .padding(.vertical, 30)
                     } else if let err = episodesError {
-                        VStack(spacing: 6) {
+                        VStack(spacing: 10) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 28))
+                                .foregroundColor(.red)
                             Text("Gagal memuat episode")
                                 .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.red)
+                                .foregroundColor(.white)
                             Text(err)
                                 .font(.system(size: 11))
                                 .foregroundColor(TatapTheme.textMuted)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 30)
+                            
+                            Button(action: {
+                                loadEpisodes()
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.system(size: 12))
+                                    Text("Coba Lagi")
+                                        .font(.system(size: 13, weight: .semibold))
+                                }
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 8)
+                                .background(TatapTheme.surfaceElevated)
+                                .foregroundColor(TatapTheme.primaryCyan)
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(TatapTheme.border, lineWidth: 1)
+                                )
+                            }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
+                        .padding(.vertical, 30)
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 8)], spacing: 8) {
                             ForEach(episodes) { ep in
@@ -241,11 +267,15 @@ struct DetailView: View {
         Task {
             isLoadingEpisodes = true
             episodesError = nil
-            // 1. Find HiAnime slug
-            guard let slug = await HiAnimeScraper.shared.findSlug(for: anime.titleRomaji) else {
+            
+            // 1. Find HiAnime slug with smart title matching (try Romaji + English)
+            guard let slug = await HiAnimeScraper.shared.findSlug(
+                for: anime.titleRomaji,
+                alternateTitle: anime.titleEnglish
+            ) else {
                 await MainActor.run {
                     self.isLoadingEpisodes = false
-                    self.episodesError = "Stream belum tersedia untuk judul ini."
+                    self.episodesError = "Stream belum tersedia untuk judul ini. Coba cari manual atau tunggu update provider."
                 }
                 return
             }
@@ -253,6 +283,14 @@ struct DetailView: View {
             // 2. Fetch episodes
             do {
                 let eps = try await HiAnimeScraper.shared.getEpisodes(slug: slug)
+                guard !eps.isEmpty else {
+                    await MainActor.run {
+                        self.isLoadingEpisodes = false
+                        self.episodesError = "Tidak ada episode ditemukan untuk judul ini."
+                    }
+                    return
+                }
+                
                 await MainActor.run {
                     self.episodes = eps
                     self.isLoadingEpisodes = false
