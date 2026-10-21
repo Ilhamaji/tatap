@@ -1,0 +1,79 @@
+name: Build iOS IPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'ios/**'
+      - 'frontend/**'
+      - 'tools/build_ios_ipa.*'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    name: Build & Package iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Read Version
+        id: get_version
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building Tatap iOS version $VERSION"
+
+      - name: Copy Frontend Assets to iOS Project
+        run: |
+          mkdir -p ios/Tatap/Resources/frontend
+          cp -r frontend/* ios/Tatap/Resources/frontend/
+          echo "Frontend assets synchronized"
+
+      - name: Build Xcode Archive
+        run: |
+          mkdir -p build
+          xcodebuild archive \
+            -project ios/Tatap.xcodeproj \
+            -scheme Tatap \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -archivePath build/Tatap.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Package IPA
+        run: |
+          mkdir -p dist/ios/Payload
+          cp -r build/Tatap.xcarchive/Products/Applications/Tatap.app dist/ios/Payload/
+          cd dist/ios
+          zip -r "tatap-release-v${{ steps.get_version.outputs.VERSION }}.ipa" Payload
+          rm -rf Payload
+          ls -la
+
+      - name: Calculate Checksums
+        run: |
+          cd dist/ios
+          shasum -a 256 "tatap-release-v${{ steps.get_version.outputs.VERSION }}.ipa" > checksums.txt
+          cat checksums.txt
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tatap-ios-v${{ steps.get_version.outputs.VERSION }}
+          path: |
+            dist/ios/tatap-release-v${{ steps.get_version.outputs.VERSION }}.ipa
+            dist/ios/checksums.txt
+          retention-days: 30

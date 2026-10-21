@@ -36,6 +36,11 @@ Kenaikan digit MINOR diterapkan secara mutlak sesuai kaidah Semantic Versioning 
    - Menampilkan label `"SRC: ANICHAN (FAILOVER) ⇄"` pada tombol info sumber pemutar video.
 4. **Automated Unit Tests (`tests/test_anichan.py`):**
    - Menambahkan 6 unit test baru mencakup normalisasi judul, dekripsi payload AES-GCM, unwrapping direct HLS M3U8, parser varian resolusi, penolakan keras konten hentai, dan cascading failover per-judul tanpa polusi preferensi global.
+5. **Native iOS Application, Builder & CI Workflow (`ios/`, `tools/build_ios_ipa.*`, `.github/workflows/ios.yml`):**
+   - Mengimplementasikan runtime native iOS berbasis SwiftUI + embedded HTTP server (`TatapHTTPServer.swift` via `Network.framework` pada port 8767) + container `WKWebView` dengan inline media playback & WebKit haptic feedback bridge.
+   - Menyediakan GraphQL AniList service, HiAnime scraper, dekriptor AES-256-CBC native via Apple `CommonCrypto`, stream M3U8 proxy & rewriter, dan penyimpanan lokal SQLite persisten via `libsqlite3` dalam mode WAL.
+   - Mengembangkan builder otomatis `tools/build_ios_ipa.js` dan `tools/build_ios_ipa.py` untuk mengemas bundel `Payload/Tatap.app` menjadi file `.ipa` siap sideload (TrollStore, AltStore, Sideloadly, Scarlet).
+   - Menambahkan GitHub Actions workflow (`.github/workflows/ios.yml`) menggunakan runner `macos-latest` untuk kompilasi native via `xcodebuild` dan distribusi artefak `.ipa`.
 
 ## [2.10.2] - 2026-10-21
 
