@@ -62,6 +62,15 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - **Video Player HUD & Floating Skip Pill:** Menyempurnakan transisi auto-hide HUD kontrol pemutar (220ms smooth) dan tombol AniSkip pill melayang.
    - **Eksklusivitas Desktop & Web:** Seluruh breakpoint responsif mobile (`<= 768px`, `<= 480px`), remote TV D-Pad (`.tv-focus`), dan modul native Android (`android/`) tetap 100% utuh tanpa modifikasi.
    - **Automated Unit Tests:** Menambahkan 6 automated unit test baru (`tests/test_apple_ui_desktop_polish.py`). Seluruh 264 test suite unit tests Tatap lulus 100%.
+10. **Redesign Apple UI & Eliminasi Total Bug Visual Desktop/Web (`frontend/css/style.css`, `frontend/js/term.js`, `frontend/js/app.js`, `frontend/index.html`):**
+    - **Pemisahan Total Fokus Desktop dari TV 10-Foot UI:** Mendekopel pemilih `:focus-visible` dari `.tv-focus`. Mengganti scaling paksa `scale(1.06)` dan neon glow 18px pada desktop dengan ring fokus Apple yang tenang (`box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px rgba(25, 208, 208, 0.5)`), meniadakan layout jumping saat navigasi atau klik mouse di peramban desktop.
+    - **Pencegahan TV Mode False-Positive di Desktop:** Memperbaiki `renderSel()` di `term.js` agar hanya menyematkan `.tv-focus` jika `isTvMode()` aktif. Mengeliminasi hardcoded `_isTvDetected = true` pada `setFocus()` di `app.js` agar peramban desktop tidak disalahartikan sebagai Android TV.
+    - **Eliminasi Double-Box Nesting pada Kartu Poster:** Mengubah kontainer luar `.poster-card` menjadi transparan dan tanpa border ganda, menjadikan artwork squircle `.pc-media` sebagai pahlawan visual utama dengan bayangan lembut Apple TV dan spring hover lift (`translateY(-4px) scale(1.015)`).
+    - **Badge Kapsul Kaca Gelap Translucent:** Mengganti warna solid teal, hijau, dan oranye yang mencolok pada `.pc-badge-ep`, `.pc-badge-tamat`, dan `.pc-badge-long` menjadi kapsul gelap elegan (`rgba(10,12,16,0.82)`) dengan border dan teks beraksen halus.
+    - **Pencarian Desktop Interaktif Seketika:** Menghilangkan kunci `readonly` pada `#cmd` di desktop saat inisialisasi sehingga pengguna dapat langsung mengklik dan mengetik tanpa hambatan.
+    - **Apple Capsule Player Controls:** Memperhalus tombol kontrol video player (`.player-head-btns button/select`, `.player-foot>button`, `.sub-picker`) menjadi pill capsule kaca semi-transparan (`border-radius: 999px`).
+    - **Refined Empty State Artwork:** Mempercantik tampilan kosong dengan ikon SVG viewfinder Tatap yang bersih menggantikan karakter ASCII mentah.
+    - **Automated Unit Tests:** Menambahkan 6 automated unit test baru (`tests/test_apple_ui_desktop_redesign.py`). Seluruh 270 test suite unit tests Tatap lulus 100%.
 
 ## [2.10.1] - 2026-10-21
 

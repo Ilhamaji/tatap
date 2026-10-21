@@ -768,18 +768,23 @@ var Tui = (function () {
     var box=$("results");
     if(!box)return;
     var all=box.querySelectorAll(".poster-card, .trow");
+    var isTv = !!(window.TvNavigationManager && window.TvNavigationManager.isTvMode && window.TvNavigationManager.isTvMode());
     for(var i=0;i<all.length;i++){
       var itemIdx = parseInt(all[i].getAttribute("data-idx"), 10);
       var isUnm=all[i].classList.contains("unmapped");
       var isThis = (itemIdx === S.sel && !isUnm);
       all[i].classList.toggle("sel", isThis);
-      all[i].classList.toggle("tv-focus", isThis);
+      if(isTv){
+        all[i].classList.toggle("tv-focus", isThis);
+      } else {
+        all[i].classList.remove("tv-focus");
+      }
     }
     if(S.sel < 0) return;
     var selEl = box.querySelector('[data-idx="' + S.sel + '"]');
     if(selEl){
       selEl.scrollIntoView({block:"nearest", inline:"nearest"});
-      if(window.TvNavigationManager){
+      if(window.TvNavigationManager && isTv){
         window.TvNavigationManager.setFocus(selEl, "grid", { scroll: true });
       }
       if(document.activeElement !== selEl){

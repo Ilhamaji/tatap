@@ -108,10 +108,11 @@ var TvNavigationManager = (function(){
     for(var i = 0; i < oldFocused.length; i++){
       if(oldFocused[i] !== el) oldFocused[i].classList.remove("tv-focus");
     }
-    el.classList.add("tv-focus");
+    if(isTvMode()){
+      el.classList.add("tv-focus");
+    }
     currentFocusedElement = el;
     if(zone) activeZone = zone;
-    _isTvDetected = true;
 
     if(options.scroll !== false){
       try {
@@ -3442,6 +3443,17 @@ function init(){
         e.preventDefault();
         headBrand.click();
       }
+    });
+  }
+
+  // Desktop instant search interactivity
+  var cmdInput = $("cmd");
+  if(cmdInput && !(window.TvNavigationManager && window.TvNavigationManager.isTvMode())){
+    cmdInput.removeAttribute("readonly");
+    cmdInput.addEventListener("click", function(e){
+      e.stopPropagation();
+      cmdInput.removeAttribute("readonly");
+      cmdInput.focus();
     });
   }
 
