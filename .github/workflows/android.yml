@@ -53,12 +53,17 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
+          mkdir -p android/keystore
           if [ -n "$KEYSTORE_BASE64" ]; then
-            mkdir -p android/keystore
             echo "$KEYSTORE_BASE64" | base64 -d > android/keystore/release.jks
             echo "Keystore successfully decoded"
           else
-            echo "KEYSTORE_BASE64 secret is not configured"
+            echo "KEYSTORE_BASE64 secret is not configured. Generating self-signed release keystore for CI..."
+            keytool -genkeypair -v -keystore android/keystore/release.jks \
+              -alias tatap_release -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass tatapsecret2026 -keypass tatapsecret2026 \
+              -dname "CN=Tatap, OU=TatapApp, O=Tatap, L=Jakarta, ST=Jakarta, C=ID"
+            echo "Release keystore generated"
           fi
 
       - name: Build Release APK

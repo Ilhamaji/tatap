@@ -34,12 +34,6 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Building Tatap iOS version $VERSION"
 
-      - name: Copy Frontend Assets to iOS Project
-        run: |
-          mkdir -p ios/Tatap/Resources/frontend
-          cp -r frontend/* ios/Tatap/Resources/frontend/
-          echo "Frontend assets synchronized"
-
       - name: Build Xcode Archive
         run: |
           mkdir -p build
@@ -58,8 +52,6 @@ jobs:
         run: |
           mkdir -p dist/ios/Payload
           cp -r build/Tatap.xcarchive/Products/Applications/Tatap.app dist/ios/Payload/
-          mkdir -p dist/ios/Payload/Tatap.app/frontend
-          cp -r frontend/* dist/ios/Payload/Tatap.app/frontend/
           cd dist/ios
           zip -r "tatap-release-v${{ steps.get_version.outputs.VERSION }}.ipa" Payload
           rm -rf Payload

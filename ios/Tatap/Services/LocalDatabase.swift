@@ -2,7 +2,7 @@ import Foundation
 import SQLite3
 
 /// Thread-safe local SQLite database for Tatap iOS.
-/// Handles watch history, bookmarks, progress, and settings.
+/// Handles watch history, bookmarks, and settings using native iOS libsqlite3.
 final class LocalDatabase {
     static let shared = LocalDatabase()
     
@@ -33,7 +33,7 @@ final class LocalDatabase {
         if sqlite3_open(dbURL.path, &db) != SQLITE_OK {
             print("[Tatap-DB] Error opening database at \(dbURL.path)")
         } else {
-            // Enable WAL mode for high performance
+            // Enable WAL mode
             var errMsg: UnsafeMutablePointer<CChar>?
             sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, &errMsg)
         }
@@ -60,14 +60,6 @@ final class LocalDatabase {
             rating TEXT DEFAULT '',
             added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-        CREATE TABLE IF NOT EXISTS progress(
-            slug TEXT,
-            episode INTEGER,
-            current_time REAL DEFAULT 0,
-            duration REAL DEFAULT 0,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY(slug, episode)
-        );
         CREATE TABLE IF NOT EXISTS settings(
             key TEXT PRIMARY KEY,
             value TEXT
@@ -82,7 +74,6 @@ final class LocalDatabase {
     }
     
     // MARK: - Watch History
-    
     func getHistory() -> [[String: Any]] {
         return queue.sync {
             var items: [[String: Any]] = []
@@ -152,7 +143,6 @@ final class LocalDatabase {
     }
     
     // MARK: - Bookmarks
-    
     func getBookmarks() -> [[String: Any]] {
         return queue.sync {
             var items: [[String: Any]] = []
@@ -220,37 +210,6 @@ final class LocalDatabase {
             var stmt: OpaquePointer?
             if sqlite3_prepare_v2(self.db, delSQL, -1, &stmt, nil) == SQLITE_OK {
                 sqlite3_bind_text(stmt, 1, (slug as NSString).utf8String, -1, nil)
-                sqlite3_step(stmt)
-            }
-            sqlite3_finalize(stmt)
-        }
-    }
-    
-    // MARK: - Settings
-    
-    func getSetting(key: String, defaultValue: String = "") -> String {
-        return queue.sync {
-            let query = "SELECT value FROM settings WHERE key = ?;"
-            var stmt: OpaquePointer?
-            var value = defaultValue
-            if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (key as NSString).utf8String, -1, nil)
-                if sqlite3_step(stmt) == SQLITE_ROW {
-                    value = String(cString: sqlite3_column_text(stmt, 0))
-                }
-            }
-            sqlite3_finalize(stmt)
-            return value
-        }
-    }
-    
-    func setSetting(key: String, value: String) {
-        queue.async {
-            let sql = "INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?);"
-            var stmt: OpaquePointer?
-            if sqlite3_prepare_v2(self.db, sql, -1, &stmt, nil) == SQLITE_OK {
-                sqlite3_bind_text(stmt, 1, (key as NSString).utf8String, -1, nil)
-                sqlite3_bind_text(stmt, 2, (value as NSString).utf8String, -1, nil)
                 sqlite3_step(stmt)
             }
             sqlite3_finalize(stmt)
