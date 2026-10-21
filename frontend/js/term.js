@@ -1199,15 +1199,20 @@ var Tui = (function () {
           nxt = "otakudesu";
         }else if(target === "hi" || target === "hianime"){
           nxt = "hianime";
+        }else if(target === "anichan" || target === "ani"){
+          nxt = "anichan";
         }else if(!target){
-          nxt = (curSrc === "otakudesu") ? "hianime" : "otakudesu";
+          if(curSrc === "hianime") nxt = "otakudesu";
+          else if(curSrc === "otakudesu") nxt = "anichan";
+          else nxt = "hianime";
         }else{
-          log("usage: :switch [hianime|otaku]","err");
+          log("usage: :switch [hianime|otaku|anichan]","err");
           break;
         }
         if(window.App && window.App.switchSource){
           var resSrc = window.App.switchSource(nxt);
-          log("sumber streaming beralih ke: " + (resSrc === "otakudesu" ? "Otakudesu (Sub Indo)" : "HiAnime"), "ok");
+          var srcLabel = resSrc === "otakudesu" ? "Otakudesu (Sub Indo)" : (resSrc === "anichan" ? "AniChan (Failover Stream)" : "HiAnime");
+          log("sumber streaming beralih ke: " + srcLabel, "ok");
         }else{
           if(window.Tatap && window.Tatap.setSetting){
             window.Tatap.setSetting({ preferred_source: nxt }).catch(function(){});

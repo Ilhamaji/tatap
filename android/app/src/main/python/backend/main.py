@@ -11,7 +11,10 @@ from api import hianime as hi
 from api import anilist as al
 from api import otakudesu as otaku
 from api import aniskip
+from api import anichan
 import httpx
+
+_ANIME_FAILOVER_CACHE: dict = {}
 
 frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
@@ -40,6 +43,11 @@ async def lifespan(app: FastAPI):
     try:
         from api.otakudesu import close_otaku_client
         close_otaku_client()
+    except Exception:
+        pass
+    try:
+        from api.anichan import close_anichan_client
+        close_anichan_client()
     except Exception:
         pass
 
@@ -1088,6 +1096,13 @@ async def episodes(slug: str):
                     eps = [{"ep": e["ep"], "ep_id": str(e["ep"])} for e in otaku_eps]
             except Exception:
                 pass
+            if not eps:
+                try:
+                    anichan_eps = await loop.run_in_executor(None, lambda: anichan.get_episodes(slug))
+                    if anichan_eps:
+                        eps = anichan_eps
+                except Exception:
+                    pass
         if not eps:
             return fail("Daftar episode tidak ditemukan")
         syn_val = ""
@@ -1221,7 +1236,8 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
             return fail("Konten genre Hentai diblokir")
         mode = "dub" if mode.lower() == "dub" else "sub"
         pref_source = (await get_setting("preferred_source", "hianime")).lower()
-        active_source = (source or pref_source or "hianime").lower()
+        title_failover = _ANIME_FAILOVER_CACHE.get(slug)
+        active_source = (source or title_failover or pref_source or "hianime").lower()
 
         # Cache key mencakup source agar stream tidak tertukar
         cache_slug = f"{active_source}:{slug}" if active_source != "hianime" else slug
@@ -1351,8 +1367,23 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         loop = asyncio.get_running_loop()
         got = None
         last_error = None
+        is_failover = False
+        failover_from = None
 
-        if active_source == "otakudesu":
+        if active_source == "anichan":
+            try:
+                got = await loop.run_in_executor(None, lambda: anichan.resolve_stream(slug, ep, mode, q))
+            except Exception as e:
+                last_error = e
+                if source == "auto" or not source:
+                    try:
+                        maps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
+                        got = await loop.run_in_executor(None, lambda: hi.hianime_m3u8(maps, ep, mode, slug))
+                        active_source = "hianime"
+                        cache_slug = slug
+                    except Exception:
+                        pass
+        elif active_source == "otakudesu":
             try:
                 got = await loop.run_in_executor(None, lambda: otaku.resolve_stream(slug, ep))
             except Exception as e:
@@ -1366,6 +1397,16 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                         cache_slug = slug
                     except Exception:
                         pass
+                    if not got:
+                        try:
+                            got = await loop.run_in_executor(None, lambda: anichan.resolve_stream(slug, ep, mode, q))
+                            active_source = "anichan"
+                            cache_slug = f"anichan:{slug}"
+                            is_failover = True
+                            failover_from = "otakudesu"
+                            _ANIME_FAILOVER_CACHE[slug] = "anichan"
+                        except Exception:
+                            pass
         else:
             try:
                 maps = await loop.run_in_executor(None, lambda: hi.hianime_episodes(slug))
@@ -1380,11 +1421,26 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                         cache_slug = f"otakudesu:{slug}"
                     except Exception:
                         pass
+                    # JIKA HIANIME & OTAKUDESU GAGAL (KASUS EYESHIELD 21):
+                    # Failover otomatis per-judul ke AniChan langsung ke HLS M3U8
+                    if not got:
+                        try:
+                            got = await loop.run_in_executor(None, lambda: anichan.resolve_stream(slug, ep, mode, q))
+                            active_source = "anichan"
+                            cache_slug = f"anichan:{slug}"
+                            is_failover = True
+                            failover_from = "hianime"
+                            _ANIME_FAILOVER_CACHE[slug] = "anichan"
+                        except Exception as anichan_err:
+                            last_error = anichan_err
 
         if not got:
             raise last_error or RuntimeError("Stream gagal di-resolve dari semua sumber")
 
         got["source"] = active_source
+        if is_failover:
+            got["is_failover"] = True
+            got["failover_from"] = failover_from
         got["picked"] = hi.select_quality(got["variants"], q)
         got["cached"] = False
         got["subtitles"] = got.get("subtitles") or []
@@ -1564,8 +1620,10 @@ async def proxy_video(url: str = Query(""), referer: str = Query("")):
             referer = "https://megacloud.blog/"
         elif any(h in url for h in ("puterin.biz", "putarin.xyz", "stream121.space")):
             referer = "https://puterin.biz/"
-        elif any(h in url for h in ("phantomharbor", "nexabloom", "silverorbit", "megaplay", "vidtube", "vidplay")):
+        elif any(h in url for h in ("phantomharbor", "nexabloom", "silverorbit", "megaplay", "vidtube", "vidplay", "shiora.top", "imgnex.top", "hiddenvertex", "broforgotsave")):
             referer = "https://megaplay.buzz/"
+        elif any(h in url for h in ("anichan.to", "toroplay.cymru")):
+            referer = "https://anichan.to/"
 
     # Jika host terdeteksi diblokir DPI ISP, gunakan TLS desync murni (aman dari Sangfor)
     from api.hianime import _host_from, _BLOCKED_DPI_HOSTS
@@ -1730,8 +1788,8 @@ async def _fetch_sub_text(target_url, ref):
 
     # Domain-specific smart prioritization (Megaplay CDN butuh origin megaplay)
     t_low = target_url.lower()
-    if any(k in t_low for k in ("broforgotsave", "stellarfrontier", "megaplay", "megacloud")):
-        candidates.extend(["https://megaplay.buzz/", "https://megaplay.top/", "https://megacloud.tv/"])
+    if any(k in t_low for k in ("toroplay", "anichan", "broforgotsave", "stellarfrontier", "megaplay", "megacloud")):
+        candidates.extend(["https://megaplay.buzz/", "https://anichan.to/", "https://megaplay.top/", "https://megacloud.tv/"])
     if any(k in t_low for k in ("dramahot", "zokoanime")):
         candidates.extend(["https://zokoanime.video/", "https://dramahot.top/"])
 

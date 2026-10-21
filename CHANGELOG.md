@@ -13,6 +13,30 @@ Format versi menggunakan skema `MAJOR.MINOR.PATCH`:
 - **MINOR (x.Y.0):** Penambahan fitur atau kapabilitas baru yang tetap kompatibel ke belakang (*backward-compatible new features*). Digit PATCH direset ke 0.
 - **PATCH (x.y.Z):** Perbaikan bug, peningkatan stabilitas, atau perbaikan internal tanpa penambahan fitur baru (*backward-compatible bug fixes*).
 
+## [2.11.0] - 2026-10-21
+
+### Justifikasi SemVer 2.0.0 (MINOR: 2.10.2 -> 2.11.0)
+Kenaikan digit MINOR diterapkan secara mutlak sesuai kaidah Semantic Versioning 2.0.0 dan Direktif #3 [`AGENTS.md`](AGENTS.md) karena memuat penambahan provider scraping baru (*new scraping provider*) dan kapabilitas failover streaming CDN otomatis (`https://anichan.to/`) yang tetap kompatibel ke belakang (*backward-compatible new feature*):
+
+1. **New Direct HLS Scraping Provider: AniChan (`backend/api/anichan.py` & Chaquopy Parity):**
+   - Mengimplementasikan scraper native untuk `https://anichan.to/` yang langsung mengekstrak stream **raw HLS Master `.m3u8` murni** (zero iframe/embed player) dan segmen MPEG-TS asli (`0x47`). Server bertipe `embed` ditolak keras.
+   - Mengelola sesi token otomatis via `POST /api/watch/session` dengan auto-refresh berdasarkan timestamp kedaluwarsa (`exp`).
+   - Menyediakan dekriptor AES-GCM 256-bit payload server dari `GET /api/watch/servers` berbasis HMAC-SHA256 session token dan kunci `XOR(O, b)` dengan fallback ekstraksi dinamis jika kunci rotasi di masa depan.
+   - Mengintegrasikan AniList ID resolver (`clean_title_for_search` dan `/api/suggest?q=...`) dengan pencocokan judul token similarity dan konsistensi musim.
+   - Mengekstrak varian resolusi adaptif (`1080p`, `720p`, `480p`, `360p`), track subtitle WEBVTT asli, dan metadata intro/outro untuk fitur AniSkip.
+   - Menerapkan perlindungan anti-hentai zero-tolerance (memvalidasi `isAdult: false` dan blacklist genre `Hentai`/`Adult`).
+2. **Title-Scoped Automatic CDN Failover (`backend/main.py`):**
+   - Kegagalan stream utama (HiAnime / Otakudesu) akibat CDN mati, 404, atau terblokir DPI (seperti kasus anime *Eyeshield 21*) secara transparan memicu failover otomatis ke AniChan HLS M3U8.
+   - **Isolasi Mutlak Per-Judul:** Failover dicatat pada memori judul `_ANIME_FAILOVER_CACHE[slug] = "anichan"`, sehingga episode lanjutan (ep 2, 3, dst.) dari judul tersebut langsung tersambung ke AniChan tanpa delay timeout, sementara preferensi sumber utama global pengguna (`preferred_source`) **TIDAK PERNAH DIUBAH**. Judul anime lain tetap memprioritaskan HiAnime secara normal.
+   - Mendaftarkan whitelist referer proxy video (`/api/player/video`) dan subtitle (`_fetch_sub_text`) untuk domain CDN AniChan (`toroplay.cymru`, `nexabloom.top`, `broforgotsave.online`, `shiora.top`, `imgnex.top`, `anichan.to`, `hiddenvertex.space`).
+   - Menambahkan fallback daftar episode via `anichan.get_episodes(slug)` jika HiAnime dan Otakudesu tidak memiliki data episode judul tertentu.
+3. **Frontend In-App Controls & Notification (`frontend/js/app.js`, `frontend/js/term.js`):**
+   - Menampilkan toast notifikasi informatif saat stream dialihkan via failover: `"CDN HiAnime tidak merespon · Otomatis memutar cadangan dari AniChan"`.
+   - Menambahkan opsi siklus sumber 3-arah (`hianime` $\leftrightarrow$ `otakudesu` $\leftrightarrow$ `anichan`) pada tombol sumber pemutar dan perintah terminal `:switch [hianime|otaku|anichan]` serta `:source anichan`.
+   - Menampilkan label `"SRC: ANICHAN (FAILOVER) ⇄"` pada tombol info sumber pemutar video.
+4. **Automated Unit Tests (`tests/test_anichan.py`):**
+   - Menambahkan 6 unit test baru mencakup normalisasi judul, dekripsi payload AES-GCM, unwrapping direct HLS M3U8, parser varian resolusi, penolakan keras konten hentai, dan cascading failover per-judul tanpa polusi preferensi global.
+
 ## [2.10.2] - 2026-10-21
 
 ### Justifikasi SemVer 2.0.0 (PATCH: 2.10.1 -> 2.10.2)

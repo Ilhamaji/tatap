@@ -1264,6 +1264,9 @@ function openPlayer(ep, resumeTime, forceRefresh){
       return;
     }
     cur.res=r.data;
+    if(r.data && r.data.is_failover){
+      toast("CDN "+(r.data.failover_from==="otakudesu"?"Otakudesu":"HiAnime")+" tidak aktif · Otomatis memutar cadangan AniChan");
+    }
     function isValidSkipInterval(inv){
       return !!(inv && typeof inv.start === "number" && typeof inv.end === "number" &&
                 inv.end > inv.start && inv.end > 0 && (inv.end - inv.start) >= 5.0);
@@ -3084,8 +3087,9 @@ function setTranslate(on){
 function renderSourceUI(){
   var s = cur.source || "hianime";
   var isOtaku = (s === "otakudesu");
-  var txt = isOtaku ? "src: otakudesu (sub indo) ⇄" : "src: hianime ⇄";
-  var badgeTxt = isOtaku ? "OTAKUDESU (SUB INDO) ⇄" : "HIANIME ⇄";
+  var isAnichan = (s === "anichan");
+  var txt = isOtaku ? "src: otakudesu (sub indo) ⇄" : (isAnichan ? "src: anichan (failover) ⇄" : "src: hianime ⇄");
+  var badgeTxt = isOtaku ? "OTAKUDESU (SUB INDO) ⇄" : (isAnichan ? "ANICHAN (FAILOVER) ⇄" : "HIANIME ⇄");
   var sb = $("sb-source");
   if(sb){
     sb.textContent = txt;
@@ -3103,14 +3107,16 @@ function switchSource(targetSource){
   var curTime = (v && !isNaN(v.currentTime)) ? v.currentTime : 0;
   var nextSource = targetSource;
   if(!nextSource){
-    nextSource = (cur.source === "otakudesu") ? "hianime" : "otakudesu";
+    if(cur.source === "hianime") nextSource = "otakudesu";
+    else if(cur.source === "otakudesu") nextSource = "anichan";
+    else nextSource = "hianime";
   }
   cur.source = nextSource;
   renderSourceUI();
   if(window.Tatap && window.Tatap.setSetting){
     window.Tatap.setSetting({ preferred_source: nextSource }).catch(function(){});
   }
-  var label = nextSource === "otakudesu" ? "Otakudesu (Sub Indo)" : "HiAnime";
+  var label = nextSource === "otakudesu" ? "Otakudesu (Sub Indo)" : (nextSource === "anichan" ? "AniChan (Failover)" : "HiAnime");
   toast("Sumber: " + label);
   if(!$("player-modal").classList.contains("hidden") && cur.ep){
     openPlayer(cur.ep, curTime);
