@@ -18,14 +18,25 @@ mkdir -p "${DATA_DIR}/cache"
 export TATAP_DATABASE_PATH="${DATA_DIR}/anime.db"
 export TATAP_CACHE_DIR="${DATA_DIR}/cache"
 
-# Cleanup function on exit
+# Cleanup function on exit: anggun mematikan backend server dan menutup koneksi SQLite
 cleanup() {
-    if [ -n "$SERVER_PID" ]; then
-        kill "$SERVER_PID" 2>/dev/null || true
+    if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
+        kill -TERM "$SERVER_PID" 2>/dev/null || true
+        # Beri toleransi hingga 2 detik agar SQLite dan FastAPI menutup koneksi secara bersih
+        for i in {1..20}; do
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+        # Kirimkan KILL jika proses backend masih menggantung setelah 2 detik
+        if kill -0 "$SERVER_PID" 2>/dev/null; then
+            kill -KILL "$SERVER_PID" 2>/dev/null || true
+        fi
         wait "$SERVER_PID" 2>/dev/null || true
     fi
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT INT TERM HUP
 
 # Check if a healthy Tatap server is already running on port 8767
 ALREADY_RUNNING=0
@@ -112,7 +123,7 @@ if [ -n "$BROWSER_CMD" ]; then
         --user-data-dir="$CHROME_DATA_DIR"
         --app="$APP_URL"
         --window-size=1280,720
-        --class=tatap
+        --class=Tatap
         # Hardware acceleration & GPU decoding (Mesa VAAPI / NVDEC / Vulkan)
         --enable-features=VaapiVideoDecoder,VaapiVideoDecodeLinuxGL,CanvasOopRasterization
         --enable-gpu-rasterization
@@ -134,21 +145,28 @@ if [ -n "$BROWSER_CMD" ]; then
     "$BROWSER_CMD" "${CHROME_FLAGS[@]}" >/dev/null 2>&1 &
     BROWSER_PID=$!
 
-    # Fail-safe monitoring: check if browser process is still alive or delegated
-    sleep 1.5
-    if kill -0 "$BROWSER_PID" 2>/dev/null; then
-        wait "$BROWSER_PID"
-    else
-        # Browser delegated to existing session, keep backend server alive
-        wait "$SERVER_PID"
-    fi
+    # Tunggu sampai jendela aplikasi Tatap ditutup oleh pengguna.
+    # Dengan --user-data-dir terisolasi, $BROWSER_PID merupakan proses window utama
+    # sehingga saat window ditutup, skrip selesai dan memicu trap cleanup untuk mematikan server.
+    wait "$BROWSER_PID" 2>/dev/null || true
 else
-    # Fallback to default system browser
+    # Fallback to default system browser (non-Chromium)
+    echo "================================================================="
+    echo " Tatap: Browser berbasis Chromium tidak ditemukan."
+    echo " Membuka peramban default via xdg-open: $APP_URL"
+    echo " Server backend berjalan di latar belakang (PID: $SERVER_PID)."
+    echo " Tekan Ctrl+C pada terminal ini untuk mematikan server Tatap."
+    echo "================================================================="
     if command -v xdg-open >/dev/null 2>&1; then
         xdg-open "$APP_URL" >/dev/null 2>&1 || true
     elif command -v sensible-browser >/dev/null 2>&1; then
         sensible-browser "$APP_URL" >/dev/null 2>&1 || true
     fi
-    # Wait for backend process
-    wait "$SERVER_PID"
+    if command -v notify-send >/dev/null 2>&1; then
+        notify-send "Tatap Anime" "Server berjalan di $APP_URL. Tutup terminal atau kirim sinyal untuk mematikan backend." 2>/dev/null || true
+    fi
+
+    # Menjaga server tetap aktif saat mode xdg-open sampai pengguna menekan Ctrl+C (INT/TERM)
+    # yang kemudian memicu trap cleanup secara otomatis
+    wait "$SERVER_PID" 2>/dev/null || true
 fi
