@@ -4,8 +4,15 @@ var cur = {slug:"", title:"", ep:1, mode:"sub", quality:"best", res:null, eps:[]
             cues:[],              // cue subtitle hasil parse VTT (render overlay milik app)
             subSize:"m",          // ukuran subtitle overlay: s|m|l
             translate:false,      // toggle translate subtitle Indonesia (persist localStorage)
-            eps_counter:""
+            eps_counter:"",
+            intro:null,           // {start, end} opening
+            outro:null,           // {start, end} ending
+            hasAutoSkippedIntro:false,
+            hasAutoSkippedOutro:false,
+            activeSkipTarget:0,
+            autoSkip:false
            };
+window.settings = window.settings || {};
 var _playTokenCounter = 0;
 var PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 var currentPlaybackSpeed = 1.0;
@@ -1218,6 +1225,13 @@ function openPlayer(ep, resumeTime, forceRefresh){
   }
 
   cur.ep=ep;
+  cur.intro=null;
+  cur.outro=null;
+  cur.hasAutoSkippedIntro=false;
+  cur.hasAutoSkippedOutro=false;
+  cur.activeSkipTarget=0;
+  var initSkipBtn=$("pm-skip-btn");
+  if(initSkipBtn) initSkipBtn.classList.add("hidden");
   cur.playerOpenedAt=Date.now();
   var token = ++_playTokenCounter;
   cur.playToken = token;
@@ -1249,8 +1263,12 @@ function openPlayer(ep, resumeTime, forceRefresh){
       return;
     }
     cur.res=r.data;
-    cur.intro=(r.data&&r.data.intro)||{start:0,end:0};
-    cur.outro=(r.data&&r.data.outro)||{start:0,end:0};
+    function isValidSkipInterval(inv){
+      return !!(inv && typeof inv.start === "number" && typeof inv.end === "number" &&
+                inv.end > inv.start && inv.end > 0 && (inv.end - inv.start) >= 5.0);
+    }
+    cur.intro=(r.data && isValidSkipInterval(r.data.intro)) ? r.data.intro : null;
+    cur.outro=(r.data && isValidSkipInterval(r.data.outro)) ? r.data.outro : null;
     cur.activeSkipTarget=0;
     cur.source=r.data.source||"hianime";
     var picked=r.data.picked||(r.data.variants&&r.data.variants[0])||{q:"HD",url:r.data.master||""};
@@ -1858,36 +1876,65 @@ function paintCue(){
 function checkSkipTimes(currentTime){
   var btn=$("pm-skip-btn");
   var label=$("pm-skip-label");
-  if(!btn||!cur.res){return;}
-  var intro=cur.intro||(cur.res&&cur.res.intro)||{start:0,end:0};
-  var outro=cur.outro||(cur.res&&cur.res.outro)||{start:0,end:0};
+  if(!btn){return;}
+  var v=$("vid");
+  var intro=cur.intro;
+  var outro=cur.outro;
+  var isAutoSkip = !!(window.settings && window.settings.autoSkip !== undefined ? window.settings.autoSkip : cur.autoSkip);
 
-  var inIntro=(intro.end>intro.start&&(intro.end-intro.start)>=10&&currentTime>=intro.start&&currentTime<intro.end);
-  var inOutro=(outro.end>outro.start&&(outro.end-outro.start)>=10&&currentTime>=outro.start&&currentTime<outro.end);
+  var inIntro=(intro && intro.end > intro.start && intro.end > 0 && currentTime >= intro.start && currentTime < (intro.end - 0.5));
+  var inOutro=(outro && outro.end > outro.start && outro.end > 0 && currentTime >= outro.start && currentTime < (outro.end - 0.5));
 
   if(inIntro){
-    cur.activeSkipTarget=intro.end+0.5;
-    if(label)label.textContent="Lewati Opening (S)";
+    cur.activeSkipTarget = Math.min((v && v.duration) || Infinity, intro.end + 0.5);
+    if(isAutoSkip && !cur.hasAutoSkippedIntro){
+      cur.hasAutoSkippedIntro = true;
+      if(v){
+        v.currentTime = cur.activeSkipTarget;
+        btn.classList.add("hidden");
+        cur.activeSkipTarget = 0;
+        toast("⏩ Lewati Opening otomatis", 1500);
+        return;
+      }
+    }
+    if(label) label.textContent = "Lewati Opening (S)";
     btn.classList.remove("hidden");
   }else if(inOutro){
-    cur.activeSkipTarget=outro.end+0.5;
-    if(label)label.textContent="Lewati Ending (S)";
+    cur.activeSkipTarget = Math.min((v && v.duration) || Infinity, outro.end + 0.5);
+    if(isAutoSkip && !cur.hasAutoSkippedOutro){
+      cur.hasAutoSkippedOutro = true;
+      if(v){
+        v.currentTime = cur.activeSkipTarget;
+        btn.classList.add("hidden");
+        cur.activeSkipTarget = 0;
+        toast("⏩ Lewati Ending otomatis", 1500);
+        return;
+      }
+    }
+    if(label) label.textContent = "Lewati Ending (S)";
     btn.classList.remove("hidden");
   }else{
-    cur.activeSkipTarget=0;
+    cur.activeSkipTarget = 0;
     btn.classList.add("hidden");
   }
 }
 
 function doSkip(){
-  if(cur.activeSkipTarget&&cur.activeSkipTarget>0){
+  if(cur.activeSkipTarget && cur.activeSkipTarget > 0){
     var v=$("vid");
     if(v){
-      v.currentTime=cur.activeSkipTarget;
+      var t = v.currentTime;
+      if(cur.intro && t >= cur.intro.start && t < cur.intro.end){
+        cur.hasAutoSkippedIntro = true;
+      }
+      if(cur.outro && t >= cur.outro.start && t < cur.outro.end){
+        cur.hasAutoSkippedOutro = true;
+      }
+      v.currentTime = cur.activeSkipTarget;
       var btn=$("pm-skip-btn");
-      if(btn)btn.classList.add("hidden");
-      toast("⏩ Melompat ke "+formatTime(v.currentTime),1500);
-      cur.activeSkipTarget=0;
+      if(btn) btn.classList.add("hidden");
+      toast("⏩ Melompat ke "+formatTime(v.currentTime), 1500);
+      cur.activeSkipTarget = 0;
       return true;
     }
   }
@@ -2970,12 +3017,14 @@ function onKeyPlayer(e){
   else if(e.key==="]"||e.key==="}"){e.preventDefault();adjustPlaySpeed(1);}
   else if(e.key==="m"||e.key==="M"){e.preventDefault();v.muted=!v.muted;}
   else if(e.key==="s"||e.key==="S"){
-    if(cur.activeSkipTarget&&cur.activeSkipTarget>0){
+    var skipBtn = $("pm-skip-btn");
+    var isSkipActive = skipBtn && !skipBtn.classList.contains("hidden") && cur.activeSkipTarget > 0;
+    if(isSkipActive){
       e.preventDefault();
       doSkip();
-    }else{
-      switchSource();
+      return;
     }
+    switchSource();
   }
   else if(e.key==="ArrowRight"){e.preventDefault();v.currentTime+=5;}
   else if(e.key==="ArrowLeft"){e.preventDefault();v.currentTime-=5;}
@@ -3294,6 +3343,10 @@ function init(){
         if(r.data.quality) cur.quality=r.data.quality;
         if(r.data.mode) {cur.mode=r.data.mode; syncSeg();}
         if(r.data.preferred_source) {cur.source=r.data.preferred_source; renderSourceUI();}
+        if(r.data.auto_skip !== undefined) {
+          cur.autoSkip = !!r.data.auto_skip;
+          window.settings.autoSkip = cur.autoSkip;
+        }
       }
     }).catch(function(){});
   }

@@ -180,6 +180,8 @@ public class PlayerActivity extends Activity {
     private long outroEndMs = 0;
     private long currentSkipTargetMs = 0;
     private boolean autoSkipOpEd = false;
+    private boolean hasAutoSkippedIntro = false;
+    private boolean hasAutoSkippedOutro = false;
     private float currentBrightness = 0.5f;
     private float currentVolumeFraction = -1f;
     private int activeGestureZone = 0; // 0 = none / deadzone, 1 = brightness (left edge), 2 = volume (right edge)
@@ -301,6 +303,13 @@ public class PlayerActivity extends Activity {
 
     private void doSkipOpEd() {
         if (player != null && currentSkipTargetMs > 0) {
+            long pos = player.getCurrentPosition();
+            if (introEndMs > introStartMs && pos >= introStartMs && pos < introEndMs) {
+                hasAutoSkippedIntro = true;
+            }
+            if (outroEndMs > outroStartMs && pos >= outroStartMs && pos < outroEndMs) {
+                hasAutoSkippedOutro = true;
+            }
             player.seekTo(currentSkipTargetMs);
             if (btnSkipOpEd != null) {
                 if (TvFocusHelper.isTv(this) && (btnSkipOpEd.isFocused() || getCurrentFocus() == btnSkipOpEd)) {
@@ -332,16 +341,24 @@ public class PlayerActivity extends Activity {
 
     private void checkSkipTimes(long posMs) {
         if (btnSkipOpEd == null || player == null) return;
-        boolean inIntro = (introEndMs > introStartMs && (introEndMs - introStartMs) >= 10_000
-                && posMs >= introStartMs && posMs < introEndMs);
-        boolean inOutro = (outroEndMs > outroStartMs && (outroEndMs - outroStartMs) >= 10_000
-                && posMs >= outroStartMs && posMs < outroEndMs);
+        boolean inIntro = (introEndMs > introStartMs && introEndMs > 0 && (introEndMs - introStartMs) >= 5_000
+                && posMs >= introStartMs && posMs < (introEndMs - 500));
+        boolean inOutro = (outroEndMs > outroStartMs && outroEndMs > 0 && (outroEndMs - outroStartMs) >= 5_000
+                && posMs >= outroStartMs && posMs < (outroEndMs - 500));
         isInOpEd = (inIntro || inOutro);
 
-        if (autoSkipOpEd && (inIntro || inOutro)) {
-            currentSkipTargetMs = (inIntro ? introEndMs : outroEndMs) + 500;
-            doSkipOpEd();
-            return;
+        if (autoSkipOpEd) {
+            if (inIntro && !hasAutoSkippedIntro) {
+                hasAutoSkippedIntro = true;
+                currentSkipTargetMs = introEndMs + 500;
+                doSkipOpEd();
+                return;
+            } else if (inOutro && !hasAutoSkippedOutro) {
+                hasAutoSkippedOutro = true;
+                currentSkipTargetMs = outroEndMs + 500;
+                doSkipOpEd();
+                return;
+            }
         }
 
         boolean isTv = TvFocusHelper.isTv(this);
@@ -1517,7 +1534,7 @@ public class PlayerActivity extends Activity {
                         }
                     }
                     View focused = getCurrentFocus();
-                    if (focused != null) {
+                    if (focused != null && focused != playerView) {
                         if (focused == btnExoNext || (btnExoNext != null && focused.getId() == androidx.media3.ui.R.id.exo_next)) {
                             playNextEpisode();
                             return true;
@@ -1526,10 +1543,15 @@ public class PlayerActivity extends Activity {
                             playPrevEpisode();
                             return true;
                         }
-                        if (playerView != null && isChildOf(focused, playerView)) {
+                        if (playerView != null && isChildOf(focused, playerView) && focused.isClickable()) {
                             focused.performClick();
                             return true;
                         }
+                    }
+                    boolean isHudVisible = isTopBarActive || (playerView != null && playerView.isControllerFullyVisible());
+                    if (!isHudVisible && isSkipVisible) {
+                        doSkipOpEd();
+                        return true;
                     }
                     if (player != null) {
                         if (player.isPlaying()) {
@@ -2418,8 +2440,15 @@ public class PlayerActivity extends Activity {
 
                     JSONObject introObj = data.optJSONObject("intro");
                     if (introObj != null) {
-                        introStartMs = (long) (introObj.optDouble("start", 0) * 1000);
-                        introEndMs = (long) (introObj.optDouble("end", 0) * 1000);
+                        long s = (long) (introObj.optDouble("start", 0) * 1000);
+                        long e = (long) (introObj.optDouble("end", 0) * 1000);
+                        if (e > s && e > 0 && (e - s) >= 5000) {
+                            introStartMs = s;
+                            introEndMs = e;
+                        } else {
+                            introStartMs = 0;
+                            introEndMs = 0;
+                        }
                     } else {
                         introStartMs = 0;
                         introEndMs = 0;
@@ -2427,8 +2456,15 @@ public class PlayerActivity extends Activity {
 
                     JSONObject outroObj = data.optJSONObject("outro");
                     if (outroObj != null) {
-                        outroStartMs = (long) (outroObj.optDouble("start", 0) * 1000);
-                        outroEndMs = (long) (outroObj.optDouble("end", 0) * 1000);
+                        long s = (long) (outroObj.optDouble("start", 0) * 1000);
+                        long e = (long) (outroObj.optDouble("end", 0) * 1000);
+                        if (e > s && e > 0 && (e - s) >= 5000) {
+                            outroStartMs = s;
+                            outroEndMs = e;
+                        } else {
+                            outroStartMs = 0;
+                            outroEndMs = 0;
+                        }
                     } else {
                         outroStartMs = 0;
                         outroEndMs = 0;
@@ -4288,6 +4324,8 @@ public class PlayerActivity extends Activity {
         introEndMs = 0;
         outroStartMs = 0;
         outroEndMs = 0;
+        hasAutoSkippedIntro = false;
+        hasAutoSkippedOutro = false;
         currentSkipTargetMs = 0;
         if (btnSkipOpEd != null) {
             btnSkipOpEd.setVisibility(View.GONE);

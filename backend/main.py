@@ -1313,6 +1313,17 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
             hit["source"] = active_source
             hit["intro"] = hit.get("intro") or {"start": 0, "end": 0}
             hit["outro"] = hit.get("outro") or {"start": 0, "end": 0}
+
+            # Cek cross-provider cache jika intro/outro belum lengkap
+            clean_slug_hit = slug.split(":", 1)[1] if ":" in slug else slug
+            raw_title_hit = clean_slug_hit.replace("-sub-indo", "").replace("-episode", "").replace("-", " ").strip() if (active_source == "otakudesu" or clean_slug_hit.startswith("otakudesu")) else ""
+            cached_sk = aniskip.get_cached_skip_times(mal_id=hit.get("mal_id"), title=raw_title_hit or clean_slug_hit, ep=ep)
+            if cached_sk:
+                if hit["intro"].get("end", 0) == 0 and cached_sk.get("intro", {}).get("end", 0) > 0:
+                    hit["intro"] = cached_sk["intro"]
+                if hit["outro"].get("end", 0) == 0 and cached_sk.get("outro", {}).get("end", 0) > 0:
+                    hit["outro"] = cached_sk["outro"]
+
             if (hit["intro"].get("end", 0) == 0 or hit["outro"].get("end", 0) == 0) and hit.get("mal_id"):
                 try:
                     loop = asyncio.get_running_loop()
@@ -1326,6 +1337,14 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                         hit["outro"] = sk["outro"]
                 except Exception:
                     pass
+
+            aniskip.store_skip_times(
+                mal_id=hit.get("mal_id"),
+                title=raw_title_hit or clean_slug_hit,
+                ep=ep,
+                intro=hit["intro"],
+                outro=hit["outro"]
+            )
             await _check_and_prewarm(hit)
             return ok(hit)
 
@@ -1369,9 +1388,10 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         got["picked"] = hi.select_quality(got["variants"], q)
         got["cached"] = False
         got["subtitles"] = got.get("subtitles") or []
+        clean_slug = slug.split(":", 1)[1] if ":" in slug else slug
+        hi_slug = clean_slug
+        raw_title = ""
         if not got["subtitles"]:
-            clean_slug = slug.split(":", 1)[1] if ":" in slug else slug
-            hi_slug = clean_slug
             if active_source == "otakudesu" or clean_slug.startswith("otakudesu"):
                 raw_title = clean_slug.replace("-sub-indo", "").replace("-episode", "").replace("-", " ").strip()
                 try:
@@ -1393,6 +1413,16 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
         got["intro"] = got.get("intro") or {"start": 0, "end": 0}
         got["outro"] = got.get("outro") or {"start": 0, "end": 0}
 
+        # 1. Cek cross-provider cache terlebih dahulu
+        cached_sk = aniskip.get_cached_skip_times(mal_id=got.get("mal_id"), title=raw_title or clean_slug, ep=ep)
+        if not cached_sk and hi_slug and hi_slug != clean_slug:
+            cached_sk = aniskip.get_cached_skip_times(title=hi_slug, ep=ep)
+        if cached_sk:
+            if got["intro"].get("end", 0) == 0 and cached_sk.get("intro", {}).get("end", 0) > 0:
+                got["intro"] = cached_sk["intro"]
+            if got["outro"].get("end", 0) == 0 and cached_sk.get("outro", {}).get("end", 0) > 0:
+                got["outro"] = cached_sk["outro"]
+
         mal_id = got.get("mal_id") or ""
         if (got["intro"].get("end", 0) == 0 or got["outro"].get("end", 0) == 0) and mal_id:
             try:
@@ -1406,6 +1436,23 @@ async def resolve(slug: str = Query(""), ep: int = Query(1), mode: str = Query("
                     got["outro"] = sk["outro"]
             except Exception:
                 pass
+
+        # 2. Simpan ke cross-provider cache jika valid
+        aniskip.store_skip_times(
+            mal_id=mal_id or got.get("mal_id"),
+            title=raw_title or clean_slug,
+            ep=ep,
+            intro=got["intro"],
+            outro=got["outro"]
+        )
+        if hi_slug and hi_slug != clean_slug:
+            aniskip.store_skip_times(
+                mal_id=mal_id or got.get("mal_id"),
+                title=hi_slug,
+                ep=ep,
+                intro=got["intro"],
+                outro=got["outro"]
+            )
 
         # Simpan cache episode
         await set_episode_cache(cache_slug, ep, mode, got["master"], got["variants"],

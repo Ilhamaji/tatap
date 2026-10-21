@@ -40,9 +40,15 @@ Kenaikan digit PATCH diterapkan sesuai kaidah Semantic Versioning 2.0.0 karena m
    - Memperkuat styling visual `.tv-focus` dengan `outline: 3px solid var(--accent)`, `transform: scale(1.06)`, `z-index: 20`, dan `scroll-margin: 72px` agar tidak terpotong header sticky maupun batas overscan TV.
    - Menata alur penanganan tombol Back (`Escape` / `KEYCODE_BACK`) berjenjang 6-level:
      (1) Tutup IME / keluar search edit $\to$ (2) Tutup modal dialog aktif $\to$ (3) Sembunyikan Player HUD $\to$ (4) Keluar Player ke Detail Episode $\to$ (5) Tutup Detail ke Grid Beranda $\to$ (6) Konfirmasi double-back (Toast 2000ms) untuk keluar aplikasi di layar utama.
-6. **Unit Test Suite Otomatis Navigasi TV (`tests/test_tv_dpad_navigation.py`):**
-   - Menambahkan 5 unit test komprehensif yang menguji ke-5 spesifikasi di atas.
-   - Seluruh 248 test suite unit tests Tatap lulus 100%.
+6. **Refaktorisasi AniSkip OP/ED Caching, Anti-Stutter Seek & Remote Shortcut (`backend/api/aniskip.py`, `backend/main.py`, `frontend/js/app.js`, `PlayerActivity.java`):**
+   - **Backend URL & Caching Fix:** Menghapus parameter statis `&episodeLength=0` dari endpoint AniSkip API (hanya disertakan jika durasi > 0). Memperbaiki logika caching agar tidak menyimpan respons kosong selama 24 jam saat terjadi network error/timeout/HTTP 5xx/429, menetapkan negative cache TTL 15 menit untuk 404, dan menambahkan validasi interval `is_valid_interval(start, end)` (durasi >= 5.0 detik).
+   - **Cross-Provider OP/ED Cache Sharing:** Timestamp OP/ED valid yang diperoleh dari provider mana pun disimpan dengan kunci `(mal_id, ep)` dan `(normalized_title, ep)`, sehingga saat pengguna beralih stream ke Otakudesu untuk anime yang sama, timestamp intro dan outro tetap tersedia.
+   - **Frontend Anti-Stutter & Rewind Tolerance:** State intro/outro, `activeSkipTarget`, dan tombol skip langsung di-reset sebelum request stream baru selesai. Ditambahkan flag `hasAutoSkippedIntro` dan `hasAutoSkippedOutro` serta offset `+0.5s` yang mengeliminasi seek loop / micro-stutter HLS dan memungkinkan pengguna me-rewind manual untuk mendengarkan lagu tanpa dilempar paksa ke depan.
+   - **Shortcut 'S' Collision Fix:** Event listener tombol keyboard `S` memeriksa status tombol skip terlebih dahulu; jika tombol skip sedang aktif/terlihat, tombol 'S' memicu eksekusi skip OP/ED dan mencegah pemanggilan `switchSource`.
+   - **ExoPlayer Android & Remote TV Fix:** Menambahkan validasi ketat interval (`introEnd > introStart && introEnd > 0 && duration >= 5000ms`) agar default {0, 0} tidak memicu tombol skip di 00:00. Ditambahkan flag auto-skip dan offset `+500ms`. Pada TV remote, tombol Fast-Forward langsung memicu skip, dan tombol OK mengeksekusi skip hanya jika tombol skip difokuskan atau saat HUD pemutar sedang tersembunyi.
+7. **Unit Test Suite Otomatis Navigasi TV & AniSkip (`tests/test_tv_dpad_navigation.py`, `tests/test_skip_times.py`):**
+   - Menambahkan unit test komprehensif baru untuk validasi interval, negative cache 404, error recovery tanpa cache polusi, dan cross-provider cache sharing.
+   - Seluruh 253 test suite unit tests Tatap lulus 100%.
 
 ## [2.10.1] - 2026-10-21
 
